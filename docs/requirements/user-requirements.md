@@ -35,16 +35,16 @@ A standard web browser, no installed client.
 
 Covers account creation, interest selection, jurisdiction matching, and account/organization management.
 
-**CR-1xx —**
+**UR-1xx, INITIALS —**
 As a _____, I want _____, so that _____.
 
-**CR-1xx —**
+**UR-1xx, INITIALS —**
 As a _____, I want _____, so that _____.
 
-**CR-1xx —**
+**UR-1xx, INITIALS —**
 As a _____, I want _____, so that _____.
 
-**CR-1xx —**
+**UR-1xx, INITIALS —**
 As a _____, I want _____, so that _____.
 
 > *(add more as needed)*
@@ -56,19 +56,19 @@ As a _____, I want _____, so that _____.
 
 Covers viewing meetings/documents, the officials directory, and voting records.
 
-**CR-2xx —**
+**UR-2xx, INITIALS —**
 As a _____, I want _____, so that _____.
 
-**CR-2xx —**
+**UR-2xx, INITIALS —**
 As a _____, I want _____, so that _____.
 
-**CR-2xx —**
+**UR-2xx, INITIALS —**
 As a _____, I want _____, so that _____.
 
-**CR-2xx —**
+**UR-2xx, INITIALS —**
 As a _____, I want _____, so that _____.
 
-**CR-2xx —**
+**UR-2xx, INITIALS —**
 As a _____, I want _____, so that _____.
 
 > *(add more as needed)*
@@ -80,19 +80,19 @@ As a _____, I want _____, so that _____.
 
 Covers plain-English summaries, topic classification, and semantic search.
 
-**CR-3xx —**
+**UR-3xx, INITIALS —**
 As a _____, I want _____, so that _____.
 
-**CR-3xx —**
+**UR-3xx, INITIALS —**
 As a _____, I want _____, so that _____.
 
-**CR-3xx —**
+**UR-3xx, INITIALS —**
 As a _____, I want _____, so that _____.
 
-**CR-3xx —**
+**UR-3xx, INITIALS —**
 As a _____, I want _____, so that _____.
 
-**CR-3xx —**
+**UR-3xx, INITIALS —**
 As a _____, I want _____, so that _____.
 
 > *(add more as needed)*
@@ -104,19 +104,19 @@ As a _____, I want _____, so that _____.
 
 Covers alert delivery, notification preferences, and the weekly digest.
 
-**CR-4xx —**
+**UR-4xx, INITIALS —**
 As a _____, I want _____, so that _____.
 
-**CR-4xx —**
+**UR-4xx, INITIALS —**
 As a _____, I want _____, so that _____.
 
-**CR-4xx —**
+**UR-4xx, INITIALS —**
 As a _____, I want _____, so that _____.
 
-**CR-4xx —**
+**UR-4xx, INITIALS —**
 As a _____, I want _____, so that _____.
 
-**CR-4xx —**
+**UR-4xx, INITIALS —**
 As a _____, I want _____, so that _____.
 
 > *(add more as needed)*
@@ -128,19 +128,19 @@ As a _____, I want _____, so that _____.
 
 Covers the dashboard, issue tracking, document viewing, and letter drafting.
 
-**CR-5xx —**
+**UR-5xx, INITIALS —**
 As a _____, I want _____, so that _____.
 
-**CR-5xx —**
+**UR-5xx, INITIALS —**
 As a _____, I want _____, so that _____.
 
-**CR-5xx —**
+**UR-5xx, INITIALS —**
 As a _____, I want _____, so that _____.
 
-**CR-5xx —**
+**UR-5xx, INITIALS —**
 As a _____, I want _____, so that _____.
 
-**CR-5xx —**
+**UR-5xx, INITIALS —**
 As a _____, I want _____, so that _____.
 
 > *(add more as needed)*
@@ -150,10 +150,10 @@ As a _____, I want _____, so that _____.
 ## 7. Getting Started
 *(shared / whoever owns onboarding)*
 
-**CR-25 —**
+**UR-6xx INITIALS —**
 As a _____, I want _____, so that _____.
 
-**CR-26 —**
+**UR-6xx INITIALS —**
 As a _____, I want _____, so that _____.
 
 ---
