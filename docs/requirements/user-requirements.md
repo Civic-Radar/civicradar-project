@@ -35,19 +35,23 @@ A standard web browser, no installed client.
 
 Covers account creation, interest selection, jurisdiction matching, and account/organization management.
 
-**UR-1xx, INITIALS —**
-As a _____, I want _____, so that _____.
+**CR-1xx —**
+As a resident, I want to select the local issues that matter to me, such as housing, transportation, or school budgets, so that the platform surfaces the small number of government items that affect my life instead of everything my town discusses.
 
-**UR-1xx, INITIALS —**
-As a _____, I want _____, so that _____.
+**CR-1xx —**
+As a resident, I want to see when the platform last retrieved information from the government source, so that I know whether an empty or unchanged view means nothing happened or means the data is stale.
 
-**UR-1xx, INITIALS —**
-As a _____, I want _____, so that _____.
+**CR-1xx —**
+As an organization administrator, I want to assign different permission levels to people in my organization, so that all of my staff can use the platform's tools while only a trusted few can add or remove members and change shared settings.
 
-**UR-1xx, INITIALS —**
-As a _____, I want _____, so that _____.
+**CR-1xx —**
+As a system administrator, I want to manage the list of topics, towns, and governing bodies available in the platform, so that the options users select from stay accurate as local government changes, without requiring a code change or redeployment.
 
-> *(add more as needed)*
+**CR-1xx —**
+As a resident, I want to review a record of recent activity on my account, including sign-ins, setting changes, and permission changes, so that I can recognize unauthorized access to an account that holds my location and political interests.
+
+**CR-1xx —**
+As a system administrator, I want to suspend and later restore a user or organization account, so that I can respond to abuse or a compromised account without permanently destroying that user's data.
 
 ---
 
@@ -56,19 +60,19 @@ As a _____, I want _____, so that _____.
 
 Covers viewing meetings/documents, the officials directory, and voting records.
 
-**UR-2xx, INITIALS —**
+**CR-2xx —**
 As a _____, I want _____, so that _____.
 
-**UR-2xx, INITIALS —**
+**CR-2xx —**
 As a _____, I want _____, so that _____.
 
-**UR-2xx, INITIALS —**
+**CR-2xx —**
 As a _____, I want _____, so that _____.
 
-**UR-2xx, INITIALS —**
+**CR-2xx —**
 As a _____, I want _____, so that _____.
 
-**UR-2xx, INITIALS —**
+**CR-2xx —**
 As a _____, I want _____, so that _____.
 
 > *(add more as needed)*
@@ -80,19 +84,19 @@ As a _____, I want _____, so that _____.
 
 Covers plain-English summaries, topic classification, and semantic search.
 
-**UR-3xx, INITIALS —**
+**CR-3xx —**
 As a _____, I want _____, so that _____.
 
-**UR-3xx, INITIALS —**
+**CR-3xx —**
 As a _____, I want _____, so that _____.
 
-**UR-3xx, INITIALS —**
+**CR-3xx —**
 As a _____, I want _____, so that _____.
 
-**UR-3xx, INITIALS —**
+**CR-3xx —**
 As a _____, I want _____, so that _____.
 
-**UR-3xx, INITIALS —**
+**CR-3xx —**
 As a _____, I want _____, so that _____.
 
 > *(add more as needed)*
@@ -104,19 +108,19 @@ As a _____, I want _____, so that _____.
 
 Covers alert delivery, notification preferences, and the weekly digest.
 
-**UR-4xx, INITIALS —**
+**CR-4xx —**
 As a _____, I want _____, so that _____.
 
-**UR-4xx, INITIALS —**
+**CR-4xx —**
 As a _____, I want _____, so that _____.
 
-**UR-4xx, INITIALS —**
+**CR-4xx —**
 As a _____, I want _____, so that _____.
 
-**UR-4xx, INITIALS —**
+**CR-4xx —**
 As a _____, I want _____, so that _____.
 
-**UR-4xx, INITIALS —**
+**CR-4xx —**
 As a _____, I want _____, so that _____.
 
 > *(add more as needed)*
@@ -128,19 +132,19 @@ As a _____, I want _____, so that _____.
 
 Covers the dashboard, issue tracking, document viewing, and letter drafting.
 
-**UR-5xx, INITIALS —**
+**CR-5xx —**
 As a _____, I want _____, so that _____.
 
-**UR-5xx, INITIALS —**
+**CR-5xx —**
 As a _____, I want _____, so that _____.
 
-**UR-5xx, INITIALS —**
+**CR-5xx —**
 As a _____, I want _____, so that _____.
 
-**UR-5xx, INITIALS —**
+**CR-5xx —**
 As a _____, I want _____, so that _____.
 
-**UR-5xx, INITIALS —**
+**CR-5xx —**
 As a _____, I want _____, so that _____.
 
 > *(add more as needed)*
@@ -150,10 +154,10 @@ As a _____, I want _____, so that _____.
 ## 7. Getting Started
 *(shared / whoever owns onboarding)*
 
-**UR-6xx INITIALS —**
+**CR-25 —**
 As a _____, I want _____, so that _____.
 
-**UR-6xx INITIALS —**
+**CR-26 —**
 As a _____, I want _____, so that _____.
 
 ---
