@@ -128,28 +128,62 @@ As a _____, I want _____, so that _____.
 ---
 
 ## 6. Tracking Issues & Civic Action
+
+----------------------------------------------------------------------------------------------------------------
+## 5. Website & User Experience
+
 *(Team Member 5 — Website & User Experience)*
 
-Covers the dashboard, issue tracking, document viewing, and letter drafting.
+Covers the main user interface, dashboard, issue tracking, officials directory, search interface, document viewing, and AI-assisted letter drafting.
 
-**CR-5xx —**
-As a _____, I want _____, so that _____.
+**CR-501 — Local Government Dashboard**
 
-**CR-5xx —**
-As a _____, I want _____, so that _____.
+As a **user**, I want to view a dashboard of local government activity, so that I can quickly see what is happening in my community.
 
-**CR-5xx —**
-As a _____, I want _____, so that _____.
+**CR-502 — Issue Details**
 
-**CR-5xx —**
-As a _____, I want _____, so that _____.
+As a **user**, I want to select a local issue or proposal and view its details, so that I can understand what the issue is about and why it matters.
 
-**CR-5xx —**
-As a _____, I want _____, so that _____.
+**CR-503 — Issue Status Tracking**
 
-> *(add more as needed)*
+As a **user**, I want to see the current status and history of an issue or proposal, so that I can understand how it has progressed over time.
 
----
+**CR-504 — Officials Directory**
+
+As a **user**, I want to browse a directory of local government officials, so that I can learn who represents my community.
+
+**CR-505 — Official Information**
+
+As a **user**, I want to view information about a specific local official, so that I can learn about their role and relevant voting activity.
+
+**CR-506 — Search**
+
+As a **user**, I want to search local government information using everyday language, so that I can find relevant meetings, issues, officials, and documents without knowing specific government terminology.
+
+**CR-507 — Search Results**
+
+As a **user**, I want to see relevant search results in an organized format, so that I can easily choose the information that is most useful to me.
+
+**CR-508 — Document Viewer**
+
+As a **user**, I want to open and view government documents within the website, so that I can read the original source without leaving the application.
+
+**CR-509 — AI-Assisted Letter Drafting**
+
+As a **user**, I want AI to help me draft a letter to a local official about an issue, so that I can more easily communicate my concerns or opinions.
+
+**CR-510 — Edit AI-Generated Letters**
+
+As a **user**, I want to review and edit an AI-generated letter before using it, so that the final message reflects what I actually want to say.
+
+**CR-511 — Navigation**
+
+As a **user**, I want clear navigation between the dashboard, issues, officials, search, and other features, so that I can easily move through the application.
+
+**CR-512 — Responsive Interface**
+
+As a **user**, I want the website to display properly on different screen sizes, so that I can use Civic Radar on a computer, tablet, or mobile device.
+
 
 ## 7. Getting Started
 *(shared / whoever owns onboarding)*
