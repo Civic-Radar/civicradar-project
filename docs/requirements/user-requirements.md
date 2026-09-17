@@ -35,22 +35,22 @@ A standard web browser, no installed client.
 
 Covers account creation, interest selection, jurisdiction matching, and account/organization management.
 
-**CR-1xx —**
+**CR-101 —Topic Selection**
 As a resident, I want to select the local issues that matter to me, such as housing, transportation, or school budgets, so that the platform surfaces the small number of government items that affect my life instead of everything my town discusses.
 
-**CR-1xx —**
+**CR-102 —Data Freshness**
 As a resident, I want to see when the platform last retrieved information from the government source, so that I know whether an empty or unchanged view means nothing happened or means the data is stale.
 
-**CR-1xx —**
+**CR-103 —Organization Permissions**
 As an organization administrator, I want to assign different permission levels to people in my organization, so that all of my staff can use the platform's tools while only a trusted few can add or remove members and change shared settings.
 
-**CR-1xx —**
+**CR-104 —Platform Catalog Management**
 As a system administrator, I want to manage the list of topics, towns, and governing bodies available in the platform, so that the options users select from stay accurate as local government changes, without requiring a code change or redeployment.
 
-**CR-1xx —**
+**CR-105 —Account Activity History**
 As a resident, I want to review a record of recent activity on my account, including sign-ins, setting changes, and permission changes, so that I can recognize unauthorized access to an account that holds my location and political interests.
 
-**CR-1xx —**
+**CR-106 —Account Suspension**
 As a system administrator, I want to suspend and later restore a user or organization account, so that I can respond to abuse or a compromised account without permanently destroying that user's data.
 
 ---
