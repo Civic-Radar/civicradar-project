@@ -134,55 +134,41 @@ As a _____, I want _____, so that _____.
 
 *(Team Member 5 — Website & User Experience)*
 
-Covers the main user interface, dashboard, issue tracking, officials directory, search interface, document viewing, and AI-assisted letter drafting.
+Covers the main user interface, dashboard, meeting details and update history, officials directory, search interface, AI-assisted letter drafting, navigation, and responsive layout.
 
 **CR-501 — Local Government Dashboard**
+As a user, I want to view a dashboard of local government activity, so that I can quickly see what is happening in my community.
 
-As a **user**, I want to view a dashboard of local government activity, so that I can quickly see what is happening in my community.
+**CR-502 — Meeting Details**
+As a user, I want to open a meeting and view its published details, documents, and any supported agenda items or recordings, so that I can review the meeting in one place.
 
-**CR-502 — Issue Details**
-
-As a **user**, I want to select a local issue or proposal and view its details, so that I can understand what the issue is about and why it matters.
-
-**CR-503 — Issue Status Tracking**
-
-As a **user**, I want to see the current status and history of an issue or proposal, so that I can understand how it has progressed over time.
+**CR-503 — Meeting Update History**
+As a user, I want to see the meeting changes Civic Radar has recorded, so that I can understand what changed since it began checking that meeting.
 
 **CR-504 — Officials Directory**
-
-As a **user**, I want to browse a directory of local government officials, so that I can learn who represents my community.
+As a user, I want to browse a directory of local government officials, so that I can learn who represents my community.
 
 **CR-505 — Official Information**
-
-As a **user**, I want to view information about a specific local official, so that I can learn about their role and relevant voting activity.
+As a user, I want to view information about a specific local official, so that I can learn about their role and relevant voting activity.
 
 **CR-506 — Search**
-
-As a **user**, I want to search local government information using everyday language, so that I can find relevant meetings, issues, officials, and documents without knowing specific government terminology.
+As a user, I want to search local government information using everyday language, so that I can find relevant meetings, documents, agenda items, and officials without knowing specific government terminology.
 
 **CR-507 — Search Results**
+As a user, I want to see relevant search results in an organized format, so that I can easily choose the information that is most useful to me.
 
-As a **user**, I want to see relevant search results in an organized format, so that I can easily choose the information that is most useful to me.
+**CR-508 — AI-Assisted Letter Drafting**
+As a user, I want AI to help me draft a letter to a local official about a meeting or agenda item, so that I can more easily communicate my concerns or opinions.
 
-**CR-508 — Document Viewer**
+**CR-509 — Edit AI-Generated Letters**
+As a user, I want to review and edit an AI-generated letter before using it, so that the final message reflects what I actually want to say.
 
-As a **user**, I want to open and view government documents within the website, so that I can read the original source without leaving the application.
+**CR-510 — Navigation**
+As a user, I want clear navigation between the dashboard, documents, officials, search, and preferences, so that I can easily move through the application.
 
-**CR-509 — AI-Assisted Letter Drafting**
+**CR-511 — Responsive Interface**
+As a user, I want the website to display properly on different screen sizes, so that I can use Civic Radar on a computer, tablet, or mobile device.
 
-As a **user**, I want AI to help me draft a letter to a local official about an issue, so that I can more easily communicate my concerns or opinions.
-
-**CR-510 — Edit AI-Generated Letters**
-
-As a **user**, I want to review and edit an AI-generated letter before using it, so that the final message reflects what I actually want to say.
-
-**CR-511 — Navigation**
-
-As a **user**, I want clear navigation between the dashboard, issues, officials, search, and other features, so that I can easily move through the application.
-
-**CR-512 — Responsive Interface**
-
-As a **user**, I want the website to display properly on different screen sizes, so that I can use Civic Radar on a computer, tablet, or mobile device.
 
 
 ## 7. Getting Started
