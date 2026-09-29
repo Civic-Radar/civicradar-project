@@ -561,7 +561,7 @@ CREATE TABLE extracted_officials (
 -- =============================================================================
 
 -- Table: official_votes
--- Reviewed by: YA (<FULL NAME>)
+-- Reviewed by: YA (Yolanda Ampomah)
 -- Supports: SRS-505.2, SRS-505.3
 -- Purpose: Stores each official's recorded vote on an agenda item, for towns whose source publishes vote records.
 CREATE TABLE official_votes (
