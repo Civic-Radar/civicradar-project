@@ -819,3 +819,106 @@
 
 ***AI stakeholder:** Choosing my topics and having them saved, and knowing when the app last checked the city. Those two decide whether I trust it at all. After that, the shared setup for the association, because that's what would actually replace our group chat. The account history and admin tools matter, but I wouldn't notice them day to day.*
 
+## AO — Officials & Contact Extractions
+
+**Stakeholder prompt used:** “Act as a realistic stakeholder for this project. Stay in role. Answer my questions, volunteer constraints when relevant, and do not design the software for me.”
+
+**Opening — AI stakeholder introduction**
+
+**AI stakeholder:** Hi, I’m Elena, a Salem resident who follows housing and neighborhood development issues. Sometimes I read a meeting agenda and want to contact someone about a proposal, but I have trouble figuring out who the officials are and where to find their contact information. I usually switch between the document and the city website, which takes more time than I have. I would like help finding that information, but I need to be able to check where it came from.
+
+**Exchange 1 — Finding officials**
+
+**Interviewer:** How do you currently find the right official to contact, and what problems do you run into?
+
+**AI stakeholder:** I start with the meeting document and look for names. Then I search the city website to figure out what those people do. Sometimes the document only lists a name, so I’m not sure whether that person is an official, a staff member, or someone speaking at the meeting. Finding a name doesn’t always tell me who I should contact.
+
+**Exchange 2 — Choosing a document**
+
+**Interviewer:** Would you want to request contact information from a specific document?
+
+**AI stakeholder:** Yes. If I’m reading an agenda about a housing proposal, I want information about the people mentioned in that agenda. A general list of everyone in city government would leave me with the same problem of figuring out who is connected to my issue.
+
+**Exchange 3 — Useful details**
+
+**Interviewer:** What information would you want to see about each official?
+
+**AI stakeholder:** Their name, title, and role would help me understand who they are. If the document includes an email address or phone number, I would want that too. I don’t need personal contact information, just whatever official contact details are published.
+
+**Exchange 4 — Checking the source**
+
+**Interviewer:** What would help you trust the extracted information?
+
+**AI stakeholder:** I would want a link back to the document it came from. If something looks wrong or unfamiliar, I should be able to open the original and check it myself. I wouldn’t want to rely on contact information without knowing its source.
+
+**Exchange 5 — Missing information**
+
+**Interviewer:** What should happen if the document names an official but does not include their email or phone number?
+
+**AI stakeholder:** Keep the information that is available and clearly say that the other details weren’t found in the document. A blank space could make me think the page didn’t load. I would rather see “Not available in this document” than have the app guess.
+
+**Exchange 6 — No officials found**
+
+**Interviewer:** What would you expect if a document does not contain any officials or contact information?
+
+**AI stakeholder:** Tell me that nothing was found. That is different from the process failing. If the document simply doesn’t contain the information, I can look somewhere else instead of trying the same thing repeatedly.
+
+**Exchange 7 — Waiting for results**
+
+**Interviewer:** If finding the information takes some time, what would you want to see while you wait?
+
+**AI stakeholder:** A clear message that it is still processing would be enough. Otherwise, I might think nothing happened and click again. I also want to know when it finishes so I can look at the results.
+
+**Exchange 8 — Processing problems**
+
+**Interviewer:** If the extraction fails, how would you want the platform to explain that?
+
+**AI stakeholder:** Use plain language and tell me that the information could not be extracted. I would want to know whether I can try again, and I should still be able to read the original document. I don’t need a technical error message.
+
+**Exchange 9 — Returning to results**
+
+**Interviewer:** Would you want to access extraction results again later?
+
+**AI stakeholder:** Yes. I might find someone’s information today but not write to them until the weekend. I don’t want to search for the document and repeat the process every time I need the same details.
+
+**Exchange 10 — Identifying saved results**
+
+**Interviewer:** How would you recognize which saved result you need?
+
+**AI stakeholder:** The source document’s name would help, especially if it includes the meeting date. I might save results from several meetings about the same issue, so I need enough context to tell them apart.
+
+**Exchange 11 — Removing saved results**
+
+**Interviewer:** Would you want to delete saved extraction results?
+
+**AI stakeholder:** Yes. Once an issue is settled, I might not need those results anymore. I would expect deleting my saved result to remove it from my account without removing the public document or information other people use.
+
+**Exchange 12 — Searching saved contacts**
+
+**Interviewer:** How would you search for someone in your saved results?
+
+**AI stakeholder:** Usually by name, but sometimes I only remember their title or role. For example, I might remember that someone was on the planning board without remembering their name. Being able to search either way would help.
+
+**Exchange 13 — Privacy**
+
+**Interviewer:** Who should be able to view or delete your personal saved extraction records?
+
+**AI stakeholder:** Only me through my account. The official’s contact information may be public, but the records I save could reveal the issues I’m following. Another user should not be able to browse my saved results or delete them.
+
+**Exchange 14 — Duplicate officials**
+
+**Interviewer:** If the same official appears in several documents, how would you want them shown in a shared officials list?
+
+**AI stakeholder:** I would prefer one entry for that person. Seeing the same official several times with slightly different details would make me unsure which entry to use. But two different people with the same name should not be treated as one person.
+
+**Exchange 15 — Changing contact details**
+
+**Interviewer:** What would matter to you if an official’s title or contact information changed?
+
+**AI stakeholder:** I would want the shared list to show the most recent information available and let me check its source. An old email address could mean my message never reaches anyone. If the information came from an older document, I would want that to be clear.
+
+**Exchange 16 — Most important features**
+
+**Interviewer:** If we could only build a few of these features this semester, which would matter most to you?
+
+**AI stakeholder:** Finding the officials mentioned in a document, showing their available contact details, and linking back to the source would come first. Clearly labeling missing information is also important because I don’t want to mistake incomplete results for complete ones. Saving and searching results would make it more convenient after those basics work.
