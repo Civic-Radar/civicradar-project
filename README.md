@@ -28,11 +28,20 @@ NEXT_PUBLIC_SUPABASE_URL="https://your-project-id.supabase.co"
 
 ### 3. Run the schema script
 
-In your Supabase project, open the **SQL Editor** and run the contents of [`supabase/schema.sql`](supabase/schema.sql). This creates the `myapp_profile` table used by the profile page.
+In your Supabase project, open the **SQL Editor** and run the contents of [`supabase/schema.sql`](supabase/schema.sql). That one file sets up everything:
 
-### 4. Create the avatars storage bucket
+- `myapp_profile`, the table used by the profile page
+- the 31 Civic Radar tables from the system requirements
+- Row Level Security on every Civic Radar table
+- the public `avatars` storage bucket
 
-In your Supabase project, go to **Storage → New bucket**, name it `avatars`, and check **Public bucket**.
+Re-running the file drops and recreates the Civic Radar tables, so any data in them is lost. `myapp_profile`, `auth.users`, and stored files are left alone.
+
+[`database/schema.sql`](database/schema.sql) is the same schema as a portable PostgreSQL script (`psql -d <database> -f database/schema.sql`) and is the source of truth; `supabase/schema.sql` is that script plus the Supabase-specific pieces, which are listed in its header.
+
+### 4. A note on Row Level Security
+
+The Civic Radar tables have RLS enabled with no policies yet, so the anon key cannot read or write them. The API routes use `SUPABASE_SERVICE_ROLE_KEY`, which bypasses RLS, so they work as-is. If a query against one of those tables comes back empty while only `SUPABASE_ANON_KEY` is set, that is RLS, not a bug — add a policy for the table as you build the feature.
 
 ## Quick start
 

@@ -1,53 +1,13 @@
 -- =============================================================================
--- Civic Radar - Supabase schema
--- CSC 351 - Team Civic Radar (KJ, MS, AO, EG, YA)
+-- Civic Radar — Database Schema
+-- CSC 351 · Team Civic Radar (KJ, MS, AO, EG, YA)
 --
--- Run this whole file in the Supabase SQL editor (Dashboard -> SQL Editor -> New
--- query -> paste -> Run). It creates everything the app needs:
+-- Source of truth: docs/requirements/Civic Radar System Requirements (v2).md
+-- Target:          PostgreSQL 13+ (uses gen_random_uuid() and num_nonnulls())
+-- Run:             psql -d <database> -f database/schema.sql
 --
---   Part 1  myapp_profile      - the profile table the profile page already uses
---   Part 2  Civic Radar schema - the 31 tables from the system requirements
---   Part 3  Row Level Security - deny-by-default on every Civic Radar table
---   Part 4  avatars bucket     - public storage bucket for profile pictures
---
--- Part 2 is generated from database/schema.sql (the portable PostgreSQL script,
--- which is the source of truth). Only three things differ, and each is marked
--- "Supabase:" inline:
---
---   1. is_valid_time_zone() is created as public.is_valid_time_zone() with a
---      pinned search_path, because Supabase's database linter flags functions
---      with a mutable search_path.
---   2. user_accounts.user_id is a foreign key to auth.users (id) ON DELETE
---      CASCADE instead of defaulting to gen_random_uuid(). On Supabase the
---      account row and the auth user are the same person, so the id has to come
---      from Supabase Auth.
---   3. Row Level Security is enabled on every table (Part 3).
---
--- WARNING: Part 2 starts by dropping every Civic Radar table with CASCADE so the
--- file can be re-run. That destroys all Civic Radar data in the project. It does
--- NOT touch myapp_profile, auth.users, or storage.
--- =============================================================================
-
-
--- =============================================================================
--- PART 1. Profile table (used by app/api/profile)
--- =============================================================================
-
-create table if not exists myapp_profile (
-  id         uuid primary key references auth.users(id) on delete cascade,
-  username   text not null,
-  biography  text not null default '',
-  avatar_url text
-);
-
--- If myapp_profile already exists from an earlier version, add the avatar_url column:
-alter table myapp_profile add column if not exists avatar_url text;
-
-
--- =============================================================================
--- PART 2. Civic Radar schema
--- Generated from database/schema.sql. See the notes at the top of this file for
--- the three Supabase-specific differences.
+-- The script is re-runnable: it drops every object it creates before
+-- recreating it.
 --
 -- Conventions used throughout:
 --   * snake_case names; surrogate keys are <table_singular>_id.
@@ -59,6 +19,9 @@ alter table myapp_profile add column if not exists avatar_url text;
 --   * Catalog entries (towns, topics, governing bodies) are never deleted;
 --     removed_at hides them from selection lists (SRS-104.4) without
 --     destroying meetings, follows, or history that reference them.
+--   * user_accounts.user_id is the same UUID Supabase Auth assigns to the
+--     user. There is no FK to auth.users so the script runs on a clean
+--     PostgreSQL database.
 -- =============================================================================
 
 
@@ -97,7 +60,7 @@ DROP TABLE IF EXISTS organizations                 CASCADE;
 DROP TABLE IF EXISTS account_activity              CASCADE;
 DROP TABLE IF EXISTS user_accounts                 CASCADE;
 
-DROP FUNCTION IF EXISTS public.is_valid_time_zone(TEXT) CASCADE;
+DROP FUNCTION IF EXISTS is_valid_time_zone(TEXT) CASCADE;
 
 
 -- -----------------------------------------------------------------------------
@@ -108,13 +71,12 @@ DROP FUNCTION IF EXISTS public.is_valid_time_zone(TEXT) CASCADE;
 -- Supports: SRS-104.6, SRS-408.7
 -- Purpose: Returns TRUE only for a named IANA time zone (e.g. America/New_York)
 --          so CHECK constraints can reject invalid town and digest time zones.
-CREATE FUNCTION public.is_valid_time_zone(tz TEXT)
+CREATE FUNCTION is_valid_time_zone(tz TEXT)
 RETURNS BOOLEAN
 LANGUAGE sql
 STABLE
-SET search_path = pg_catalog, public   -- Supabase: pin the search path (linter 0011)
 AS $$
-    SELECT EXISTS (SELECT 1 FROM pg_catalog.pg_timezone_names WHERE name = tz);
+    SELECT EXISTS (SELECT 1 FROM pg_timezone_names WHERE name = tz);
 $$;
 
 
@@ -127,11 +89,7 @@ $$;
 -- Supports: SRS-105.4, SRS-106.1, SRS-106.2, SRS-106.3, SRS-106.4, SRS-107.1, SRS-107.3, SRS-107.4, SRS-217.4, SRS-406.2, SRS-408.1
 -- Purpose: Stores each signed-in user's account, role, suspension status, and first-time setup progress.
 CREATE TABLE user_accounts (
-    -- Supabase: the account row and the auth user are the same person, so there
-    -- is no gen_random_uuid() default. The id must come from auth.users, and
-    -- deleting the auth user deletes this row with it.
-    user_id         UUID            PRIMARY KEY
-                    REFERENCES auth.users (id) ON DELETE CASCADE,
+    user_id         UUID            PRIMARY KEY DEFAULT gen_random_uuid(),  -- = Supabase auth user id
     email           VARCHAR(254)    NOT NULL,                               -- address for individual emails and digests
     account_role    VARCHAR(30)     NOT NULL DEFAULT 'User'
                     CHECK (account_role IN ('User', 'System administrator')),
@@ -666,66 +624,3 @@ CREATE INDEX meeting_topics_topic_idx         ON meeting_topics (topic_id);
 CREATE INDEX meeting_updates_meeting_time_idx ON meeting_updates (meeting_id, detected_at);
 CREATE INDEX user_alerts_user_time_idx        ON user_alerts (user_id, created_at DESC);
 CREATE INDEX extractions_user_idx             ON extractions (user_id);
-
-
--- =============================================================================
--- PART 3. Row Level Security
---
--- Every table in the public schema is reachable through the Supabase REST API
--- with the anon key, which ships in the browser. Without RLS, anyone holding
--- that key could read and write followed towns, email preferences, alerts, and
--- extracted contact details. Enabling RLS with no policies closes that door:
--- the anon and authenticated roles get nothing.
---
--- The API routes in app/api sign in with SUPABASE_SERVICE_ROLE_KEY, which
--- bypasses RLS, so they keep working. If you only set SUPABASE_ANON_KEY in
--- .env.local, queries against these tables come back empty -- that is RLS doing
--- its job, not a bug. Add a policy per table as each feature is built, e.g.
---
---   CREATE POLICY user_followed_towns_own ON user_followed_towns
---     FOR ALL TO authenticated
---     USING (user_id = auth.uid()) WITH CHECK (user_id = auth.uid());
--- =============================================================================
-
-ALTER TABLE user_accounts                ENABLE ROW LEVEL SECURITY;
-ALTER TABLE account_activity             ENABLE ROW LEVEL SECURITY;
-ALTER TABLE organizations                ENABLE ROW LEVEL SECURITY;
-ALTER TABLE organization_members         ENABLE ROW LEVEL SECURITY;
-ALTER TABLE topics                       ENABLE ROW LEVEL SECURITY;
-ALTER TABLE towns                        ENABLE ROW LEVEL SECURITY;
-ALTER TABLE governing_bodies             ENABLE ROW LEVEL SECURITY;
-ALTER TABLE user_followed_towns          ENABLE ROW LEVEL SECURITY;
-ALTER TABLE user_followed_topics         ENABLE ROW LEVEL SECURITY;
-ALTER TABLE organization_followed_towns  ENABLE ROW LEVEL SECURITY;
-ALTER TABLE organization_followed_topics ENABLE ROW LEVEL SECURITY;
-ALTER TABLE source_checks                ENABLE ROW LEVEL SECURITY;
-ALTER TABLE source_check_collections     ENABLE ROW LEVEL SECURITY;
-ALTER TABLE meetings                     ENABLE ROW LEVEL SECURITY;
-ALTER TABLE meeting_baselines            ENABLE ROW LEVEL SECURITY;
-ALTER TABLE documents                    ENABLE ROW LEVEL SECURITY;
-ALTER TABLE summary_attempts             ENABLE ROW LEVEL SECURITY;
-ALTER TABLE agenda_items                 ENABLE ROW LEVEL SECURITY;
-ALTER TABLE meeting_recordings           ENABLE ROW LEVEL SECURITY;
-ALTER TABLE meeting_topics               ENABLE ROW LEVEL SECURITY;
-ALTER TABLE user_followed_meetings       ENABLE ROW LEVEL SECURITY;
-ALTER TABLE meeting_updates              ENABLE ROW LEVEL SECURITY;
-ALTER TABLE user_alerts                  ENABLE ROW LEVEL SECURITY;
-ALTER TABLE email_preferences            ENABLE ROW LEVEL SECURITY;
-ALTER TABLE weekly_digests               ENABLE ROW LEVEL SECURITY;
-ALTER TABLE email_submissions            ENABLE ROW LEVEL SECURITY;
-ALTER TABLE extractions                  ENABLE ROW LEVEL SECURITY;
-ALTER TABLE officials                    ENABLE ROW LEVEL SECURITY;
-ALTER TABLE official_sources             ENABLE ROW LEVEL SECURITY;
-ALTER TABLE extracted_officials          ENABLE ROW LEVEL SECURITY;
-ALTER TABLE official_votes               ENABLE ROW LEVEL SECURITY;
-
-
--- =============================================================================
--- PART 4. Avatar storage bucket
--- Public bucket used by app/api/profile/avatar. Equivalent to
--- Storage -> New bucket -> name "avatars" -> check "Public bucket".
--- =============================================================================
-
-insert into storage.buckets (id, name, public)
-values ('avatars', 'avatars', true)
-on conflict (id) do nothing;
