@@ -539,7 +539,7 @@ CREATE TABLE email_submissions (
 -- =============================================================================
 
 -- Table: extractions
--- Reviewed by: AO (<FULL NAME>)
+-- Reviewed by: AO (Aderly Ortiz)
 -- Supports: SRS-301.4, SRS-302.3, SRS-303.1, SRS-303.2, SRS-303.3, SRS-303.4, SRS-304.1, SRS-304.2, SRS-304.3, SRS-305.4, SRS-306.1, SRS-306.2, SRS-306.3, SRS-307.1, SRS-307.2, SRS-307.3, SRS-307.6, SRS-310.2
 -- Purpose: Stores each user's request to extract officials from a document, its status, and its failure cause.
 CREATE TABLE extractions (
@@ -559,7 +559,7 @@ CREATE TABLE extractions (
 );
 
 -- Table: officials
--- Reviewed by: AO (<FULL NAME>)
+-- Reviewed by: AO (Aderly Ortiz)
 -- Supports: SRS-311.1, SRS-311.2, SRS-504.1, SRS-504.2, SRS-505.1, SRS-505.2, SRS-505.3, SRS-506.2, SRS-508.2
 -- Purpose: Stores the shared, de-duplicated list of officials with their most recently found title, role, and contact details.
 CREATE TABLE officials (
@@ -574,7 +574,7 @@ CREATE TABLE officials (
 );
 
 -- Table: official_sources
--- Reviewed by: AO (<FULL NAME>)
+-- Reviewed by: AO (Aderly Ortiz)
 -- Supports: SRS-311.1, SRS-311.2
 -- Purpose: Stores every source document each shared official was found in.
 CREATE TABLE official_sources (
@@ -584,7 +584,7 @@ CREATE TABLE official_sources (
 );
 
 -- Table: extracted_officials
--- Reviewed by: AO (<FULL NAME>)
+-- Reviewed by: AO (Aderly Ortiz)
 -- Supports: SRS-302.1, SRS-302.2, SRS-302.4, SRS-304.2, SRS-305.4, SRS-308.1, SRS-308.2, SRS-309.1, SRS-309.3, SRS-309.4, SRS-309.5, SRS-310.2
 -- Purpose: Stores each official found by one user's extraction, exactly as extracted, private to that user.
 CREATE TABLE extracted_officials (
