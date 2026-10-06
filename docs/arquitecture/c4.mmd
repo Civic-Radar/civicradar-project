@@ -1,0 +1,68 @@
+---
+title: Auth Component — Login & Authentication (Code)
+config:
+  theme: base
+  themeVariables:
+    fontFamily: "Caveat, 'Comic Sans MS', cursive"
+    primaryColor: "#fde68a"
+    primaryBorderColor: "#222222"
+    primaryTextColor: "#111111"
+    lineColor: "#222222"
+    noteBkgColor: "#fde68a"
+    noteBorderColor: "#222222"
+    noteTextColor: "#111111"
+    actorBkg: "#fde68a"
+    actorBorder: "#222222"
+    signalColor: "#222222"
+    signalTextColor: "#111111"
+  sequence:
+    mirrorActors: false
+    actorMargin: 90
+    messageMargin: 22
+    boxMargin: 8
+    noteMargin: 8
+    actorFontSize: 28
+    messageFontSize: 26
+    noteFontSize: 24
+    useMaxWidth: false
+---
+%% C4 - Code Diagram (Civic Radar): zooms into the Auth component from C3.
+%% UML sequence / swim-lane diagram. Each lane is a code module; each arrow is a real function call, route, or return value.
+%% Module and function names are placeholders until matched to the repo (add real file paths, e.g. src/auth/authService.ts).
+sequenceDiagram
+    actor User
+    participant Pages as Pages<br/>Login + Profile
+    participant Client as authClient<br/>frontend
+    participant Routes as authRoutes<br/>+ requireAuth
+    participant Service as authService<br/>login logic
+    participant Crypto as authCrypto<br/>hash + JWT
+    participant DB as users<br/>DB table
+
+    rect rgba(255,255,255,0)
+    Note left of User: 1 · Log in
+    User->>Pages: submits email + password
+    Pages->>Client: login(email, password)
+    Client->>Routes: POST /api/auth/login
+    Routes->>Service: login(email, password)
+    Service->>DB: findUserByEmail(email)
+    DB-->>Service: User | null
+    Service->>Crypto: verifyPassword(password, hash)
+    Crypto-->>Service: true | false
+    Note right of DB: null user or false?<br/>throw InvalidCredentialsError<br/>→ 401 "Invalid email or password"
+    Service->>Crypto: signToken({userId, tier})
+    Crypto-->>Service: JWT
+    Service-->>Routes: {token, user}
+    Routes-->>Client: 200 {token}
+    Client-->>Pages: saveToken(token), go to /dashboard
+    end
+
+    rect rgba(255,255,255,0)
+    Note left of User: 2 · Every request
+    Pages->>Client: getProfile()
+    Client->>Routes: GET /api/profile + Bearer JWT
+    Routes->>Crypto: requireAuth → verifyToken(JWT)
+    Crypto-->>Routes: {userId, tier}
+    Note right of DB: expired or forged JWT?<br/>→ 401, authClient clears<br/>token, back to /login
+    Routes-->>Client: 200 {profile}
+    Client-->>Pages: profile
+    end
