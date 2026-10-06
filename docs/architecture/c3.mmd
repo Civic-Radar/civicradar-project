@@ -1,0 +1,61 @@
+---
+title: "Civic Radar – C4 Level 3: Backend API Components"
+config:
+  layout: elk
+  look: handDrawn
+  theme: base
+  themeVariables:
+    fontSize: 20px
+    lineColor: "#222"
+    edgeLabelBackground: "#ffffff"
+---
+%% Source data for c3.png. Names and labels match the slide exactly.
+%% C3 zooms into the "Backend API" container from C2. The Auth component is the one C4 zooms into.
+%% c3.png was laid out by hand (AI Provider above, Supabase below) to match C1 and C2, so no lines cross.
+flowchart LR
+    %% ---------- Other container from C2 (calls into the Backend API) ----------
+    WEB["<b>Web App</b><br/>[Next.js + React]<br/>dashboard, search,<br/>letter tool"]
+
+    %% ---------- Inside the Backend API container ----------
+    subgraph API["<b>Backend API</b> [Next.js, serverless] – components inside"]
+        ROUTES["<b>API Routes</b><br/>[route handlers]<br/>sends each /api request<br/>to its component"]
+        AUTHC["<b>Auth</b><br/>[authRoutes + authService]<br/>login & requireAuth<br/>JWT check"]
+        LET["<b>Letter Drafts</b><br/>[component]<br/>AI letter drafts<br/>users can edit"]
+        OFF["<b>Officials</b><br/>[component]<br/>extracts officials &<br/>contact info"]
+        SRCH["<b>Search</b><br/>[component]<br/>everyday-language search<br/>(search vectors)"]
+        DOCS["<b>Documents & Meetings</b><br/>[component]<br/>documents, PDFs, summaries<br/>& meeting details"]
+        ACCT["<b>Accounts & Catalog</b><br/>[component]<br/>profiles, towns, topics,<br/>orgs & suspensions"]
+    end
+
+    %% ---------- Supabase (hosted cloud, outside our system) ----------
+    subgraph SB["<b>Supabase</b> (hosted cloud)"]
+        LOGIN["<b>Login Service</b><br/>[Supabase Auth]<br/>logins & tokens"]
+        DB[("<b>Database</b><br/>[PostgreSQL + pgvector]<br/>users, meetings, documents,<br/>officials, search vectors")]
+    end
+
+    %% ---------- Other outside system (same name as C1 / C2) ----------
+    AI["<b>AI Provider</b><br/>[LLM API]<br/>Claude, ChatGPT, or Gemini"]
+
+    %% ---------- Relationships (all over HTTPS) ----------
+    WEB -->|"calls (JSON + JWT)"| ROUTES
+    ROUTES -->|"login + requireAuth"| AUTHC
+    ROUTES -->|"/api/letters"| LET
+    ROUTES -->|"/api/officials"| OFF
+    ROUTES -->|"/api/search"| SRCH
+    ROUTES -->|"/api/documents"| DOCS
+    ROUTES -->|"/api/account"| ACCT
+
+    LET -->|"drafts letters"| AI
+    OFF -->|"extracts officials"| AI
+    AUTHC -->|"checks logins"| LOGIN
+    API -->|"all components read / write (SQL)"| DB
+
+    %% ---------- Styling: hatched/solid = inside Backend API, dashed = outside ----------
+    classDef other fill:#ffffff,stroke:#222,stroke-width:3px,color:#111
+    classDef ours fill:#fde3a7,stroke:#222,stroke-width:3px,color:#111
+    classDef outside fill:#ffffff,stroke:#222,stroke-width:2px,stroke-dasharray:8 6,color:#111
+    class WEB other
+    class ROUTES,AUTHC,LET,OFF,SRCH,DOCS,ACCT ours
+    class LOGIN,DB,AI outside
+    style API fill:#ffffff,stroke:#222,stroke-width:2px
+    style SB fill:#ffffff,stroke:#222,stroke-width:2px,stroke-dasharray:8 6
