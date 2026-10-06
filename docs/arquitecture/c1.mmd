@@ -1,0 +1,35 @@
+---
+title: Civic Radar — System Context
+config:
+  look: handDrawn
+  theme: neutral
+  flowchart:
+    curve: basis
+    wrappingWidth: 320
+---
+flowchart LR
+  resident(["<b>Resident</b><br/>follows topics & meetings"])
+  org(["<b>Organization User</b><br/>journalist / community group"])
+  admin(["<b>System Administrator</b><br/>manages topics, towns, & accounts"])
+
+  cr["<b>Civic Radar</b><br/><i>[Software System]</i><br/>helps residents & groups follow<br/>local government: meeting search,<br/>AI summaries, alerts, weekly<br/>digest & letter tool"]
+
+  ai["<b>AI Provider</b><br/><i>[LLM API]</i><br/>Claude, ChatGPT, or Gemini"]
+  cc["<b>CivicClerk</b><br/><i>[OData API]</i><br/>agendas, minutes & PDFs"]
+  email["<b>Email Service</b><br/><i>[transactional email API]</i><br/>alerts & weekly digest"]
+  sb["<b>Supabase</b><br/><i>[hosted cloud]</i><br/>logins, users & meeting data"]
+
+  resident -- uses --> cr
+  org -- uses --> cr
+  admin -- manages --> cr
+  cr -- "summarizes docs,<br/>drafts letters" --> ai
+  cr -- "pulls meetings<br/>& PDFs (OData)" --> cc
+  cr -- "sends alerts<br/>& digest" --> email
+  cr -- "checks logins,<br/>reads / writes (SQL)" --> sb
+
+  classDef person fill:#ffffff,stroke:#1e1e1e,stroke-width:2px
+  classDef system fill:#fdf3dc,stroke:#1e1e1e,stroke-width:3px
+  classDef external fill:#ffffff,stroke:#1e1e1e,stroke-width:2px,stroke-dasharray:6 4
+  class resident,org,admin person
+  class cr system
+  class ai,cc,email,sb external
