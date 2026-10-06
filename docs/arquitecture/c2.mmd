@@ -1,0 +1,63 @@
+---
+title: "Civic Radar – C4 Level 2: Containers"
+config:
+  layout: elk
+  look: handDrawn
+  theme: base
+  themeVariables:
+    fontSize: 20px
+    lineColor: "#222"
+    edgeLabelBackground: "#ffffff"
+---
+%% Source data for c2.png. Names and labels match the slide exactly.
+%% c2.png was laid out by hand (AI Provider above, Supabase below) so no lines cross;
+%% Mermaid's auto-layout can't avoid crossings when two containers share two services.
+flowchart LR
+    %% ---------- People (same names as C1) ----------
+    RES["👤 <b>Resident</b><br/><i>follows topics & meetings</i>"]
+    ORG["👤 <b>Organization User</b><br/><i>journalist / community group</i>"]
+    ADM["👤 <b>System Administrator</b><br/><i>manages topics, towns, & accounts</i>"]
+
+    %% ---------- Our system (everything we run, all cloud-hosted) ----------
+    subgraph CR["<b>Civic Radar</b> (our system)"]
+        direction LR
+        WEB["<b>Web App</b><br/>[Next.js + React]<br/>dashboard, search, documents,<br/>officials, letter tool"]
+        API["<b>Backend API</b><br/>[Next.js, serverless]<br/>accounts, search, documents,<br/>officials, letter drafts"]
+        WRK["<b>Background Worker</b><br/>[scheduled job]<br/>pulls new meetings, matches alerts,<br/>builds weekly digest"]
+    end
+
+    %% ---------- Supabase (hosted cloud, outside our system) ----------
+    subgraph SB["<b>Supabase</b> (hosted cloud)"]
+        AUTH["<b>Login Service</b><br/>[Supabase Auth]<br/>logins & tokens"]
+        DB[("<b>Database</b><br/>[PostgreSQL + pgvector]<br/>users, meetings, documents,<br/>alerts, search vectors")]
+    end
+
+    %% ---------- Other outside systems (same names as C1) ----------
+    AI["<b>AI Provider</b><br/>[LLM API]<br/>Claude, ChatGPT, or Gemini"]
+    CC["<b>CivicClerk</b><br/>[OData API]<br/>Agendas, minutes & PDFs"]
+    EM["<b>Email Service</b><br/>[transactional email API]<br/>alerts & weekly digest"]
+
+    %% ---------- Relationships (all over HTTPS) ----------
+    RES -->|uses| WEB
+    ORG -->|uses| WEB
+    ADM -->|manages| WEB
+
+    WEB -->|"calls (JSON + JWT)"| API
+    API -->|"drafts letters, extracts officials"| AI
+    API -->|checks logins| AUTH
+    API -->|"reads / writes (SQL)"| DB
+
+    WRK -->|"summarizes & tags documents"| AI
+    WRK -->|"pulls meetings & PDFs (OData)"| CC
+    WRK -->|"sends alerts & digest"| EM
+    WRK -->|"saves docs & alerts (SQL)"| DB
+
+    %% ---------- Styling: solid = ours, dashed = outside ----------
+    classDef person fill:#ffffff,stroke:#ffffff,color:#111
+    classDef ours fill:#fde3a7,stroke:#222,stroke-width:3px,color:#111
+    classDef outside fill:#ffffff,stroke:#222,stroke-width:2px,stroke-dasharray:8 6,color:#111
+    class RES,ORG,ADM person
+    class WEB,API,WRK ours
+    class AUTH,DB,AI,CC,EM outside
+    style CR fill:#ffffff,stroke:#222,stroke-width:2px
+    style SB fill:#ffffff,stroke:#222,stroke-width:2px,stroke-dasharray:8 6
