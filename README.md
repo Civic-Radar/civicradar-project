@@ -32,6 +32,7 @@ In your Supabase project, open the **SQL Editor** and run the contents of [`supa
 
 - `myapp_profile`, the table used by the profile page
 - the 31 Civic Radar tables from the system requirements
+- a seed row for Salem, the pilot town, in `towns`
 - Row Level Security on every Civic Radar table
 - the public `avatars` storage bucket
 
