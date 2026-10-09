@@ -2,7 +2,8 @@
 -- Civic Radar - Supabase schema
 -- CSC 351 - Team Civic Radar (KJ, MS, AO, EG, YA)
 --   Part 1  myapp_profile      - the profile table the profile page already uses
---   Part 2  Civic Radar schema - the 31 tables from the system requirements
+--   Part 2  Civic Radar schema - the 31 tables from the system requirements,
+--                                plus a seed row for Salem, the pilot town
 --   Part 3  Row Level Security - deny-by-default on every Civic Radar table
 --   Part 4  avatars bucket     - public storage bucket for profile pictures
 --
@@ -762,6 +763,18 @@ create index meeting_updates_meeting_time_idx on meeting_updates (meeting_id, de
 create index user_alerts_user_time_idx on user_alerts (user_id, created_at desc);
 
 create index extractions_user_idx on extractions (user_id);
+
+-- =============================================================================
+-- Seed data
+-- =============================================================================
+-- Salem, MA is the verified pilot town (SRS-401.6, SRS-401.7). The optional
+-- source features keep their FALSE defaults until they are verified (SRS-220.9,
+-- SRS-220.10, SRS-505.2). Look Salem up by source_account_id, not by town_id.
+insert into
+  towns (name, source_account_id, meeting_time_zone)
+values
+  ('Salem', 'salemma', 'America/New_York')
+on conflict (source_account_id) do nothing;
 
 -- =============================================================================
 -- PART 3. Row Level Security
