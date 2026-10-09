@@ -1,0 +1,132 @@
+/* Values mirror the starter skeleton's Tailwind classes (slate + emerald). */
+
+.main {
+  min-height: 100vh;
+  background: #020617; /* slate-950 */
+  color: #f1f5f9; /* slate-100 */
+  display: flex;
+  justify-content: center;
+  padding: 3rem 1.5rem;
+  box-sizing: border-box;
+}
+
+.card {
+  width: 100%;
+  max-width: 80rem;
+  border: 1px solid #1e293b; /* slate-800 */
+  border-radius: 1.5rem;
+  background: rgba(15, 23, 42, 0.9); /* slate-900/90 */
+  padding: 2rem;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.3);
+  box-sizing: border-box;
+}
+
+.eyebrow {
+  margin: 0;
+  font-size: 0.875rem;
+  text-transform: uppercase;
+  letter-spacing: 0.25em;
+  color: #6ee7b7; /* emerald-300 */
+}
+
+.heading {
+  margin: 1rem 0 0;
+  font-size: 1.875rem;
+  line-height: 2.25rem;
+  font-weight: 600;
+}
+
+.button {
+  margin-top: 1.5rem;
+  border: none;
+  border-radius: 0.75rem;
+  background: #34d399; /* emerald-400 */
+  padding: 0.75rem 1rem;
+  font-family: inherit;
+  font-size: 1rem;
+  font-weight: 600;
+  color: #020617; /* slate-950 */
+  cursor: pointer;
+  transition: background-color 150ms;
+}
+
+.button:hover:not(:disabled) {
+  background: #6ee7b7; /* emerald-300 */
+}
+
+.button:disabled {
+  cursor: not-allowed;
+  opacity: 0.7;
+}
+
+.message {
+  margin: 1rem 0 0;
+  border: 1px solid #334155; /* slate-700 */
+  border-radius: 0.75rem;
+  background: rgba(30, 41, 59, 0.8); /* slate-800/80 */
+  padding: 0.75rem;
+  font-size: 0.875rem;
+  color: #f1f5f9; /* slate-100 */
+}
+
+.error {
+  margin: 1rem 0 0;
+  border: 1px solid #991b1b; /* red-800 */
+  border-radius: 0.75rem;
+  background: rgba(127, 29, 29, 0.3); /* red-900/30 */
+  padding: 0.75rem;
+  font-size: 0.875rem;
+  color: #fca5a5; /* red-300 */
+}
+
+.muted {
+  margin: 1.5rem 0 0;
+  color: #94a3b8; /* slate-400 */
+}
+
+.tableWrap {
+  margin-top: 1.5rem;
+  overflow-x: auto;
+  border: 1px solid #1e293b; /* slate-800 */
+  border-radius: 0.75rem;
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.875rem;
+  color: #cbd5e1; /* slate-300 */
+}
+
+.table th {
+  text-align: left;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: #94a3b8; /* slate-400 */
+  background: #020617; /* slate-950 */
+  padding: 0.75rem 1rem;
+  white-space: nowrap;
+}
+
+.table td {
+  border-top: 1px solid #1e293b; /* slate-800 */
+  padding: 0.75rem 1rem;
+  vertical-align: top;
+}
+
+.link {
+  color: #6ee7b7; /* emerald-300 */
+  text-decoration: none;
+  word-break: break-all;
+}
+
+.link:hover {
+  text-decoration: underline;
+}
+
+.missing {
+  color: #64748b; /* slate-500 */
+  font-style: italic;
+}
