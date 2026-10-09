@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 type Result = { data?: unknown; error: { message: string } | null };
 type Call = { table: string; method: string; args: unknown[] };
@@ -71,11 +71,33 @@ function writes() {
 }
 
 beforeEach(() => {
+  vi.stubEnv('SUPABASE_SERVICE_ROLE_KEY', 'test-service-role-key');
+  vi.mocked(getSupabaseClient).mockClear();
   db.calls.length = 0;
   db.results = {
     'towns.select': { data: [brookline, salem], error: null },
     'user_followed_towns.select': { data: [], error: null },
   };
+});
+
+afterEach(() => {
+  vi.unstubAllEnvs();
+});
+
+describe('without the service-role key', () => {
+  it.each([
+    ['GET', () => GET(req('GET'))],
+    ['PUT', () => PUT(req('PUT', { town_ids: [1] }))],
+  ])('%s reports a configuration error and makes no database call', async (_method, send) => {
+    vi.stubEnv('SUPABASE_SERVICE_ROLE_KEY', '');
+
+    const response = await send();
+
+    expect(response.status).toBe(500);
+    expect(await response.json()).toEqual({ error: 'Supabase credentials are not configured.' });
+    expect(getSupabaseClient).not.toHaveBeenCalled();
+    expect(db.calls).toEqual([]);
+  });
 });
 
 describe('GET /api/followed-towns', () => {
@@ -128,6 +150,19 @@ describe('GET /api/followed-towns', () => {
     expect(await response.json()).toEqual({
       error: 'Your followed towns could not be loaded. Please try again.',
     });
+  });
+
+  it('returns the fixed load message when reading the followed towns fails', async () => {
+    db.results['user_followed_towns.select'] = { data: null, error: dbError };
+
+    const response = await GET(req('GET'));
+    const text = await response.text();
+
+    expect(response.status).toBe(500);
+    expect(JSON.parse(text)).toEqual({
+      error: 'Your followed towns could not be loaded. Please try again.',
+    });
+    expect(text).not.toContain(dbError.message);
   });
 });
 
@@ -249,6 +284,43 @@ describe('PUT /api/followed-towns', () => {
     const response = await PUT(req('PUT', { town_ids: [1] }, 'no-email-token'));
 
     expect(response.status).toBe(500);
+    expect(await response.json()).toEqual({
+      error: 'Your followed towns could not be saved. Please try again.',
+    });
+    expect(writes()).toEqual([]);
+  });
+
+  it('returns 500 when Supabase is not configured', async () => {
+    vi.mocked(getSupabaseClient).mockReturnValueOnce(null);
+
+    const response = await PUT(req('PUT', { town_ids: [1] }));
+
+    expect(response.status).toBe(500);
+    expect(await response.json()).toEqual({ error: 'Supabase credentials are not configured.' });
+  });
+
+  it.each([
+    ['reading the supported towns', 'towns.select'],
+    ['removing the deselected towns', 'user_followed_towns.delete'],
+    ['reading the towns back after the save', 'user_followed_towns.select'],
+  ])('returns the fixed save message when %s fails', async (_label, failingCall) => {
+    db.results[failingCall] = { data: null, error: dbError };
+
+    const response = await PUT(req('PUT', { town_ids: [1] }));
+    const text = await response.text();
+
+    expect(response.status).toBe(500);
+    expect(JSON.parse(text)).toEqual({
+      error: 'Your followed towns could not be saved. Please try again.',
+    });
+    expect(text).not.toContain(dbError.message);
+  });
+
+  it('writes nothing when reading the supported towns fails', async () => {
+    db.results['towns.select'] = { data: null, error: dbError };
+
+    await PUT(req('PUT', { town_ids: [1] }));
+
     expect(writes()).toEqual([]);
   });
 });

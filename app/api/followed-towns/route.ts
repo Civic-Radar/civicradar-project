@@ -12,6 +12,11 @@ function getToken(request: Request): string | null {
 }
 
 async function getAuthenticatedUser(token: string) {
+  // The tables used here have Row Level Security with no policies, so only the
+  // service-role key can read or write them. getSupabaseClient() falls back to
+  // the anon key, which would return empty results instead of an error.
+  if (!process.env.SUPABASE_SERVICE_ROLE_KEY) return { user: null, supabase: null, configError: true };
+
   const supabase = getSupabaseClient();
   if (!supabase) return { user: null, supabase: null, configError: true };
 
