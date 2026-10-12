@@ -7,7 +7,7 @@ const links = [
   { href: "/dashboard", label: "Dashboard" },
   { href: "/meetings", label: "Meetings" },
   { href: "/documents", label: "Documents" },
-  { href: "/officials", label: "Officials" },
+  { href: "/extract", label: "Contact Extraction" },
   { href: "/search", label: "Search" },
   { href: "/preferences", label: "Preferences" },
   { href: "/profile", label: "Profile" },
