@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import styles from './meetings.module.css';
 
@@ -152,7 +153,11 @@ export default function MeetingsPage() {
                 <tbody>
                   {meetings.map((meeting) => (
                     <tr key={meeting.meeting_id}>
-                      <td><TextOrNotProvided value={meeting.title} /></td>
+                      <td>
+                        <Link href={`/meetings/${meeting.meeting_id}`} className={styles.link}>
+                          <TextOrNotProvided value={meeting.title} />
+                        </Link>
+                      </td>
                       <td><TextOrNotProvided value={meeting.source_body_name} /></td>
                       <td><TextOrNotProvided value={formatStartTime(meeting, town.meeting_time_zone)} /></td>
                       <td><TextOrNotProvided value={meeting.location} /></td>
