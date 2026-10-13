@@ -42,6 +42,7 @@ module.exports = {
           wash: token('danger-wash'),
         },
         warning: {
+          DEFAULT: token('warning'),
           soft: token('warning-soft'),
           vivid: token('warning-vivid'),
         },
