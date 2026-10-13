@@ -8,7 +8,7 @@
 // status every few seconds so a change shows up without reloading.
 
 import Link from 'next/link';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { STATUS_STYLES, formatDateTime, isInProgress } from '../../../../lib/extractions';
 import type { ExtractionDetail } from '../../../../lib/extractions';
 
@@ -51,6 +51,20 @@ export default function ExtractionPage({ params }: { params: { id: string } }) {
     if (!stored) { setLoading(false); return; }
     load(stored);
   }, [load]);
+
+  // SRS-302.1: if the extraction is still waiting to run, start it once.
+  // (The server only runs a Queued extraction, so a second start is ignored.)
+  const runStarted = useRef(false);
+  useEffect(() => {
+    if (!token || extraction?.status !== 'Queued' || runStarted.current) return;
+    runStarted.current = true;
+    fetch(`/api/extractions/${encodeURIComponent(params.id)}/run`, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${token}` },
+    })
+      .then(() => load(token))
+      .catch(() => {});
+  }, [token, extraction?.status, params.id, load]);
 
   // Keep the status current while the extraction is still running.
   useEffect(() => {

@@ -103,6 +103,16 @@ export default function ExtractPage() {
     }
 
     setSuccess(`Extraction requested for "${data.extraction.source_document_title}".`);
+
+    // SRS-302.1: start reading the document right away. The run takes a few
+    // seconds, so don't wait for it; the list refreshes when it finishes.
+    fetch(`/api/extractions/${data.extraction.extraction_id}/run`, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${token}` },
+    })
+      .then(() => refreshExtractions())
+      .catch(() => {});
+
     await refreshExtractions();
   }
 
