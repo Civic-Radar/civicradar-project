@@ -90,18 +90,18 @@ export default function ProfilePage() {
 
   if (loading) {
     return (
-      <main className="min-h-screen bg-slate-950 text-slate-100 flex items-center justify-center">
-        <p className="text-slate-400">Loading…</p>
+      <main className="min-h-screen bg-surface text-fg flex items-center justify-center">
+        <p className="text-fg-subtle">Loading…</p>
       </main>
     );
   }
 
   if (!token) {
     return (
-      <main className="min-h-screen bg-slate-950 text-slate-100 flex items-center justify-center px-6">
+      <main className="min-h-screen bg-surface text-fg flex items-center justify-center px-6">
         <section className="text-center space-y-4">
-          <p className="text-slate-300">You must be logged in to view your profile.</p>
-          <Link href="/login" className="inline-block rounded-full border border-slate-700 bg-slate-800 px-4 py-2 text-sm hover:border-emerald-400 hover:text-emerald-200">
+          <p className="text-fg-muted">You must be logged in to view your profile.</p>
+          <Link href="/login" className="inline-block rounded-full border border-line bg-raised px-4 py-2 text-sm hover:border-accent-strong hover:text-accent-soft">
             Go to login
           </Link>
         </section>
@@ -110,43 +110,43 @@ export default function ProfilePage() {
   }
 
   return (
-    <main className="min-h-screen bg-slate-950 text-slate-100 flex items-center justify-center px-6 py-12">
-      <section className="w-full max-w-md rounded-3xl border border-slate-800 bg-slate-900/90 p-8 shadow-2xl shadow-black/30">
-        <p className="text-sm uppercase tracking-[0.25em] text-emerald-300">Profile</p>
+    <main className="min-h-screen bg-surface text-fg flex items-center justify-center px-6 py-12">
+      <section className="w-full max-w-md rounded-3xl border border-raised bg-card/90 p-8 shadow-2xl shadow-black/30">
+        <p className="text-sm uppercase tracking-[0.25em] text-accent">Profile</p>
 
         {error ? (
-          <p className="mt-4 rounded-xl border border-red-800 bg-red-900/30 p-3 text-sm text-red-300">{error}</p>
+          <p className="mt-4 rounded-xl border border-danger-line bg-danger-wash/30 p-3 text-sm text-danger">{error}</p>
         ) : null}
 
         {profile === null ? (
           <>
             <h1 className="mt-4 text-3xl font-semibold">Create your profile</h1>
             <form onSubmit={handleCreate} className="mt-6 space-y-4">
-              <label className="block text-sm text-slate-200">
+              <label className="block text-sm text-fg-soft">
                 Username
                 <input
                   type="text"
                   value={newUsername}
                   onChange={(e) => setNewUsername(e.target.value)}
                   required
-                  className="mt-1 w-full rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 text-slate-100 outline-none transition focus:border-emerald-400"
+                  className="mt-1 w-full rounded-xl border border-line bg-surface px-4 py-3 text-fg outline-none transition focus:border-accent-strong"
                   placeholder="your_username"
                 />
               </label>
-              <label className="block text-sm text-slate-200">
+              <label className="block text-sm text-fg-soft">
                 Biography
                 <textarea
                   value={newBiography}
                   onChange={(e) => setNewBiography(e.target.value)}
                   rows={3}
-                  className="mt-1 w-full rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 text-slate-100 outline-none transition focus:border-emerald-400"
+                  className="mt-1 w-full rounded-xl border border-line bg-surface px-4 py-3 text-fg outline-none transition focus:border-accent-strong"
                   placeholder="Tell us about yourself…"
                 />
               </label>
               <button
                 type="submit"
                 disabled={creating}
-                className="w-full rounded-xl bg-emerald-400 px-4 py-3 font-semibold text-slate-950 transition hover:bg-emerald-300 disabled:opacity-70"
+                className="w-full rounded-xl bg-accent-strong px-4 py-3 font-semibold text-surface transition hover:bg-accent disabled:opacity-70"
               >
                 {creating ? 'Creating…' : 'Create profile'}
               </button>
@@ -158,13 +158,13 @@ export default function ProfilePage() {
               <button
                 onClick={() => fileInputRef.current?.click()}
                 disabled={uploading}
-                className="group relative h-24 w-24 overflow-hidden rounded-full border-2 border-slate-700 bg-slate-800 transition hover:border-emerald-400 disabled:opacity-70"
+                className="group relative h-24 w-24 overflow-hidden rounded-full border-2 border-line bg-raised transition hover:border-accent-strong disabled:opacity-70"
                 title="Change profile photo"
               >
                 {profile.avatar_url ? (
                   <img src={profile.avatar_url} alt="Avatar" className="h-full w-full object-cover" />
                 ) : (
-                  <span className="text-3xl font-semibold text-slate-300">
+                  <span className="text-3xl font-semibold text-fg-muted">
                     {profile.username[0].toUpperCase()}
                   </span>
                 )}
@@ -183,26 +183,26 @@ export default function ProfilePage() {
             </div>
 
             <div className="mt-6">
-              <p className="text-xs uppercase tracking-widest text-slate-400">Biography</p>
+              <p className="text-xs uppercase tracking-widest text-fg-subtle">Biography</p>
               {editing ? (
                 <div className="mt-2 space-y-3">
                   <textarea
                     value={biography}
                     onChange={(e) => setBiography(e.target.value)}
                     rows={4}
-                    className="w-full rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 text-slate-100 outline-none transition focus:border-emerald-400"
+                    className="w-full rounded-xl border border-line bg-surface px-4 py-3 text-fg outline-none transition focus:border-accent-strong"
                   />
                   <div className="flex gap-3">
                     <button
                       onClick={handleSave}
                       disabled={saving}
-                      className="rounded-xl bg-emerald-400 px-4 py-2 text-sm font-semibold text-slate-950 hover:bg-emerald-300 disabled:opacity-70"
+                      className="rounded-xl bg-accent-strong px-4 py-2 text-sm font-semibold text-surface hover:bg-accent disabled:opacity-70"
                     >
                       {saving ? 'Saving…' : 'Save'}
                     </button>
                     <button
                       onClick={() => { setEditing(false); setBiography(profile.biography); }}
-                      className="rounded-xl border border-slate-700 bg-slate-800 px-4 py-2 text-sm hover:border-slate-600"
+                      className="rounded-xl border border-line bg-raised px-4 py-2 text-sm hover:border-line-strong"
                     >
                       Cancel
                     </button>
@@ -210,10 +210,10 @@ export default function ProfilePage() {
                 </div>
               ) : (
                 <div className="mt-2">
-                  <p className="text-slate-300">{profile.biography || 'No biography yet.'}</p>
+                  <p className="text-fg-muted">{profile.biography || 'No biography yet.'}</p>
                   <button
                     onClick={() => setEditing(true)}
-                    className="mt-3 rounded-full border border-slate-700 bg-slate-800 px-4 py-2 text-sm hover:border-emerald-400 hover:text-emerald-200"
+                    className="mt-3 rounded-full border border-line bg-raised px-4 py-2 text-sm hover:border-accent-strong hover:text-accent-soft"
                   >
                     Edit biography
                   </button>
@@ -223,8 +223,8 @@ export default function ProfilePage() {
           </>
         )}
 
-        <p className="mt-8 text-sm text-slate-300">
-          Back to <Link href="/" className="text-emerald-300 hover:underline">home</Link>
+        <p className="mt-8 text-sm text-fg-muted">
+          Back to <Link href="/" className="text-accent hover:underline">home</Link>
         </p>
       </section>
     </main>

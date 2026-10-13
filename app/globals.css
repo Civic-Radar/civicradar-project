@@ -2,8 +2,47 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Theme colors, defined once. Values are space-separated RGB channels so
+   Tailwind opacity modifiers (e.g. bg-card/90) keep working; each token is
+   wired up in tailwind.config.js. The comment names the Tailwind color it equals. */
 :root {
   color-scheme: dark;
+
+  /* Neutrals */
+  --color-surface: 2 6 23; /* slate-950 */
+  --color-card: 15 23 42; /* slate-900 */
+  --color-raised: 30 41 59; /* slate-800 */
+  --color-line: 51 65 85; /* slate-700 */
+  --color-line-strong: 71 85 105; /* slate-600 */
+  --color-fg-faint: 100 116 139; /* slate-500 */
+  --color-fg-subtle: 148 163 184; /* slate-400 */
+  --color-fg-muted: 203 213 225; /* slate-300 */
+  --color-fg-soft: 226 232 240; /* slate-200 */
+  --color-fg: 241 245 249; /* slate-100 */
+  --color-backdrop: 17 24 39; /* gray-900 */
+
+  /* Accent */
+  --color-accent-soft: 167 243 208; /* emerald-200 */
+  --color-accent: 110 231 183; /* emerald-300 */
+  --color-accent-strong: 52 211 153; /* emerald-400 */
+  --color-accent-vivid: 16 185 129; /* emerald-500 */
+  --color-accent-line: 6 95 70; /* emerald-800 */
+  --color-accent-wash: 6 78 59; /* emerald-900 */
+
+  /* Sidebar */
+  --color-sidebar-icon: 45 212 191; /* teal-400 */
+  --color-sidebar-active: 15 118 110; /* teal-700 */
+
+  /* Status */
+  --color-danger-soft: 254 202 202; /* red-200 */
+  --color-danger: 252 165 165; /* red-300 */
+  --color-danger-vivid: 239 68 68; /* red-500 */
+  --color-danger-line: 153 27 27; /* red-800 */
+  --color-danger-wash: 127 29 29; /* red-900 */
+  --color-warning-soft: 253 230 138; /* amber-200 */
+  --color-warning-vivid: 245 158 11; /* amber-500 */
+  --color-info-soft: 186 230 253; /* sky-200 */
+  --color-info-vivid: 14 165 233; /* sky-500 */
 }
 
 html, body {
@@ -13,5 +52,5 @@ html, body {
 body {
   margin: 0;
   font-family: Arial, Helvetica, sans-serif;
-  background: linear-gradient(135deg, #020617 0%, #111827 45%, #111827 100%);
+  background: linear-gradient(135deg, rgb(var(--color-surface)) 0%, rgb(var(--color-backdrop)) 45%, rgb(var(--color-backdrop)) 100%);
 }

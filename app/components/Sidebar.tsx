@@ -28,9 +28,9 @@ export default function Sidebar() {
   const pathname = usePathname();
 
   return (
-    <aside className="w-64 shrink-0 bg-slate-900 p-6 text-white">
+    <aside className="w-64 shrink-0 bg-card p-6 text-white">
       <div className="mb-8 flex items-center gap-3">
-        <Landmark className="h-7 w-7 text-teal-400" />
+        <Landmark className="h-7 w-7 text-sidebar-icon" />
         <h2 className="text-2xl font-bold">Civic Radar</h2>
       </div>
 
@@ -48,8 +48,8 @@ export default function Sidebar() {
               aria-current={isActive ? "page" : undefined}
               className={`flex items-center gap-3 rounded-lg px-4 py-3 transition-colors ${
                 isActive
-                  ? "bg-teal-700 font-semibold text-white"
-                  : "text-slate-300 hover:bg-slate-800 hover:text-white"
+                  ? "bg-sidebar-active font-semibold text-white"
+                  : "text-fg-muted hover:bg-raised hover:text-white"
               }`}
             >
               <Icon className="h-5 w-5 shrink-0" />

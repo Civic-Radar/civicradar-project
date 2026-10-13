@@ -26,7 +26,7 @@ export default function DashboardPage() {
         Civic Radar Dashboard
       </h1>
 
-      <p className="mt-4 text-slate-300">
+      <p className="mt-4 text-fg-muted">
         Stay informed about your local government meetings
         and community updates.
       </p>
@@ -40,17 +40,17 @@ export default function DashboardPage() {
           {meetings.map((meeting) => (
             <div
               key={meeting.id}
-              className="rounded-xl border border-slate-700 bg-slate-900 p-6"
+              className="rounded-xl border border-line bg-card p-6"
             >
               <h3 className="text-xl font-semibold">
                 {meeting.title}
               </h3>
 
-              <p className="mt-3 text-slate-300">
+              <p className="mt-3 text-fg-muted">
                 Town: {meeting.town}
               </p>
 
-              <p className="mt-2 text-slate-300">
+              <p className="mt-2 text-fg-muted">
                 Date & Time: {meeting.startTime}
               </p>
             </div>
