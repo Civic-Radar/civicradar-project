@@ -6,24 +6,12 @@
 //   301.3  the request control is disabled while nothing is selected
 //   301.4  confirming creates one extraction request linked to the user
 // Also shows SRS-301.6 (non-PDF message) and SRS-306.3 (no duplicate in-flight request).
+// Each request links to its own page, which shows its status (SRS-306.1).
 
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
+import { STATUS_STYLES, formatDateTime } from '../../../lib/extractions';
 import type { ExtractableDocument, Extraction } from '../../../lib/extractions';
-
-function formatDateTime(iso: string) {
-  const d = new Date(iso);
-  const date = d.toLocaleDateString('en-US', { month: '2-digit', day: '2-digit', year: 'numeric' });
-  const time = d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
-  return `${date} ${time}`;
-}
-
-const STATUS_STYLES: Record<string, string> = {
-  Queued: 'border-warning-vivid/40 bg-warning-vivid/10 text-warning-soft',
-  Processing: 'border-info-vivid/40 bg-info-vivid/10 text-info-soft',
-  Completed: 'border-accent-vivid/40 bg-accent-vivid/10 text-accent-soft',
-  Failed: 'border-danger-vivid/40 bg-danger-vivid/10 text-danger-soft',
-};
 
 export default function ExtractPage() {
   const [token, setToken] = useState<string | null>(null);
@@ -255,14 +243,20 @@ export default function ExtractPage() {
           ) : (
             <ul className="mt-4 divide-y divide-raised">
               {extractions.map((e) => (
-                <li key={e.extraction_id} className="flex flex-wrap items-center justify-between gap-2 py-3">
-                  <div>
-                    <p className="font-medium">{e.source_document_title}</p>
-                    <p className="text-xs text-fg-subtle">
-                      Request #{e.extraction_id} · Requested {formatDateTime(e.requested_at)}
-                    </p>
-                  </div>
-                  <span className={`rounded-full border px-3 py-1 text-xs ${STATUS_STYLES[e.status] ?? ''}`}>{e.status}</span>
+                <li key={e.extraction_id}>
+                  {/* SRS-306.1: open the request to see its current status */}
+                  <Link
+                    href={`/extractions/${e.extraction_id}`}
+                    className="-mx-3 flex flex-wrap items-center justify-between gap-2 rounded-xl px-3 py-3 hover:bg-raised/60"
+                  >
+                    <div>
+                      <p className="font-medium">{e.source_document_title}</p>
+                      <p className="text-xs text-fg-subtle">
+                        Request #{e.extraction_id} · Requested {formatDateTime(e.requested_at)}
+                      </p>
+                    </div>
+                    <span className={`rounded-full border px-3 py-1 text-xs ${STATUS_STYLES[e.status] ?? ''}`}>{e.status}</span>
+                  </Link>
                 </li>
               ))}
             </ul>
