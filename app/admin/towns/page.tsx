@@ -96,24 +96,24 @@ export default function TownSettingsPage() {
   }
 
   function inputClass(field: TownField) {
-    const border = missingFields.includes(field) ? 'border-red-500' : 'border-slate-700 focus:border-emerald-400';
-    return `mt-1 w-full rounded-xl border ${border} bg-slate-950 px-4 py-3 text-slate-100 outline-none transition`;
+    const border = missingFields.includes(field) ? 'border-danger-vivid' : 'border-line focus:border-accent-strong';
+    return `mt-1 w-full rounded-xl border ${border} bg-surface px-4 py-3 text-fg outline-none transition`;
   }
 
   if (loading) {
     return (
-      <main className="min-h-screen bg-slate-950 text-slate-100 flex items-center justify-center">
-        <p className="text-slate-400">Loading…</p>
+      <main className="min-h-screen bg-surface text-fg flex items-center justify-center">
+        <p className="text-fg-subtle">Loading…</p>
       </main>
     );
   }
 
   if (!token) {
     return (
-      <main className="min-h-screen bg-slate-950 text-slate-100 flex items-center justify-center px-6">
+      <main className="min-h-screen bg-surface text-fg flex items-center justify-center px-6">
         <section className="text-center space-y-4">
-          <p className="text-slate-300">You must be logged in to manage towns.</p>
-          <Link href="/login" className="inline-block rounded-full border border-slate-700 bg-slate-800 px-4 py-2 text-sm hover:border-emerald-400 hover:text-emerald-200">
+          <p className="text-fg-muted">You must be logged in to manage towns.</p>
+          <Link href="/login" className="inline-block rounded-full border border-line bg-raised px-4 py-2 text-sm hover:border-accent-strong hover:text-accent-soft">
             Go to login
           </Link>
         </section>
@@ -122,22 +122,22 @@ export default function TownSettingsPage() {
   }
 
   return (
-    <main className="min-h-screen bg-slate-950 text-slate-100 flex items-center justify-center px-6 py-12">
-      <section className="w-full max-w-xl rounded-3xl border border-slate-800 bg-slate-900/90 p-8 shadow-2xl shadow-black/30">
-        <p className="text-sm uppercase tracking-[0.25em] text-emerald-300">Administration</p>
+    <main className="min-h-screen bg-surface text-fg flex items-center justify-center px-6 py-12">
+      <section className="w-full max-w-xl rounded-3xl border border-raised bg-card/90 p-8 shadow-2xl shadow-black/30">
+        <p className="text-sm uppercase tracking-[0.25em] text-accent">Administration</p>
         <h1 className="mt-4 text-3xl font-semibold">Town source settings</h1>
 
         {error ? (
-          <p role="alert" className="mt-4 rounded-xl border border-red-800 bg-red-900/30 p-3 text-sm text-red-300">{error}</p>
+          <p role="alert" className="mt-4 rounded-xl border border-danger-line bg-danger-wash/30 p-3 text-sm text-danger">{error}</p>
         ) : null}
         {success ? (
-          <p role="status" className="mt-4 rounded-xl border border-emerald-800 bg-emerald-900/30 p-3 text-sm text-emerald-200">{success}</p>
+          <p role="status" className="mt-4 rounded-xl border border-accent-line bg-accent-wash/30 p-3 text-sm text-accent-soft">{success}</p>
         ) : null}
 
         <form onSubmit={handleSubmit} noValidate className="mt-6 space-y-4">
           <h2 className="text-lg font-semibold">{editingId === null ? 'Add a town' : 'Edit town'}</h2>
 
-          <label className="block text-sm text-slate-200">
+          <label className="block text-sm text-fg-soft">
             Town name
             <input
               type="text"
@@ -149,7 +149,7 @@ export default function TownSettingsPage() {
             />
           </label>
 
-          <label className="block text-sm text-slate-200">
+          <label className="block text-sm text-fg-soft">
             Source account identifier
             <input
               type="text"
@@ -159,10 +159,10 @@ export default function TownSettingsPage() {
               className={inputClass('source_account_id')}
               placeholder="salemma"
             />
-            <span className="mt-1 block text-xs text-slate-400">The town&apos;s CivicClerk account, e.g. salemma for salemma.portal.civicclerk.com</span>
+            <span className="mt-1 block text-xs text-fg-subtle">The town&apos;s CivicClerk account, e.g. salemma for salemma.portal.civicclerk.com</span>
           </label>
 
-          <label className="block text-sm text-slate-200">
+          <label className="block text-sm text-fg-soft">
             Meeting time zone
             <input
               type="text"
@@ -182,7 +182,7 @@ export default function TownSettingsPage() {
             <button
               type="submit"
               disabled={saving}
-              className="rounded-xl bg-emerald-400 px-4 py-3 font-semibold text-slate-950 transition hover:bg-emerald-300 disabled:opacity-70"
+              className="rounded-xl bg-accent-strong px-4 py-3 font-semibold text-surface transition hover:bg-accent disabled:opacity-70"
             >
               {saving ? 'Saving…' : 'Save town'}
             </button>
@@ -190,7 +190,7 @@ export default function TownSettingsPage() {
               <button
                 type="button"
                 onClick={resetForm}
-                className="rounded-xl border border-slate-700 bg-slate-800 px-4 py-3 text-sm hover:border-slate-600"
+                className="rounded-xl border border-line bg-raised px-4 py-3 text-sm hover:border-line-strong"
               >
                 Cancel
               </button>
@@ -201,18 +201,18 @@ export default function TownSettingsPage() {
         <div className="mt-10">
           <h2 className="text-lg font-semibold">Towns</h2>
           {towns.length === 0 ? (
-            <p className="mt-2 text-sm text-slate-400">No towns yet.</p>
+            <p className="mt-2 text-sm text-fg-subtle">No towns yet.</p>
           ) : (
-            <ul className="mt-3 divide-y divide-slate-800 rounded-xl border border-slate-800">
+            <ul className="mt-3 divide-y divide-raised rounded-xl border border-raised">
               {towns.map((town) => (
                 <li key={town.town_id} className="flex items-center justify-between gap-4 px-4 py-3">
                   <div>
                     <p className="font-medium">{town.name}</p>
-                    <p className="text-xs text-slate-400">{town.source_account_id} · {town.meeting_time_zone}</p>
+                    <p className="text-xs text-fg-subtle">{town.source_account_id} · {town.meeting_time_zone}</p>
                   </div>
                   <button
                     onClick={() => startEdit(town)}
-                    className="rounded-full border border-slate-700 bg-slate-800 px-3 py-1 text-xs hover:border-emerald-400 hover:text-emerald-200"
+                    className="rounded-full border border-line bg-raised px-3 py-1 text-xs hover:border-accent-strong hover:text-accent-soft"
                   >
                     Edit
                   </button>
@@ -222,8 +222,8 @@ export default function TownSettingsPage() {
           )}
         </div>
 
-        <p className="mt-8 text-sm text-slate-300">
-          Back to <Link href="/" className="text-emerald-300 hover:underline">home</Link>
+        <p className="mt-8 text-sm text-fg-muted">
+          Back to <Link href="/" className="text-accent hover:underline">home</Link>
         </p>
       </section>
     </main>

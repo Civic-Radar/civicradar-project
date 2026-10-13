@@ -1,9 +1,9 @@
-/* Values mirror the starter skeleton's Tailwind classes (slate + emerald). */
+/* Colors use the theme tokens from app/globals.css; each comment names the Tailwind color the token equals. */
 
 .main {
   min-height: 100vh;
-  background: #020617; /* slate-950 */
-  color: #f1f5f9; /* slate-100 */
+  background: rgb(var(--color-surface)); /* surface = slate-950 */
+  color: rgb(var(--color-fg)); /* fg = slate-100 */
   display: flex;
   justify-content: center;
   padding: 3rem 1.5rem;
@@ -13,9 +13,9 @@
 .card {
   width: 100%;
   max-width: 80rem;
-  border: 1px solid #1e293b; /* slate-800 */
+  border: 1px solid rgb(var(--color-raised)); /* raised = slate-800 */
   border-radius: 1.5rem;
-  background: rgba(15, 23, 42, 0.9); /* slate-900/90 */
+  background: rgb(var(--color-card) / 0.9); /* card/90 = slate-900/90 */
   padding: 2rem;
   box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.3);
   box-sizing: border-box;
@@ -26,7 +26,7 @@
   font-size: 0.875rem;
   text-transform: uppercase;
   letter-spacing: 0.25em;
-  color: #6ee7b7; /* emerald-300 */
+  color: rgb(var(--color-accent)); /* accent = emerald-300 */
 }
 
 .heading {
@@ -40,18 +40,18 @@
   margin-top: 1.5rem;
   border: none;
   border-radius: 0.75rem;
-  background: #34d399; /* emerald-400 */
+  background: rgb(var(--color-accent-strong)); /* accent-strong = emerald-400 */
   padding: 0.75rem 1rem;
   font-family: inherit;
   font-size: 1rem;
   font-weight: 600;
-  color: #020617; /* slate-950 */
+  color: rgb(var(--color-surface)); /* surface = slate-950 */
   cursor: pointer;
   transition: background-color 150ms;
 }
 
 .button:hover:not(:disabled) {
-  background: #6ee7b7; /* emerald-300 */
+  background: rgb(var(--color-accent)); /* accent = emerald-300 */
 }
 
 .button:disabled {
@@ -61,33 +61,33 @@
 
 .message {
   margin: 1rem 0 0;
-  border: 1px solid #334155; /* slate-700 */
+  border: 1px solid rgb(var(--color-line)); /* line = slate-700 */
   border-radius: 0.75rem;
-  background: rgba(30, 41, 59, 0.8); /* slate-800/80 */
+  background: rgb(var(--color-raised) / 0.8); /* raised/80 = slate-800/80 */
   padding: 0.75rem;
   font-size: 0.875rem;
-  color: #f1f5f9; /* slate-100 */
+  color: rgb(var(--color-fg)); /* fg = slate-100 */
 }
 
 .error {
   margin: 1rem 0 0;
-  border: 1px solid #991b1b; /* red-800 */
+  border: 1px solid rgb(var(--color-danger-line)); /* danger-line = red-800 */
   border-radius: 0.75rem;
-  background: rgba(127, 29, 29, 0.3); /* red-900/30 */
+  background: rgb(var(--color-danger-wash) / 0.3); /* danger-wash/30 = red-900/30 */
   padding: 0.75rem;
   font-size: 0.875rem;
-  color: #fca5a5; /* red-300 */
+  color: rgb(var(--color-danger)); /* danger = red-300 */
 }
 
 .muted {
   margin: 1.5rem 0 0;
-  color: #94a3b8; /* slate-400 */
+  color: rgb(var(--color-fg-subtle)); /* fg-subtle = slate-400 */
 }
 
 .tableWrap {
   margin-top: 1.5rem;
   overflow-x: auto;
-  border: 1px solid #1e293b; /* slate-800 */
+  border: 1px solid rgb(var(--color-raised)); /* raised = slate-800 */
   border-radius: 0.75rem;
 }
 
@@ -95,7 +95,7 @@
   width: 100%;
   border-collapse: collapse;
   font-size: 0.875rem;
-  color: #cbd5e1; /* slate-300 */
+  color: rgb(var(--color-fg-muted)); /* fg-muted = slate-300 */
 }
 
 .table th {
@@ -104,20 +104,20 @@
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.1em;
-  color: #94a3b8; /* slate-400 */
-  background: #020617; /* slate-950 */
+  color: rgb(var(--color-fg-subtle)); /* fg-subtle = slate-400 */
+  background: rgb(var(--color-surface)); /* surface = slate-950 */
   padding: 0.75rem 1rem;
   white-space: nowrap;
 }
 
 .table td {
-  border-top: 1px solid #1e293b; /* slate-800 */
+  border-top: 1px solid rgb(var(--color-raised)); /* raised = slate-800 */
   padding: 0.75rem 1rem;
   vertical-align: top;
 }
 
 .link {
-  color: #6ee7b7; /* emerald-300 */
+  color: rgb(var(--color-accent)); /* accent = emerald-300 */
   text-decoration: none;
   word-break: break-all;
 }
@@ -127,6 +127,6 @@
 }
 
 .missing {
-  color: #64748b; /* slate-500 */
+  color: rgb(var(--color-fg-faint)); /* fg-faint = slate-500 */
   font-style: italic;
 }

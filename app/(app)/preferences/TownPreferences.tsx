@@ -78,14 +78,14 @@ export default function TownPreferences() {
   }
 
   if (loading) {
-    return <p className="mt-6 text-slate-400">Loading…</p>;
+    return <p className="mt-6 text-fg-subtle">Loading…</p>;
   }
 
   if (signedOut) {
     return (
       <div className="mt-6 space-y-4">
-        <p className="text-slate-300">You must be logged in to manage your preferences.</p>
-        <Link href="/login" className="inline-block rounded-full border border-slate-700 bg-slate-800 px-4 py-2 text-sm hover:border-emerald-400 hover:text-emerald-200">
+        <p className="text-fg-muted">You must be logged in to manage your preferences.</p>
+        <Link href="/login" className="inline-block rounded-full border border-line bg-raised px-4 py-2 text-sm hover:border-accent-strong hover:text-accent-soft">
           Go to login
         </Link>
       </div>
@@ -95,11 +95,11 @@ export default function TownPreferences() {
   if (loadError) {
     return (
       <div className="mt-6 space-y-4">
-        <p role="alert" className="rounded-xl border border-red-800 bg-red-900/30 p-3 text-sm text-red-300">{loadError}</p>
+        <p role="alert" className="rounded-xl border border-danger-line bg-danger-wash/30 p-3 text-sm text-danger">{loadError}</p>
         <button
           type="button"
           onClick={() => token && loadTowns(token)}
-          className="rounded-full border border-slate-700 bg-slate-800 px-4 py-2 text-sm hover:border-emerald-400 hover:text-emerald-200"
+          className="rounded-full border border-line bg-raised px-4 py-2 text-sm hover:border-accent-strong hover:text-accent-soft"
         >
           Try again
         </button>
@@ -110,21 +110,21 @@ export default function TownPreferences() {
   return (
     <form onSubmit={handleSave} className="mt-6">
       <fieldset disabled={saving} className="min-w-0">
-        <legend className="text-xs uppercase tracking-widest text-slate-400">Towns</legend>
+        <legend className="text-xs uppercase tracking-widest text-fg-subtle">Towns</legend>
 
         {towns.length === 0 ? (
-          <p className="mt-3 text-slate-300">No towns are available yet.</p>
+          <p className="mt-3 text-fg-muted">No towns are available yet.</p>
         ) : (
           <>
             <ul className="mt-3 space-y-2">
               {towns.map((town) => (
                 <li key={town.town_id}>
-                  <label className="flex items-center gap-3 rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 text-slate-100">
+                  <label className="flex items-center gap-3 rounded-xl border border-line bg-surface px-4 py-3 text-fg">
                     <input
                       type="checkbox"
                       checked={town.followed}
                       onChange={() => toggleTown(town.town_id)}
-                      className="h-4 w-4 shrink-0 accent-emerald-400"
+                      className="h-4 w-4 shrink-0 accent-accent-strong"
                     />
                     <span className="min-w-0 break-words">{town.name}</span>
                   </label>
@@ -133,7 +133,7 @@ export default function TownPreferences() {
             </ul>
             <button
               type="submit"
-              className="mt-4 rounded-xl bg-emerald-400 px-4 py-2 text-sm font-semibold text-slate-950 hover:bg-emerald-300 disabled:cursor-not-allowed disabled:opacity-70"
+              className="mt-4 rounded-xl bg-accent-strong px-4 py-2 text-sm font-semibold text-surface hover:bg-accent disabled:cursor-not-allowed disabled:opacity-70"
             >
               {saving ? 'Saving…' : 'Save'}
             </button>
@@ -142,12 +142,12 @@ export default function TownPreferences() {
       </fieldset>
 
       {saved ? (
-        <p role="status" className="mt-4 rounded-xl border border-slate-700 bg-slate-800/80 p-3 text-sm text-slate-100">
+        <p role="status" className="mt-4 rounded-xl border border-line bg-raised/80 p-3 text-sm text-fg">
           Town preferences saved.
         </p>
       ) : null}
       {saveError ? (
-        <p role="alert" className="mt-4 rounded-xl border border-red-800 bg-red-900/30 p-3 text-sm text-red-300">{saveError}</p>
+        <p role="alert" className="mt-4 rounded-xl border border-danger-line bg-danger-wash/30 p-3 text-sm text-danger">{saveError}</p>
       ) : null}
     </form>
   );

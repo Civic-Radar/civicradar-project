@@ -19,10 +19,10 @@ function formatDateTime(iso: string) {
 }
 
 const STATUS_STYLES: Record<string, string> = {
-  Queued: 'border-amber-500/40 bg-amber-500/10 text-amber-200',
-  Processing: 'border-sky-500/40 bg-sky-500/10 text-sky-200',
-  Completed: 'border-emerald-500/40 bg-emerald-500/10 text-emerald-200',
-  Failed: 'border-red-500/40 bg-red-500/10 text-red-200',
+  Queued: 'border-warning-vivid/40 bg-warning-vivid/10 text-warning-soft',
+  Processing: 'border-info-vivid/40 bg-info-vivid/10 text-info-soft',
+  Completed: 'border-accent-vivid/40 bg-accent-vivid/10 text-accent-soft',
+  Failed: 'border-danger-vivid/40 bg-danger-vivid/10 text-danger-soft',
 };
 
 export default function ExtractPage() {
@@ -120,18 +120,18 @@ export default function ExtractPage() {
 
   if (loading) {
     return (
-      <main className="min-h-screen bg-slate-950 text-slate-100 flex items-center justify-center">
-        <p className="text-slate-400">Loading…</p>
+      <main className="min-h-screen bg-surface text-fg flex items-center justify-center">
+        <p className="text-fg-subtle">Loading…</p>
       </main>
     );
   }
 
   if (!token) {
     return (
-      <main className="min-h-screen bg-slate-950 text-slate-100 flex items-center justify-center px-6">
+      <main className="min-h-screen bg-surface text-fg flex items-center justify-center px-6">
         <section className="text-center space-y-4">
-          <p className="text-slate-300">You must be logged in to request an extraction.</p>
-          <Link href="/login" className="inline-block rounded-full border border-slate-700 bg-slate-800 px-4 py-2 text-sm hover:border-emerald-400 hover:text-emerald-200">
+          <p className="text-fg-muted">You must be logged in to request an extraction.</p>
+          <Link href="/login" className="inline-block rounded-full border border-line bg-raised px-4 py-2 text-sm hover:border-accent-strong hover:text-accent-soft">
             Go to login
           </Link>
         </section>
@@ -140,30 +140,30 @@ export default function ExtractPage() {
   }
 
   return (
-    <main className="min-h-screen bg-slate-950 text-slate-100 px-4 py-10 sm:px-6">
+    <main className="min-h-screen bg-surface text-fg px-4 py-10 sm:px-6">
       <div className="mx-auto w-full max-w-3xl space-y-6">
         <header>
-          <p className="text-sm uppercase tracking-[0.25em] text-emerald-300">Officials &amp; Contacts</p>
+          <p className="text-sm uppercase tracking-[0.25em] text-accent">Officials &amp; Contacts</p>
           <h1 className="mt-2 text-3xl font-semibold">Request contact extraction</h1>
-          <p className="mt-2 text-slate-400">
+          <p className="mt-2 text-fg-subtle">
             Pick a government document and Civic Radar will pull out the officials and their contact information.
           </p>
         </header>
 
         {error ? (
-          <p role="alert" className="rounded-xl border border-red-800 bg-red-900/30 p-3 text-sm text-red-300">{error}</p>
+          <p role="alert" className="rounded-xl border border-danger-line bg-danger-wash/30 p-3 text-sm text-danger">{error}</p>
         ) : null}
         {success ? (
-          <p role="status" className="rounded-xl border border-emerald-800 bg-emerald-900/30 p-3 text-sm text-emerald-200">{success}</p>
+          <p role="status" className="rounded-xl border border-accent-line bg-accent-wash/30 p-3 text-sm text-accent-soft">{success}</p>
         ) : null}
 
         {/* Step 1 — choose a document (SRS-301.1) */}
-        <section className="rounded-3xl border border-slate-800 bg-slate-900/90 p-6">
+        <section className="rounded-3xl border border-raised bg-card/90 p-6">
           <h2 className="text-lg font-medium">1. Choose a document</h2>
 
           {documents.length === 0 ? (
-            <p className="mt-4 text-sm text-slate-400">
-              No documents have been retrieved yet. (Run <code className="text-slate-300">supabase/seed_extraction_demo.sql</code> to load demo documents.)
+            <p className="mt-4 text-sm text-fg-subtle">
+              No documents have been retrieved yet. (Run <code className="text-fg-muted">supabase/seed_extraction_demo.sql</code> to load demo documents.)
             </p>
           ) : (
             <ul className="mt-4 space-y-2" role="radiogroup" aria-label="Documents">
@@ -179,17 +179,17 @@ export default function ExtractPage() {
                       onClick={() => selectDocument(doc.document_id)}
                       className={`w-full rounded-2xl border px-4 py-3 text-left transition ${
                         isSelected
-                          ? 'border-emerald-400 bg-emerald-500/10'
-                          : 'border-slate-800 bg-slate-950/50 hover:border-slate-600'
+                          ? 'border-accent-strong bg-accent-vivid/10'
+                          : 'border-raised bg-surface/50 hover:border-line-strong'
                       }`}
                     >
                       <span className="flex items-start justify-between gap-3">
                         <span className="font-medium">{doc.title}</span>
                         {isSelected ? (
-                          <span className="shrink-0 rounded-full bg-emerald-400 px-2 py-0.5 text-xs font-semibold text-slate-950">Selected</span>
+                          <span className="shrink-0 rounded-full bg-accent-strong px-2 py-0.5 text-xs font-semibold text-surface">Selected</span>
                         ) : null}
                       </span>
-                      <span className="mt-1 block text-xs text-slate-400">
+                      <span className="mt-1 block text-xs text-fg-subtle">
                         {doc.document_type} · {isPdf ? 'PDF' : 'Not a PDF'}
                       </span>
                     </button>
@@ -201,27 +201,27 @@ export default function ExtractPage() {
         </section>
 
         {/* Step 2 — confirm (SRS-301.2, 301.3, 301.4) */}
-        <section className="rounded-3xl border border-slate-800 bg-slate-900/90 p-6">
+        <section className="rounded-3xl border border-raised bg-card/90 p-6">
           <h2 className="text-lg font-medium">2. Confirm extraction</h2>
 
-          <p className="mt-3 text-sm text-slate-400">Selected document:</p>
+          <p className="mt-3 text-sm text-fg-subtle">Selected document:</p>
           <p className="mt-1 font-medium" data-testid="selected-title">
-            {selected ? selected.title : <span className="text-slate-500">None selected</span>}
+            {selected ? selected.title : <span className="text-fg-faint">None selected</span>}
           </p>
 
           {selectedInFlight ? (
-            <p className="mt-3 text-sm text-amber-200">An extraction for this document is already in progress.</p>
+            <p className="mt-3 text-sm text-warning-soft">An extraction for this document is already in progress.</p>
           ) : null}
 
           {confirming && selected ? (
-            <div className="mt-5 rounded-2xl border border-slate-700 bg-slate-950/60 p-4">
+            <div className="mt-5 rounded-2xl border border-line bg-surface/60 p-4">
               <p className="text-sm">Extract officials and contact information from <strong>{selected.title}</strong>?</p>
               <div className="mt-4 flex flex-wrap gap-3">
                 <button
                   type="button"
                   onClick={confirmExtraction}
                   disabled={submitting}
-                  className="rounded-full bg-emerald-400 px-5 py-2 text-sm font-semibold text-slate-950 hover:bg-emerald-300 disabled:opacity-50"
+                  className="rounded-full bg-accent-strong px-5 py-2 text-sm font-semibold text-surface hover:bg-accent disabled:opacity-50"
                 >
                   {submitting ? 'Requesting…' : 'Confirm extraction'}
                 </button>
@@ -229,7 +229,7 @@ export default function ExtractPage() {
                   type="button"
                   onClick={() => setConfirming(false)}
                   disabled={submitting}
-                  className="rounded-full border border-slate-700 px-5 py-2 text-sm hover:border-slate-500"
+                  className="rounded-full border border-line px-5 py-2 text-sm hover:border-fg-faint"
                 >
                   Cancel
                 </button>
@@ -240,7 +240,7 @@ export default function ExtractPage() {
               type="button"
               onClick={() => setConfirming(true)}
               disabled={requestDisabled}
-              className="mt-5 rounded-full bg-emerald-400 px-5 py-2 text-sm font-semibold text-slate-950 hover:bg-emerald-300 disabled:cursor-not-allowed disabled:bg-slate-700 disabled:text-slate-400"
+              className="mt-5 rounded-full bg-accent-strong px-5 py-2 text-sm font-semibold text-surface hover:bg-accent disabled:cursor-not-allowed disabled:bg-line disabled:text-fg-subtle"
             >
               Request extraction
             </button>
@@ -248,17 +248,17 @@ export default function ExtractPage() {
         </section>
 
         {/* The user's requests — shows the one just created */}
-        <section className="rounded-3xl border border-slate-800 bg-slate-900/90 p-6">
+        <section className="rounded-3xl border border-raised bg-card/90 p-6">
           <h2 className="text-lg font-medium">My extraction requests</h2>
           {extractions.length === 0 ? (
-            <p className="mt-4 text-sm text-slate-400">You haven&apos;t requested any extractions yet.</p>
+            <p className="mt-4 text-sm text-fg-subtle">You haven&apos;t requested any extractions yet.</p>
           ) : (
-            <ul className="mt-4 divide-y divide-slate-800">
+            <ul className="mt-4 divide-y divide-raised">
               {extractions.map((e) => (
                 <li key={e.extraction_id} className="flex flex-wrap items-center justify-between gap-2 py-3">
                   <div>
                     <p className="font-medium">{e.source_document_title}</p>
-                    <p className="text-xs text-slate-400">
+                    <p className="text-xs text-fg-subtle">
                       Request #{e.extraction_id} · Requested {formatDateTime(e.requested_at)}
                     </p>
                   </div>
@@ -269,8 +269,8 @@ export default function ExtractPage() {
           )}
         </section>
 
-        <p className="text-sm text-slate-400">
-          Back to <Link href="/" className="text-emerald-300 hover:underline">home</Link>
+        <p className="text-sm text-fg-subtle">
+          Back to <Link href="/" className="text-accent hover:underline">home</Link>
         </p>
       </div>
     </main>

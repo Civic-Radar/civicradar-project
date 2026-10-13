@@ -95,7 +95,7 @@ export default async function DashboardPage() {
         Civic Radar Dashboard
       </h1>
 
-      <p className="mt-4 text-slate-300">
+      <p className="mt-4 text-fg-muted">
         Stay informed about your local government
         meetings and community updates.
       </p>
@@ -106,11 +106,11 @@ export default async function DashboardPage() {
         </h2>
 
         {error ? (
-          <p className="text-amber-300">
+          <p className="text-warning">
             Could not load meetings. Please try again later.
           </p>
         ) : meetings.length === 0 ? (
-          <p className="text-slate-300">
+          <p className="text-fg-muted">
             No matching meetings found.
           </p>
         ) : (
@@ -126,17 +126,17 @@ export default async function DashboardPage() {
               return (
                 <div
                   key={meeting.meeting_id}
-                  className="rounded-xl border border-slate-700 bg-slate-900 p-6"
+                  className="rounded-xl border border-line bg-card p-6"
                 >
                   <h3 className="text-xl font-semibold">
                     {meeting.title}
                   </h3>
 
-                  <p className="mt-3 text-slate-300">
+                  <p className="mt-3 text-fg-muted">
                     Town: {town?.name ?? "Unknown town"}
                   </p>
 
-                  <p className="mt-2 text-slate-300">
+                  <p className="mt-2 text-fg-muted">
                     Date &amp; Time:{" "}
                     {meeting.start_at
                       ? formatMeetingTime(
