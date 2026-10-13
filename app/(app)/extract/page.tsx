@@ -9,7 +9,7 @@
 
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
-import type { ExtractableDocument, Extraction } from '../../lib/extractions';
+import type { ExtractableDocument, Extraction } from '../../../lib/extractions';
 
 function formatDateTime(iso: string) {
   const d = new Date(iso);

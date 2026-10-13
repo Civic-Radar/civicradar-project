@@ -1,5 +1,3 @@
-
-import Sidebar from "../components/Sidebar";
 const meetings = [
   {
     id: 1,
@@ -23,9 +21,6 @@ const meetings = [
 
 export default function DashboardPage() {
   return (
-    <div className="flex min-h-screen bg-slate-950">
-      <Sidebar />
-
       <main className="min-w-0 flex-1 p-8 text-white">
       <h1 className="text-3xl font-bold">
         Civic Radar Dashboard
@@ -63,6 +58,5 @@ export default function DashboardPage() {
         </div>
       </section>
     </main>
-    </div>
   );
 }
