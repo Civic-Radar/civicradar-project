@@ -18,7 +18,7 @@ const navigation = [
   { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
   { name: "Meetings", href: "/meetings", icon: CalendarDays },
   { name: "Documents", href: "/documents", icon: FileText },
-  { name: "Officials", href: "/officials", icon: Users },
+  { name: "Contact Extraction", href: "/extract", icon: Users },
   { name: "Search", href: "/search", icon: Search },
   { name: "Preferences", href: "/preferences", icon: Settings },
   { name: "Profile", href: "/profile", icon: CircleUserRound },
