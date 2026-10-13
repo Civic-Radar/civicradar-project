@@ -43,9 +43,40 @@ export function formatDateTime(iso: string): string {
   return `${date} ${time}`;
 }
 
+// SRS-302.1 — one official found by an extraction. null means the document
+// didn't give that detail; the page shows NOT_FOUND_LABEL in its place.
+export type ExtractedOfficial = {
+  extracted_official_id: number;
+  full_name: string;
+  title: string | null;
+  role: string | null;
+  email: string | null;
+  phone: string | null;
+};
+
+// SRS-302.1 — the five fields, in display order, each shown next to its name.
+export const OFFICIAL_FIELDS = [
+  { key: 'full_name', label: 'Name' },
+  { key: 'title', label: 'Title' },
+  { key: 'role', label: 'Role' },
+  { key: 'email', label: 'Email address' },
+  { key: 'phone', label: 'Telephone number' },
+] as const;
+
+export const NOT_FOUND_LABEL = 'Not found';
+
+// SRS-302.4 — exact wording when a completed extraction found nobody.
+export const NO_OFFICIALS_MESSAGE = 'No officials could be extracted from this document.';
+
 // One extraction as returned by GET /api/extractions/[id].
 export type ExtractionDetail = Extraction & {
   failure_cause: 'Unreadable file' | 'File too large' | 'Missing source file' | 'Other' | null;
+};
+
+// GET /api/extractions/[id] response: officials is filled once the extraction is Completed.
+export type ExtractionDetailResponse = {
+  extraction: ExtractionDetail;
+  officials: ExtractedOfficial[];
 };
 
 export type ExtractableDocument = {

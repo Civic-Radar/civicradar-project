@@ -6,17 +6,29 @@
 //
 // While the extraction is still Queued or Processing, the page re-checks the
 // status every few seconds so a change shows up without reloading.
+//
+// SRS-302.1, AO, Extracted official details: once Completed, each official is
+// shown as its own entry with name, title, role, email, and phone, each next
+// to its field name. A detail the document didn't give shows "Not found".
 
 import Link from 'next/link';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { STATUS_STYLES, formatDateTime, isInProgress } from '../../../../lib/extractions';
-import type { ExtractionDetail } from '../../../../lib/extractions';
+import {
+  NOT_FOUND_LABEL,
+  NO_OFFICIALS_MESSAGE,
+  OFFICIAL_FIELDS,
+  STATUS_STYLES,
+  formatDateTime,
+  isInProgress,
+} from '../../../../lib/extractions';
+import type { ExtractedOfficial, ExtractionDetail } from '../../../../lib/extractions';
 
 const REFRESH_MS = 3000;
 
 export default function ExtractionPage({ params }: { params: { id: string } }) {
   const [token, setToken] = useState<string | null>(null);
   const [extraction, setExtraction] = useState<ExtractionDetail | null>(null);
+  const [officials, setOfficials] = useState<ExtractedOfficial[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
@@ -40,6 +52,7 @@ export default function ExtractionPage({ params }: { params: { id: string } }) {
       }
       setError('');
       setExtraction(data.extraction);
+      setOfficials(data.officials ?? []);
     },
     [params.id],
   );
@@ -139,6 +152,46 @@ export default function ExtractionPage({ params }: { params: { id: string } }) {
               ) : null}
             </dl>
           </section>
+        ) : null}
+
+        {/* SRS-302.1: the officials found, one entry each */}
+        {extraction?.status === 'Completed' ? (
+          <section className="rounded-3xl border border-raised bg-card/90 p-6">
+            <h2 className="text-lg font-medium">Officials found</h2>
+            {officials.length === 0 ? (
+              <p className="mt-4 text-sm text-fg-subtle">{NO_OFFICIALS_MESSAGE}</p>
+            ) : (
+              <ul className="mt-4 space-y-3" aria-label="Extracted officials">
+                {officials.map((official) => (
+                  <li
+                    key={official.extracted_official_id}
+                    data-testid="official-entry"
+                    className="rounded-2xl border border-raised bg-surface/50 p-4"
+                  >
+                    <dl className="grid gap-x-4 gap-y-2 text-sm sm:grid-cols-[10rem_1fr]">
+                      {OFFICIAL_FIELDS.map(({ key, label }) => {
+                        const value = official[key];
+                        return (
+                          <div key={key} className="contents">
+                            <dt className="text-fg-subtle">{label}</dt>
+                            <dd className={value ? 'break-words' : 'text-fg-faint italic'}>
+                              {value ?? NOT_FOUND_LABEL}
+                            </dd>
+                          </div>
+                        );
+                      })}
+                    </dl>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </section>
+        ) : null}
+
+        {extraction?.status === 'Failed' ? (
+          <p role="alert" className="rounded-xl border border-danger-line bg-danger-wash/30 p-3 text-sm text-danger">
+            Extraction was not completed.
+          </p>
         ) : null}
 
         <p className="text-sm text-fg-subtle">
