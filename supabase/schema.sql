@@ -40,7 +40,7 @@ add column if not exists avatar_url text;
 -- =============================================================================
 -- PART 2. Civic Radar schema
 -- Generated from database/schema.sql. See the notes at the top of this file for
--- the three Supabase-specific differences.
+-- the four Supabase-specific differences.
 --
 -- Conventions used throughout:
 --   * snake_case names; surrogate keys are <table_singular>_id.
