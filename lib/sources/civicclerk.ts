@@ -188,3 +188,46 @@ export async function fetchMeetingFiles(sourceAccountId: string): Promise<Map<st
 
   return filesByMeeting;
 }
+
+// Downloads one file's bytes and returns them with the MIME type the source
+// sent (SRS-208.2). The whole body is read before anything is returned, so a
+// partial file is never kept. Throws on a failed request, an empty body, a
+// missing Content-Type, and a body that does not match Content-Length.
+export async function downloadFile(file: SourceFile): Promise<{ bytes: Uint8Array; mimeType: string }> {
+  let response: Response;
+  try {
+    response = await fetch(file.downloadUrl);
+  } catch (error) {
+    throw new Error(`CivicClerk could not be reached for file ${file.sourceFileId}: ${(error as Error).message}`);
+  }
+
+  if (!response.ok) {
+    throw new Error(`CivicClerk file ${file.sourceFileId} download failed with status ${response.status}`);
+  }
+
+  const mimeType = response.headers.get('content-type')?.split(';')[0].trim().toLowerCase();
+  if (!mimeType) {
+    throw new Error(`CivicClerk returned file ${file.sourceFileId} without a Content-Type`);
+  }
+
+  let bytes: Uint8Array;
+  try {
+    bytes = new Uint8Array(await response.arrayBuffer());
+  } catch (error) {
+    throw new Error(`CivicClerk file ${file.sourceFileId} download did not finish: ${(error as Error).message}`);
+  }
+
+  if (bytes.length === 0) {
+    throw new Error(`CivicClerk returned file ${file.sourceFileId} with an empty body`);
+  }
+
+  // A compressed response's Content-Length is not the body length.
+  const contentLength = response.headers.get('content-length');
+  if (contentLength !== null && !response.headers.has('content-encoding') && Number(contentLength) !== bytes.length) {
+    throw new Error(
+      `CivicClerk file ${file.sourceFileId} is ${bytes.length} bytes but Content-Length is ${contentLength}`,
+    );
+  }
+
+  return { bytes, mimeType };
+}
