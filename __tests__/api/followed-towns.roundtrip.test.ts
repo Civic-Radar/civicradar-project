@@ -202,3 +202,33 @@ describe('Followed towns round trip (SRS-401.6)', () => {
     expect(towns.map((town) => town.name)).toEqual(['Brookline', 'Salem']);
   });
 });
+
+describe('Town choices display (SRS-401.7)', () => {
+  // Follows are set up directly in the stored rows, so these cases depend only
+  // on loading the town preferences, not on saving them.
+  function follow(userId: string, email: string, townId: number) {
+    if (!store.accounts.some((account) => account.user_id === userId)) {
+      store.accounts.push({ user_id: userId, email });
+    }
+    store.follows.push({ user_id: userId, town_id: townId });
+  }
+
+  it('lists Town A and Town B with only the followed Town A marked', async () => {
+    follow('resident-1', 'one@example.com', TOWN_A);
+
+    expect(await reload(RESIDENT_1)).toEqual([
+      { town_id: TOWN_B, name: 'Brookline', followed: false },
+      { town_id: TOWN_A, name: 'Salem', followed: true },
+    ]);
+  });
+
+  it('does not mark a town that only another resident follows', async () => {
+    follow('resident-1', 'one@example.com', TOWN_A);
+    follow('resident-2', 'two@example.com', TOWN_B);
+
+    expect(await reload(RESIDENT_1)).toEqual([
+      { town_id: TOWN_B, name: 'Brookline', followed: false },
+      { town_id: TOWN_A, name: 'Salem', followed: true },
+    ]);
+  });
+});
