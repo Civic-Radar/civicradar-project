@@ -5,6 +5,7 @@ type Call = { table: string; method: string; args: unknown[] };
 
 // Each from(table) call returns a chain that records its calls and resolves
 // with the result registered for "<table>.<first method>", e.g. "towns.select".
+// rpc(name, args) is recorded as table "rpc" and resolves "rpc.<name>".
 const db = vi.hoisted(() => ({
   results: {} as Record<string, Result>,
   calls: [] as Call[],
@@ -40,6 +41,10 @@ vi.mock('../../lib/supabase', () => {
         }),
       },
       from: vi.fn((table: string) => chain(table)),
+      rpc: vi.fn(async (name: string, args: unknown) => {
+        db.calls.push({ table: 'rpc', method: name, args: [args] });
+        return db.results[`rpc.${name}`] ?? { data: null, error: null };
+      }),
     })),
   };
 });
@@ -67,7 +72,11 @@ function callsTo(table: string, method: string) {
 }
 
 function writes() {
-  return db.calls.filter((call) => call.method === 'upsert' || call.method === 'delete');
+  return db.calls.filter((call) => call.method === 'upsert' || call.method === 'delete' || call.table === 'rpc');
+}
+
+function replaceCalls() {
+  return callsTo('rpc', 'replace_followed_towns');
 }
 
 beforeEach(() => {
@@ -202,7 +211,7 @@ describe('PUT /api/followed-towns', () => {
     expect(writes()).toEqual([]);
   });
 
-  it('replaces the selection: adds the new towns, then removes the others', async () => {
+  it('replaces the selection with one database call for the signed-in resident', async () => {
     db.results['user_followed_towns.select'] = { data: [{ town_id: 1 }, { town_id: 2 }], error: null };
 
     const response = await PUT(req('PUT', { town_ids: [1, 2], user_id: 'someone-else' }));
@@ -219,53 +228,25 @@ describe('PUT /api/followed-towns', () => {
       { user_id: 'user-123', email: 'resident@example.com' },
       { onConflict: 'user_id', ignoreDuplicates: true },
     ]);
-    expect(callsTo('user_followed_towns', 'upsert')[0].args).toEqual([
-      [
-        { user_id: 'user-123', town_id: 1 },
-        { user_id: 'user-123', town_id: 2 },
-      ],
-      { onConflict: 'user_id,town_id', ignoreDuplicates: true },
+    // The user id comes from the token, never from the request body.
+    expect(replaceCalls()).toEqual([
+      { table: 'rpc', method: 'replace_followed_towns', args: [{ p_user_id: 'user-123', p_town_ids: [1, 2] }] },
     ]);
-    expect(callsTo('user_followed_towns', 'not')[0].args).toEqual(['town_id', 'in', '(1,2)']);
-
-    // The delete is scoped to the signed-in resident and runs after the add.
-    const order = db.calls
-      .filter((call) => call.table === 'user_followed_towns')
-      .map((call) => call.method);
-    expect(order.slice(0, 4)).toEqual(['upsert', 'delete', 'eq', 'not']);
-    expect(order.indexOf('upsert')).toBeLessThan(order.indexOf('delete'));
-    expect(callsTo('user_followed_towns', 'eq')[0].args).toEqual(['user_id', 'user-123']);
+    expect(callsTo('user_followed_towns', 'upsert')).toEqual([]);
+    expect(callsTo('user_followed_towns', 'delete')).toEqual([]);
   });
 
-  it('removes every follow and adds none for an empty list', async () => {
+  it('sends an empty list to remove every follow', async () => {
     const response = await PUT(req('PUT', { town_ids: [] }));
 
     expect(response.status).toBe(200);
-    expect(callsTo('user_followed_towns', 'upsert')).toEqual([]);
-    expect(callsTo('user_followed_towns', 'delete')).toHaveLength(1);
-    expect(callsTo('user_followed_towns', 'eq')[0].args).toEqual(['user_id', 'user-123']);
-    expect(callsTo('user_followed_towns', 'not')).toEqual([]);
+    expect(replaceCalls()[0].args).toEqual([{ p_user_id: 'user-123', p_town_ids: [] }]);
   });
 
-  it('collapses duplicate ids into one row', async () => {
+  it('collapses duplicate ids before the save', async () => {
     await PUT(req('PUT', { town_ids: [1, 1, 1] }));
 
-    expect(callsTo('user_followed_towns', 'upsert')[0].args[0]).toEqual([
-      { user_id: 'user-123', town_id: 1 },
-    ]);
-    expect(callsTo('user_followed_towns', 'not')[0].args).toEqual(['town_id', 'in', '(1)']);
-  });
-
-  it('does not remove anything when adding the new towns fails', async () => {
-    db.results['user_followed_towns.upsert'] = { error: dbError };
-
-    const response = await PUT(req('PUT', { town_ids: [1] }));
-
-    expect(response.status).toBe(500);
-    expect(await response.json()).toEqual({
-      error: 'Your followed towns could not be saved. Please try again.',
-    });
-    expect(callsTo('user_followed_towns', 'delete')).toEqual([]);
+    expect(replaceCalls()[0].args).toEqual([{ p_user_id: 'user-123', p_town_ids: [1] }]);
   });
 
   it('returns the fixed save message when the account row cannot be created', async () => {
@@ -277,7 +258,7 @@ describe('PUT /api/followed-towns', () => {
     expect(await response.json()).toEqual({
       error: 'Your followed towns could not be saved. Please try again.',
     });
-    expect(callsTo('user_followed_towns', 'upsert')).toEqual([]);
+    expect(replaceCalls()).toEqual([]);
   });
 
   it('returns the save error and writes nothing when the auth user has no email', async () => {
@@ -301,7 +282,7 @@ describe('PUT /api/followed-towns', () => {
 
   it.each([
     ['reading the supported towns', 'towns.select'],
-    ['removing the deselected towns', 'user_followed_towns.delete'],
+    ['replacing the followed towns', 'rpc.replace_followed_towns'],
     ['reading the towns back after the save', 'user_followed_towns.select'],
   ])('returns the fixed save message when %s fails', async (_label, failingCall) => {
     db.results[failingCall] = { data: null, error: dbError };

@@ -8,7 +8,7 @@
 --   Part 4  avatars bucket     - public storage bucket for profile pictures
 --
 -- Part 2 is generated from database/schema.sql (the portable PostgreSQL script,
--- which is the source of truth). Only three things differ, and each is marked
+-- which is the source of truth). Only four things differ, and each is marked
 -- "Supabase:" inline:
 --
 --   1. is_valid_time_zone() is created as public.is_valid_time_zone() with a
@@ -19,6 +19,9 @@
 --      account row and the auth user are the same person, so the id has to come
 --      from Supabase Auth.
 --   3. Row Level Security is enabled on every table (Part 3).
+--   4. public.replace_followed_towns() replaces a user's followed towns in one
+--      transaction, so the API route can save them in a single call. Only the
+--      service role may run it.
 -- =============================================================================
 -- =============================================================================
 -- PART 1. Profile table (used by app/api/profile)
@@ -116,6 +119,8 @@ drop table if exists account_activity CASCADE;
 drop table if exists user_accounts CASCADE;
 
 drop function IF exists public.is_valid_time_zone (TEXT) CASCADE;
+
+drop function IF exists public.replace_followed_towns (UUID, INTEGER[]) CASCADE;
 
 -- -----------------------------------------------------------------------------
 -- Helper function
@@ -235,6 +240,36 @@ create table user_followed_towns (
   town_id INTEGER not null references towns (town_id),
   primary key (user_id, town_id)
 );
+
+-- Function: replace_followed_towns
+-- Reviewed by: EG (Erick Gonzalez)
+-- Supports: SRS-401.6
+-- Purpose: Replaces a user's followed towns with the given list in one
+--          transaction. Locking the user's account row first makes overlapping
+--          saves run one after the other, so the result is always one complete
+--          list. An empty list removes every followed town.
+-- Supabase: not in database/schema.sql; called by PUT /api/followed-towns.
+create function public.replace_followed_towns (p_user_id UUID, p_town_ids INTEGER[]) RETURNS void LANGUAGE plpgsql SECURITY INVOKER
+set
+  search_path = pg_catalog,
+  public -- Supabase: pin the search path (linter 0011)
+  as $$
+BEGIN
+  PERFORM 1 FROM user_accounts WHERE user_id = p_user_id FOR UPDATE;
+
+  DELETE FROM user_followed_towns
+  WHERE user_id = p_user_id AND town_id <> ALL (p_town_ids);
+
+  INSERT INTO user_followed_towns (user_id, town_id)
+  SELECT p_user_id, town_id FROM unnest(p_town_ids) AS town_id
+  ON CONFLICT DO NOTHING;
+END;
+$$;
+
+-- Supabase: only the API routes (service role) may run it, never the anon key.
+revoke all on function public.replace_followed_towns (UUID, INTEGER[]) from public, anon, authenticated;
+
+grant execute on function public.replace_followed_towns (UUID, INTEGER[]) to service_role;
 
 -- Table: user_followed_topics
 -- Reviewed by: KJ (Kailun Ju)
