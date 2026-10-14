@@ -33,7 +33,7 @@ vi.mock('../../lib/supabase', () => {
 
   function run(table: string, query: Query) {
     const shape = `${table}.${query.operation}(${query.filters.map((filter) => filter.kind).join(',')})`;
-    const [first, second] = query.filters;
+    const [first] = query.filters;
     const sameOptions = (expected: object) => JSON.stringify(query.options) === JSON.stringify(expected);
 
     if (shape === 'towns.select(is)' && query.orderBy === 'name') {
@@ -60,42 +60,23 @@ vi.mock('../../lib/supabase', () => {
       return { data: null, error: null };
     }
 
-    if (shape === 'user_followed_towns.upsert()') {
-      if (!sameOptions({ onConflict: 'user_id,town_id', ignoreDuplicates: true })) unsupported(table, query);
-      const rows = query.payload as FollowRow[];
-      // Same outcome as the table's foreign keys to user_accounts and towns.
-      const allowed = rows.every(
-        (row) =>
-          store.accounts.some((account) => account.user_id === row.user_id) &&
-          store.towns.some((town) => town.town_id === row.town_id),
-      );
-      if (!allowed) return { data: null, error: { message: 'foreign key violation' } };
-      for (const row of rows) {
-        const exists = store.follows.some(
-          (follow) => follow.user_id === row.user_id && follow.town_id === row.town_id,
-        );
-        if (!exists) store.follows.push({ ...row });
-      }
-      return { data: null, error: null };
-    }
-
-    if (shape === 'user_followed_towns.delete(eq)' || shape === 'user_followed_towns.delete(eq,not)') {
-      if (first.args[0] !== 'user_id') unsupported(table, query);
-      let keep: number[] = [];
-      if (second) {
-        const [column, operator, list] = second.args;
-        if (column !== 'town_id' || operator !== 'in' || !/^\(\d+(,\d+)*\)$/.test(String(list))) {
-          unsupported(table, query);
-        }
-        keep = String(list).slice(1, -1).split(',').map(Number);
-      }
-      store.follows = store.follows.filter(
-        (follow) => follow.user_id !== first.args[1] || keep.includes(follow.town_id),
-      );
-      return { data: null, error: null };
-    }
-
     return unsupported(table, query);
+  }
+
+  // Same outcome as public.replace_followed_towns: the user's follows become
+  // exactly the given list, or nothing changes when a foreign key would fail.
+  function rpc(name: string, args: { p_user_id: string; p_town_ids: number[] }) {
+    if (name !== 'replace_followed_towns') throw new Error(`The stand-in does not model rpc ${name}`);
+    const { p_user_id: userId, p_town_ids: townIds } = args;
+    const allowed =
+      store.accounts.some((account) => account.user_id === userId) &&
+      townIds.every((townId) => store.towns.some((town) => town.town_id === townId));
+    if (!allowed) return Promise.resolve({ data: null, error: { message: 'foreign key violation' } });
+    store.follows = [
+      ...store.follows.filter((follow) => follow.user_id !== userId),
+      ...townIds.map((town_id) => ({ user_id: userId, town_id })),
+    ];
+    return Promise.resolve({ data: null, error: null });
   }
 
   function from(table: string) {
@@ -105,10 +86,8 @@ vi.mock('../../lib/supabase', () => {
       upsert(payload: unknown, options: unknown) {
         query.operation = 'upsert'; query.payload = payload; query.options = options; return builder;
       },
-      delete() { query.operation = 'delete'; return builder; },
       eq(...args: unknown[]) { query.filters.push({ kind: 'eq', args }); return builder; },
       is(...args: unknown[]) { query.filters.push({ kind: 'is', args }); return builder; },
-      not(...args: unknown[]) { query.filters.push({ kind: 'not', args }); return builder; },
       order(column: string) { query.orderBy = column; return builder; },
       then(resolve: (value: unknown) => unknown, reject: (reason: unknown) => unknown) {
         return Promise.resolve().then(() => run(table, query)).then(resolve, reject);
@@ -128,6 +107,7 @@ vi.mock('../../lib/supabase', () => {
         }),
       },
       from,
+      rpc,
     })),
   };
 });

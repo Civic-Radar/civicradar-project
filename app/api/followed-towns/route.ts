@@ -104,22 +104,13 @@ export async function PUT(request: Request) {
     .upsert({ user_id: user.id, email: user.email }, { onConflict: 'user_id', ignoreDuplicates: true });
   if (accountError) return Response.json({ error: SAVE_ERROR }, { status: 500 });
 
-  // Add before removing: there is no transaction here, so a failure part-way
-  // leaves extra towns followed instead of wiping the resident's selection.
-  if (townIds.length > 0) {
-    const { error: addError } = await supabase!
-      .from('user_followed_towns')
-      .upsert(
-        townIds.map((town_id) => ({ user_id: user.id, town_id })),
-        { onConflict: 'user_id,town_id', ignoreDuplicates: true },
-      );
-    if (addError) return Response.json({ error: SAVE_ERROR }, { status: 500 });
-  }
-
-  const removal = supabase!.from('user_followed_towns').delete().eq('user_id', user.id);
-  const { error: removeError } =
-    townIds.length > 0 ? await removal.not('town_id', 'in', `(${townIds.join(',')})`) : await removal;
-  if (removeError) return Response.json({ error: SAVE_ERROR }, { status: 500 });
+  // One database function swaps the whole selection in a single transaction
+  // (supabase/schema.sql), so a failed or overlapping save never leaves it half-done.
+  const { error: replaceError } = await supabase!.rpc('replace_followed_towns', {
+    p_user_id: user.id,
+    p_town_ids: townIds,
+  });
+  if (replaceError) return Response.json({ error: SAVE_ERROR }, { status: 500 });
 
   const followedIds = await getFollowedTownIds(supabase!, user.id);
   if (!followedIds) return Response.json({ error: SAVE_ERROR }, { status: 500 });
