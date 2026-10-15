@@ -3,6 +3,9 @@
 // SRS-301.6 — exact wording required by the SRS.
 export const UNSUPPORTED_FORMAT_MESSAGE = "This file can't be extracted. Only PDF documents are supported.";
 
+// SRS-310.2 — returned (with HTTP 403) when the signed-in user doesn't own the extraction.
+export const ACCESS_DENIED_MESSAGE = "You don't have access to this extraction.";
+
 // SRS-306.3 — shown when the same document is already Queued or Processing.
 export const ALREADY_IN_PROGRESS_MESSAGE = 'An extraction for this document is already in progress.';
 

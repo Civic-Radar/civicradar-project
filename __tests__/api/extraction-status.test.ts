@@ -101,21 +101,20 @@ describe('GET /api/extractions/[id] (SRS-306.1)', () => {
     expect((await (await get('7')).json()).extraction.status).toBe('Completed');
   });
 
-  it("only looks up the signed-in user's own extraction", async () => {
+  it('looks up the extraction by its id', async () => {
     rows = [extractionRow()];
 
     await get('7');
 
     expect(eqCalls).toContainEqual(['extraction_id', 7]);
-    expect(eqCalls).toContainEqual(['user_id', OWNER.id]);
   });
 
-  it("returns 404 for someone else's extraction", async () => {
+  it("denies someone else's extraction (SRS-310.2)", async () => {
     rows = [extractionRow({ user_id: 'someone-else' })];
 
     const response = await get('7');
 
-    expect(response.status).toBe(404);
+    expect(response.status).toBe(403);
   });
 
   it('returns 404 when the extraction does not exist', async () => {
