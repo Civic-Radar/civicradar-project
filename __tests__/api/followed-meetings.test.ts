@@ -44,10 +44,11 @@ vi.mock('../../lib/supabase', () => {
   };
 });
 
-import { PUT } from '../../app/api/followed-meetings/[meetingId]/route';
+import { GET, PUT } from '../../app/api/followed-meetings/[meetingId]/route';
 import { getSupabaseClient } from '../../lib/supabase';
 
 const FOLLOW_ERROR = 'This meeting could not be followed. Please try again.';
+const LOAD_ERROR = 'Whether you follow this meeting could not be loaded. Please try again.';
 const dbError = { message: 'relation "user_followed_meetings" does not exist (42P01)' };
 
 function follow(meetingId: string, token: string | null = 'valid-token') {
@@ -56,6 +57,13 @@ function follow(meetingId: string, token: string | null = 'valid-token') {
     headers: token ? { authorization: `Bearer ${token}` } : {},
   });
   return PUT(request, { params: { meetingId } });
+}
+
+function load(meetingId: string, token: string | null = 'valid-token') {
+  const request = new Request(`http://localhost/api/followed-meetings/${meetingId}`, {
+    headers: token ? { authorization: `Bearer ${token}` } : {},
+  });
+  return GET(request, { params: { meetingId } });
 }
 
 function callsTo(table: string, method: string) {
@@ -197,5 +205,86 @@ describe('PUT /api/followed-meetings/[meetingId]', () => {
 
     expect(response.status).toBe(500);
     expect(await response.json()).toEqual({ error: FOLLOW_ERROR });
+  });
+});
+
+describe('GET /api/followed-meetings/[meetingId]', () => {
+  it('reports a followed meeting for the signed-in resident only', async () => {
+    db.results['user_followed_meetings.select'] = { data: { meeting_id: 1192 }, error: null };
+
+    const response = await load('1192');
+
+    expect(response.status).toBe(200);
+    expect(await response.json()).toEqual({ meeting_id: 1192, followed: true });
+    expect(callsTo('user_followed_meetings', 'eq').map((call) => call.args)).toEqual([
+      ['user_id', 'user-123'],
+      ['meeting_id', 1192],
+    ]);
+    expect(writes()).toEqual([]);
+  });
+
+  it('reports a meeting the resident does not follow', async () => {
+    const response = await load('1192');
+
+    expect(response.status).toBe(200);
+    expect(await response.json()).toEqual({ meeting_id: 1192, followed: false });
+    expect(writes()).toEqual([]);
+  });
+
+  it('returns 401 without a token', async () => {
+    const response = await load('1192', null);
+    expect(response.status).toBe(401);
+    expect(await response.json()).toEqual({ error: 'Unauthorized' });
+    expect(db.calls).toEqual([]);
+  });
+
+  it('returns 401 for an invalid token', async () => {
+    const response = await load('1192', 'bad-token');
+    expect(response.status).toBe(401);
+    expect(await response.json()).toEqual({ error: 'Invalid or expired token.' });
+    expect(db.calls).toEqual([]);
+  });
+
+  it('reports a configuration error without the service-role key', async () => {
+    vi.stubEnv('SUPABASE_SERVICE_ROLE_KEY', '');
+
+    const response = await load('1192');
+
+    expect(response.status).toBe(500);
+    expect(await response.json()).toEqual({ error: 'Supabase credentials are not configured.' });
+    expect(getSupabaseClient).not.toHaveBeenCalled();
+  });
+
+  it.each(['abc', '0', '-5', '1.5', '1e3', '9007199254740993'])(
+    'returns 400 for meeting id %s before any database call',
+    async (meetingId) => {
+      const response = await load(meetingId);
+      expect(response.status).toBe(400);
+      expect(await response.json()).toEqual({ error: 'Invalid meeting id.' });
+      expect(db.calls).toEqual([]);
+    },
+  );
+
+  it('returns 404 for an unknown meeting without checking follows', async () => {
+    db.results['meetings.select'] = { data: null, error: null };
+
+    const response = await load('999999');
+
+    expect(response.status).toBe(404);
+    expect(await response.json()).toEqual({ error: 'Meeting not found.' });
+    expect(callsTo('user_followed_meetings', 'select')).toEqual([]);
+  });
+
+  it.each([
+    ['meeting lookup', 'meetings.select'],
+    ['follow lookup', 'user_followed_meetings.select'],
+  ])('returns a fixed message, not the database error, when the %s fails', async (_label, key) => {
+    db.results[key] = { data: null, error: dbError };
+
+    const response = await load('1192');
+
+    expect(response.status).toBe(500);
+    expect(await response.json()).toEqual({ error: LOAD_ERROR });
+    expect(writes()).toEqual([]);
   });
 });
