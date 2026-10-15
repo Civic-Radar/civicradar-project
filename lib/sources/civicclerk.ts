@@ -1,4 +1,4 @@
-import type { SourceFile, SourceMeeting } from './types';
+import type { DocumentType, SourceFile, SourceMeeting } from './types';
 
 // All CivicClerk specifics live in this file. {code} is the town's
 // towns.source_account_id (e.g. Salem is "salemma").
@@ -11,6 +11,14 @@ const PORTAL_EVENT_URL = 'https://{code}.portal.civicclerk.com/event/{id}/overvi
 // File bytes are streamed by file id. The relative `url` on a published file
 // is not used.
 const FILE_STREAM_URL = `${API_BASE_URL}/Meetings/GetMeetingFileStream(fileId={id},plainText=false)`;
+
+// CivicClerk file types mapped to documents.document_type. Any other or
+// missing type is Other.
+const DOCUMENT_TYPES = new Map<string, DocumentType>([
+  ['Agenda', 'Agenda'],
+  ['Agenda Packet', 'Packet'],
+  ['Minutes', 'Minutes'],
+]);
 
 interface CivicClerkLocation {
   address1?: string | null;
@@ -87,6 +95,10 @@ function toSourceMeeting(event: CivicClerkEvent, sourceAccountId: string): Sourc
   };
 }
 
+function toDocumentType(sourceFileType: string | null): DocumentType {
+  return (sourceFileType !== null && DOCUMENT_TYPES.get(sourceFileType)) || 'Other';
+}
+
 function toSourceFile(file: CivicClerkPublishedFile, sourceMeetingId: string, sourceAccountId: string): SourceFile {
   if (file.fileId === null || file.fileId === undefined) {
     throw new Error(`CivicClerk returned a file without an id under meeting ${sourceMeetingId}`);
@@ -98,10 +110,13 @@ function toSourceFile(file: CivicClerkPublishedFile, sourceMeetingId: string, so
     throw new Error(`CivicClerk returned file ${sourceFileId} without a name under meeting ${sourceMeetingId}`);
   }
 
+  const sourceFileType = text(file.type);
+
   return {
     sourceFileId,
     fileName,
-    sourceFileType: text(file.type),
+    sourceFileType,
+    documentType: toDocumentType(sourceFileType),
     downloadUrl: FILE_STREAM_URL.replace('{code}', sourceAccountId).replace('{id}', encodeURIComponent(sourceFileId)),
     sourcePageUrl: portalEventUrl(sourceAccountId, sourceMeetingId), // no per-file page; the meeting's page for now
     sizeBytes: null, // CivicClerk sends no file size
