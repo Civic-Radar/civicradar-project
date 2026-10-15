@@ -1,6 +1,9 @@
-// Tests for the order of the document list on the extraction page (SRS-302.1):
+// Tests for the order of the two lists on the extraction pages (SRS-302.1):
 //   GET /api/extractions/documents  documents grouped by meeting, newest meeting first
+//   sortByDetailsFound               officials with contact details first
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { sortByDetailsFound } from '../../lib/extractions';
+import type { ExtractedOfficial } from '../../lib/extractions';
 
 type Row = Record<string, unknown>;
 
@@ -85,5 +88,26 @@ describe('GET /api/extractions/documents', () => {
     expect(body.documents[0].meeting).toEqual(OCT);
     expect(body.documents[1].document_id).toBe(1);
     expect(body.documents[1].meeting).toBeNull();
+  });
+});
+
+describe('sortByDetailsFound', () => {
+  function official(id: number, details: Partial<ExtractedOfficial>): ExtractedOfficial {
+    return { extracted_official_id: id, full_name: `Person ${id}`, title: null, role: null, email: null, phone: null, ...details };
+  }
+
+  it('puts officials with an email or phone first, then the ones with the most details', () => {
+    const sorted = sortByDetailsFound([
+      official(1, { title: 'Councillor' }),
+      official(2, { title: 'Councillor', role: 'Presiding' }),
+      official(3, { title: 'City Clerk', email: 'clerk@salem.com' }),
+      official(4, {}),
+    ]);
+    expect(sorted.map((o) => o.extracted_official_id)).toEqual([3, 2, 1, 4]);
+  });
+
+  it('keeps the original order between officials with the same details', () => {
+    const sorted = sortByDetailsFound([official(1, { title: 'A' }), official(2, { title: 'B' }), official(3, { title: 'C' })]);
+    expect(sorted.map((o) => o.extracted_official_id)).toEqual([1, 2, 3]);
   });
 });

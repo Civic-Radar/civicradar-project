@@ -107,3 +107,11 @@ export function sortDocuments(documents: ExtractableDocument[]): ExtractableDocu
 export function formatMeetingDate(iso: string): string {
   return new Date(iso).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' });
 }
+
+// SRS-302.1 — officials with the most details found are listed first, so the
+// most useful contacts are at the top. Ties keep the order they were found in.
+export function sortByDetailsFound(officials: ExtractedOfficial[]): ExtractedOfficial[] {
+  const found = (o: ExtractedOfficial) => [o.title, o.role, o.email, o.phone].filter(Boolean).length;
+  const contact = (o: ExtractedOfficial) => (o.email || o.phone ? 1 : 0);
+  return [...officials].sort((a, b) => contact(b) - contact(a) || found(b) - found(a));
+}

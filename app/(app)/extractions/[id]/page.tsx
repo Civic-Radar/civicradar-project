@@ -20,6 +20,7 @@ import {
   STATUS_STYLES,
   formatDateTime,
   isInProgress,
+  sortByDetailsFound,
 } from '../../../../lib/extractions';
 import type { ExtractedOfficial, ExtractionDetail } from '../../../../lib/extractions';
 
@@ -52,7 +53,7 @@ export default function ExtractionPage({ params }: { params: { id: string } }) {
       }
       setError('');
       setExtraction(data.extraction);
-      setOfficials(data.officials ?? []);
+      setOfficials(sortByDetailsFound(data.officials ?? []));
     },
     [params.id],
   );
@@ -168,14 +169,25 @@ export default function ExtractionPage({ params }: { params: { id: string } }) {
                     data-testid="official-entry"
                     className="rounded-2xl border border-raised bg-surface/50 p-4"
                   >
-                    <dl className="grid gap-x-4 gap-y-2 text-sm sm:grid-cols-[10rem_1fr]">
+                    {/* Name and title on top, then role, then the contact details.
+                        Every field keeps its label; a missing one shows "Not found". */}
+                    <dl className="grid gap-x-6 gap-y-3 text-sm sm:grid-cols-2">
                       {OFFICIAL_FIELDS.map(({ key, label }) => {
                         const value = official[key];
+                        const href = value && key === 'email' ? `mailto:${value}` : value && key === 'phone' ? `tel:${value.replace(/[^\d+]/g, '')}` : null;
                         return (
-                          <div key={key} className="contents">
-                            <dt className="text-fg-subtle">{label}</dt>
-                            <dd className={value ? 'break-words' : 'text-fg-faint italic'}>
-                              {value ?? NOT_FOUND_LABEL}
+                          <div key={key} className={key === 'role' ? 'sm:col-span-2' : undefined}>
+                            <dt className="text-xs uppercase tracking-wide text-fg-subtle">{label}</dt>
+                            <dd
+                              className={`mt-0.5 break-words ${
+                                !value ? 'text-fg-faint italic' : key === 'full_name' ? 'text-base font-medium' : ''
+                              }`}
+                            >
+                              {href ? (
+                                <a href={href} className="text-accent hover:underline">{value}</a>
+                              ) : (
+                                value ?? NOT_FOUND_LABEL
+                              )}
                             </dd>
                           </div>
                         );
