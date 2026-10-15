@@ -12,8 +12,9 @@
 -- Run it in the Supabase SQL Editor AFTER supabase/schema.sql.
 -- Safe to run more than once, and safe alongside meeting retrieval (SRS-220.3):
 --   * meetings already saved by retrieval are reused (same town + CivicClerk event id)
---   * documents use the CivicClerk file id, so retrieval of documents (SRS-220.7)
---     will update these rows instead of adding duplicates.
+--   * documents use the CivicClerk file id, so they never duplicate a file that
+--     document retrieval (SRS-208.2) saved. If retrieval later reaches one of
+--     these files, it logs that file as failed and moves on.
 -- storage_path, file_size_bytes and file_sha256 are placeholders until document
 -- retrieval stores the real file.
 -- =============================================================================
