@@ -26,6 +26,16 @@ function createFakeSupabase() {
 
   return {
     from(table: string) {
+      // The meeting's linked documents (SRS-220.7); none in these tests.
+      if (table === 'documents') {
+        return {
+          select: () => ({
+            eq: () => ({
+              order: async () => ({ data: [], error: null }),
+            }),
+          }),
+        };
+      }
       const stored = tables[table];
       if (!stored) {
         throw new Error(`Unexpected table: ${table}`);
