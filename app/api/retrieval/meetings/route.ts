@@ -1,13 +1,15 @@
 import { getSupabaseClient } from '../../../../lib/supabase';
-import { fetchMeetings } from '../../../../lib/sources/civicclerk';
+import { downloadFile, fetchMeetingFiles, fetchMeetings } from '../../../../lib/sources/civicclerk';
 import { saveMeetings } from '../../../../lib/retrieval/saveMeetings';
-import type { SourceMeeting } from '../../../../lib/sources/types';
+import { retrieveDocuments } from '../../../../lib/retrieval/retrieveDocuments';
+import type { SourceFile, SourceMeeting } from '../../../../lib/sources/types';
 
 function errorMessage(error: unknown): string {
   return error instanceof Error ? error.message : 'Unexpected error';
 }
 
-// Retrieves a town's meetings from its source and saves them (SRS-220.3).
+// Retrieves a town's meetings from its source and saves them (SRS-220.3),
+// then stores each file listed under them as a document (SRS-208.2).
 // No access control yet: any caller can trigger a retrieval run.
 export async function POST(request: Request) {
   let townId: unknown;
@@ -55,10 +57,35 @@ export async function POST(request: Request) {
     return Response.json({ error: errorMessage(error) }, { status: 502 });
   }
 
+  let saved: number;
   try {
-    const saved = await saveMeetings(supabase, town, meetings);
-    return Response.json({ saved }, { status: 200 });
+    saved = await saveMeetings(supabase, town, meetings);
   } catch (error: unknown) {
     return Response.json({ error: errorMessage(error) }, { status: 500 });
   }
+
+  // A failed listing is never "no files". Details stay in the server log.
+  let filesByMeeting: Map<string, SourceFile[]>;
+  try {
+    filesByMeeting = await fetchMeetingFiles(town.source_account_id);
+  } catch (error: unknown) {
+    console.error(`Document retrieval: town ${town.town_id} file listing failed: ${errorMessage(error)}`);
+    return Response.json(
+      { error: `Saved ${saved} meetings, but listing their documents failed.` },
+      { status: 502 },
+    );
+  }
+
+  // Per-file failures are logged inside and never stop the run (SRS-208.2).
+  try {
+    await retrieveDocuments(supabase, town.town_id, filesByMeeting, downloadFile);
+  } catch (error: unknown) {
+    console.error(`Document retrieval: town ${town.town_id} failed: ${errorMessage(error)}`);
+    return Response.json(
+      { error: `Saved ${saved} meetings, but retrieving their documents failed.` },
+      { status: 500 },
+    );
+  }
+
+  return Response.json({ saved }, { status: 200 });
 }

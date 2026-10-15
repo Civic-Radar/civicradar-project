@@ -11,3 +11,19 @@ export interface SourceMeeting {
   onlineLink: string | null;
   sourceUrl: string | null; // official source page
 }
+
+// The documents.document_type values. Each source client maps its own file
+// types to one of these.
+export type DocumentType = 'Agenda' | 'Minutes' | 'Packet' | 'Other';
+
+// Common file shape for a file the source publishes under a meeting
+// (SRS-208.2). Source-specific field names stay inside the client.
+export interface SourceFile {
+  sourceFileId: string; // file identity within a town
+  fileName: string;
+  sourceFileType: string | null; // exactly as the source sent it (e.g. "Agenda Packet")
+  documentType: DocumentType; // sourceFileType mapped by the source client
+  downloadUrl: string;
+  sourcePageUrl: string; // public source page the user can open
+  sizeBytes: number | null; // null when the source does not send a size
+}
