@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import styles from '../meetings.module.css';
+import FollowMeetingButton from './FollowMeetingButton';
 
 type MeetingDetails = {
   meeting_id: number;
@@ -106,6 +107,8 @@ export default function MeetingDetailsPage({ params }: { params: { id: string } 
             <h1 className={styles.heading}>
               <TextOrNotProvided value={meeting.title} />
             </h1>
+
+            <FollowMeetingButton meetingId={meeting.meeting_id} />
 
             <div className={styles.tableWrap}>
               <table className={styles.table}>
