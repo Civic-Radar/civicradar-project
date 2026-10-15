@@ -10,10 +10,14 @@
 // SRS-302.1, AO, Extracted official details: once Completed, each official is
 // shown as its own entry with name, title, role, email, and phone, each next
 // to its field name. A detail the document didn't give shows "Not found".
+//
+// SRS-310.2, AO, Ownership check: opening another user's extraction (for
+// example by changing the address) shows "Access denied" and nothing else.
 
 import Link from 'next/link';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import {
+  ACCESS_DENIED_MESSAGE,
   NOT_FOUND_LABEL,
   NO_OFFICIALS_MESSAGE,
   OFFICIAL_FIELDS,
@@ -32,6 +36,8 @@ export default function ExtractionPage({ params }: { params: { id: string } }) {
   const [officials, setOfficials] = useState<ExtractedOfficial[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  // SRS-310.2: the extraction belongs to another user.
+  const [denied, setDenied] = useState(false);
 
   const load = useCallback(
     async (accessToken: string) => {
@@ -45,6 +51,12 @@ export default function ExtractionPage({ params }: { params: { id: string } }) {
       if (res.status === 401) {
         localStorage.removeItem('access_token');
         setToken(null);
+        return;
+      }
+      if (res.status === 403) {
+        setDenied(true);
+        setExtraction(null);
+        setOfficials([]);
         return;
       }
       if (!res.ok) {
@@ -102,6 +114,21 @@ export default function ExtractionPage({ params }: { params: { id: string } }) {
           <p className="text-fg-muted">You must be logged in to view an extraction.</p>
           <Link href="/login" className="inline-block rounded-full border border-line bg-raised px-4 py-2 text-sm hover:border-accent-strong hover:text-accent-soft">
             Go to login
+          </Link>
+        </section>
+      </main>
+    );
+  }
+
+  // SRS-310.2: another user's extraction — nothing about it is shown.
+  if (denied) {
+    return (
+      <main className="min-h-screen bg-surface text-fg flex items-center justify-center px-6">
+        <section className="max-w-md text-center space-y-4" data-testid="access-denied">
+          <p className="text-sm uppercase tracking-[0.25em] text-danger">Access denied</p>
+          <p className="text-fg-muted">{ACCESS_DENIED_MESSAGE}</p>
+          <Link href="/extract" className="inline-block rounded-full border border-line bg-raised px-4 py-2 text-sm hover:border-accent-strong hover:text-accent-soft">
+            Back to my extraction requests
           </Link>
         </section>
       </main>
