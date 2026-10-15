@@ -85,4 +85,25 @@ export type ExtractableDocument = {
   document_type: 'Agenda' | 'Minutes' | 'Packet' | 'Other';
   mime_type: string;
   retrieved_at: string;
+  // The meeting the document belongs to, for grouping on the extraction page.
+  meeting: { meeting_id: number; title: string; start_at: string } | null;
 };
+
+const DOCUMENT_TYPE_ORDER: Record<string, number> = { Agenda: 0, Packet: 1, Minutes: 2, Other: 3 };
+
+// Extraction page document list: newest meeting first, then within a meeting
+// the agenda, packet, minutes, and anything else.
+export function sortDocuments(documents: ExtractableDocument[]): ExtractableDocument[] {
+  return [...documents].sort(
+    (a, b) =>
+      (b.meeting?.start_at ?? '').localeCompare(a.meeting?.start_at ?? '') ||
+      (a.meeting?.meeting_id ?? 0) - (b.meeting?.meeting_id ?? 0) ||
+      (DOCUMENT_TYPE_ORDER[a.document_type] ?? 9) - (DOCUMENT_TYPE_ORDER[b.document_type] ?? 9) ||
+      a.title.localeCompare(b.title),
+  );
+}
+
+// Formats a meeting's start time as "Mon, Oct 19, 2026" in the user's time zone.
+export function formatMeetingDate(iso: string): string {
+  return new Date(iso).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' });
+}
