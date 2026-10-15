@@ -118,13 +118,13 @@ describe('runExtraction (SRS-302.1)', () => {
     expect(tables.extracted_officials).toHaveLength(0);
   });
 
-  it("does not run someone else's extraction", async () => {
+  it("does not run someone else's extraction, and reports it as denied (SRS-310.2)", async () => {
     const { supabase, tables } = createDb(seed({ user_id: 'someone-else' }));
     const stubs = deps();
 
     const result = await runExtraction(supabase, 7, OWNER, stubs);
 
-    expect(result).toEqual({ outcome: 'not_found' });
+    expect(result).toEqual({ outcome: 'denied' });
     expect(tables.extractions[0].status).toBe('Queued');
     expect(stubs.fetchText).not.toHaveBeenCalled();
   });

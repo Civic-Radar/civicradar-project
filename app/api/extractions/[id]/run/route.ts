@@ -3,9 +3,11 @@
 //
 // 200 { status: 'Completed' | 'Failed', officialsFound }  the run finished
 // 409 { status }                                          it isn't Queued (already running or done)
-// 404                                                     not this user's extraction
+// 403                                                     another user's extraction (SRS-310.2)
+// 404                                                     no extraction with that id
 import { getSupabaseClient } from '../../../../../lib/supabase';
 import { runExtraction } from '../../../../../lib/extraction/runExtraction';
+import { ACCESS_DENIED_MESSAGE } from '../../../../../lib/extractions';
 
 export const dynamic = 'force-dynamic';
 
@@ -37,6 +39,7 @@ export async function POST(request: Request, { params }: { params: { id: string 
   }
 
   if (result.outcome === 'not_found') return Response.json({ error: 'Extraction not found.' }, { status: 404 });
+  if (result.outcome === 'denied') return Response.json({ error: ACCESS_DENIED_MESSAGE }, { status: 403 });
   if (result.outcome === 'not_queued') {
     return Response.json({ error: 'This extraction is not waiting to run.', status: result.status }, { status: 409 });
   }
