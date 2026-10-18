@@ -462,6 +462,98 @@ create table summary_attempts (
   )
 );
 
+-- Function: finish_summary_attempt
+-- Reviewed by: MS (Marcos Salazar)
+-- Supports: SRS-204.1, SRS-NFR-7
+-- Purpose: Closes an In progress summary attempt in one transaction.
+--          Succeeded also stores the summary on the document and sets it
+--          Complete. Failed only closes the attempt: no retry and no Failed
+--          status (SRS-210.1). Changes nothing unless the attempt is still
+--          In progress and its document is still Pending, and returns why:
+--          'closed', 'attempt_not_found', 'attempt_not_in_progress' or
+--          'document_not_pending'. ended_at and summary_generated_at use
+--          greatest() so clock skew cannot break the table checks.
+-- Supabase: not in database/schema.sql; called by lib/summaries/attempts.ts
+--           through supabase.rpc. Run this block alone in the SQL Editor.
+create or replace function public.finish_summary_attempt (
+  p_attempt_id BIGINT,
+  p_outcome TEXT,
+  p_summary_text TEXT
+) RETURNS TEXT LANGUAGE plpgsql SECURITY INVOKER
+set
+  search_path = pg_catalog,
+  public -- Supabase: pin the search path (linter 0011)
+  as $$
+DECLARE
+  v_document_id BIGINT;
+  v_attempt_outcome TEXT;
+  v_started_at TIMESTAMPTZ;
+  v_summary_status TEXT;
+  v_retrieved_at TIMESTAMPTZ;
+BEGIN
+  IF p_outcome = 'Succeeded' THEN
+    IF p_summary_text IS NULL OR p_summary_text !~ '\S' THEN
+      RAISE EXCEPTION 'finish_summary_attempt: summary text is empty' USING ERRCODE = '22023';
+    END IF;
+    -- Same rule as the documents check (SRS-NFR-7).
+    IF array_length(regexp_split_to_array(btrim(p_summary_text), '\s+'), 1) > 150 THEN
+      RAISE EXCEPTION 'finish_summary_attempt: summary text is over 150 words' USING ERRCODE = '22023';
+    END IF;
+  ELSIF p_outcome = 'Failed' THEN
+    IF p_summary_text IS NOT NULL THEN
+      RAISE EXCEPTION 'finish_summary_attempt: a failed attempt takes no summary text' USING ERRCODE = '22023';
+    END IF;
+  ELSE
+    RAISE EXCEPTION 'finish_summary_attempt: outcome must be Succeeded or Failed' USING ERRCODE = '22023';
+  END IF;
+
+  -- Lock the attempt, then its document, so overlapping calls run one after
+  -- the other and the later one sees the attempt already closed.
+  SELECT document_id, outcome, started_at
+    INTO v_document_id, v_attempt_outcome, v_started_at
+    FROM summary_attempts
+   WHERE attempt_id = p_attempt_id
+     FOR UPDATE;
+
+  IF NOT FOUND THEN
+    RETURN 'attempt_not_found';
+  END IF;
+  IF v_attempt_outcome IS DISTINCT FROM 'In progress' THEN
+    RETURN 'attempt_not_in_progress';
+  END IF;
+
+  SELECT summary_status, retrieved_at
+    INTO v_summary_status, v_retrieved_at
+    FROM documents
+   WHERE document_id = v_document_id
+     FOR UPDATE;
+
+  IF v_summary_status IS DISTINCT FROM 'Pending' THEN
+    RETURN 'document_not_pending';
+  END IF;
+
+  UPDATE summary_attempts
+     SET outcome = p_outcome,
+         ended_at = greatest(now(), v_started_at)
+   WHERE attempt_id = p_attempt_id;
+
+  IF p_outcome = 'Succeeded' THEN
+    UPDATE documents
+       SET summary_text = p_summary_text,
+           summary_generated_at = greatest(now(), v_retrieved_at),
+           summary_status = 'Complete'
+     WHERE document_id = v_document_id;
+  END IF;
+
+  RETURN 'closed';
+END;
+$$;
+
+-- Supabase: only the API routes (service role) may run it, never the anon key.
+revoke all on function public.finish_summary_attempt (BIGINT, TEXT, TEXT) from public, anon, authenticated;
+
+grant execute on function public.finish_summary_attempt (BIGINT, TEXT, TEXT) to service_role;
+
 -- Table: agenda_items
 -- Reviewed by: MS (Marcos Salazar)
 -- Supports: SRS-220.9, SRS-401.4, SRS-404.3, SRS-404.6, SRS-502.6, SRS-505.2, SRS-506.2, SRS-508.3

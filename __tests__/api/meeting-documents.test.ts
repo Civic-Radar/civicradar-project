@@ -126,6 +126,7 @@ function createFakeSupabase() {
   const meetings: Row[] = [];
   const documents: Row[] = [];
   let nextDocumentId = 31;
+  let nextAttemptId = 1;
 
   const client = {
     from(table: string) {
@@ -171,6 +172,21 @@ function createFakeSupabase() {
         };
       }
 
+      // Attempt 1 recorded after each documents insert (SRS-204.1). Only the
+      // insert is faked: no summary job starts without the summary settings.
+      if (table === 'summary_attempts') {
+        return {
+          insert: (row: Row) => ({
+            select: () => ({
+              single: async () => ({
+                data: { attempt_id: nextAttemptId++, document_id: row.document_id, started_at: new Date().toISOString() },
+                error: null,
+              }),
+            }),
+          }),
+        };
+      }
+
       throw new Error(`Unexpected table: ${table}`);
     },
     storage: {
@@ -203,6 +219,9 @@ describe('Meeting document link (SRS-220.7)', () => {
   beforeEach(async () => {
     vi.clearAllMocks();
     vi.stubEnv('SUPABASE_SERVICE_ROLE_KEY', 'test-service-role-key');
+    // Blank summary settings, so no summary job starts even if the shell sets them.
+    vi.stubEnv('ANTHROPIC_API_KEY', '');
+    vi.stubEnv('SUMMARY_MODEL', '');
 
     fake = createFakeSupabase();
     vi.mocked(getSupabaseClient).mockReturnValue(fake.client as unknown as ReturnType<typeof getSupabaseClient>);
