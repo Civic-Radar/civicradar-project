@@ -79,6 +79,7 @@ function createFakeSupabase() {
   const storedPaths = new Set<string>();
   let nextMeetingId = 501;
   let nextDocumentId = 1;
+  let nextAttemptId = 1;
 
   const client = {
     from(table: string) {
@@ -154,6 +155,21 @@ function createFakeSupabase() {
                 documents.push({ ...row, document_id: documentId });
                 return { data: { document_id: documentId }, error: null };
               },
+            }),
+          }),
+        };
+      }
+
+      // Attempt 1 recorded after each documents insert (SRS-204.1). Only the
+      // insert is faked: no summary job starts without the summary settings.
+      if (table === 'summary_attempts') {
+        return {
+          insert: (row: Row) => ({
+            select: () => ({
+              single: async () => ({
+                data: { attempt_id: nextAttemptId++, document_id: row.document_id, started_at: new Date().toISOString() },
+                error: null,
+              }),
             }),
           }),
         };

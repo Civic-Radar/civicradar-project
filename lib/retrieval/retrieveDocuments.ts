@@ -1,5 +1,6 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { SourceFile } from '../sources/types';
+import { createSummaryStarter } from '../summaries/runSummaryJob';
 import { hashFile } from './hashFile';
 import { insertDocument, type DocumentMeeting } from './insertDocument';
 import { storeDocumentFile } from './storeDocumentFile';
@@ -54,6 +55,8 @@ async function loadMeetings(
 // file is logged and the run moves on. A meeting with no meetings row is
 // logged and its files are skipped. There is no duplicate guard (SRS-208.3):
 // an already stored file fails at the upload and is counted as failed.
+// Each inserted document gets summary attempt 1 (SRS-204.1), and after the
+// run the first few queued summary jobs start without being awaited.
 export async function retrieveDocuments(
   supabase: SupabaseClient,
   townId: number,
@@ -62,6 +65,7 @@ export async function retrieveDocuments(
 ): Promise<RetrieveDocumentsResult> {
   const result: RetrieveDocumentsResult = { stored: 0, failed: 0, skipped: 0 };
   const meetings = await loadMeetings(supabase, townId, [...filesByMeeting.keys()]);
+  const summaries = createSummaryStarter(supabase, townId);
 
   for (const [sourceMeetingId, files] of filesByMeeting) {
     const meeting = meetings.get(sourceMeetingId);
@@ -79,6 +83,7 @@ export async function retrieveDocuments(
       const where = `town ${townId} meeting ${sourceMeetingId} file ${file.sourceFileId}`;
       let step = 'download';
       let storagePath: string | null = null;
+      let documentId: number | null = null;
 
       try {
         const { bytes, mimeType } = await download(file);
@@ -87,7 +92,7 @@ export async function retrieveDocuments(
         step = 'store';
         storagePath = await storeDocumentFile(supabase, meeting.town_id, file.sourceFileId, bytes, mimeType);
         step = 'insert';
-        await insertDocument(supabase, meeting, file, { storagePath, mimeType, sha256, sizeBytes });
+        documentId = await insertDocument(supabase, meeting, file, { storagePath, mimeType, sha256, sizeBytes });
         result.stored += 1;
       } catch (error: unknown) {
         result.failed += 1;
@@ -96,8 +101,15 @@ export async function retrieveDocuments(
           console.error(`Document retrieval: ${where} ${storagePath} stored but no documents row`);
         }
       }
+
+      // Only a document this run inserted gets an attempt. Never throws.
+      if (documentId !== null) {
+        await summaries.recordAttempt(documentId);
+      }
     }
   }
+
+  summaries.startJobs();
 
   console.log(
     `Document retrieval: town ${townId} stored ${result.stored}, failed ${result.failed}, skipped ${result.skipped}`,
