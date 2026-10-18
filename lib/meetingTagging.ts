@@ -5,6 +5,7 @@ export type ClassifyResult =
   | { status: 'classified'; tags: TopicTag[] } // tags may be empty: text exists but matches nothing
   | { status: 'no_agenda_text' } // nothing saved; classification unchanged
   | { status: 'meeting_not_found' }
+  | { status: 'agenda_changed' } // the agenda changed after it was read; nothing saved
   | { status: 'error' }; // a read or write failed; database text is never returned
 
 // Tags one meeting from its agenda text and saves the result (SRS-401.4).
@@ -24,7 +25,8 @@ export async function classifyMeetingTopics(supabase: SupabaseClient, meetingId:
     .select('agenda_item_id, item_text')
     .eq('meeting_id', meetingId)
     .is('removed_at', null)
-    .order('sort_order');
+    .order('sort_order')
+    .order('agenda_item_id');
   if (itemsError) return { status: 'error' };
 
   const agendaItems = (items ?? []) as AgendaItemText[];
@@ -43,13 +45,17 @@ export async function classifyMeetingTopics(supabase: SupabaseClient, meetingId:
 
   const tags = tagAgendaText(agendaItems, (topics ?? []) as CatalogTopic[]);
 
-  // One transaction: replaces the meeting's tags and marks it Classified
+  // One transaction: replaces the meeting's tags and marks it Classified, but
+  // only if the agenda read above is still the meeting's current agenda
   // (public.replace_meeting_topics in supabase/schema.sql).
-  const { error: saveError } = await supabase.rpc('replace_meeting_topics', {
+  const { data: saved, error: saveError } = await supabase.rpc('replace_meeting_topics', {
     p_meeting_id: meetingId,
     p_tags: tags.map(({ topic_id, evidence_text }) => ({ topic_id, evidence_text })),
+    p_agenda: agendaItems.map(({ agenda_item_id, item_text }) => ({ agenda_item_id, item_text })),
   });
   if (saveError) return { status: 'error' };
+  if (saved === false) return { status: 'agenda_changed' };
+  if (saved !== true) return { status: 'error' };
 
   return { status: 'classified', tags };
 }

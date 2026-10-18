@@ -30,7 +30,7 @@ const supabase = {
   from: vi.fn((table: string) => chain(table)),
   rpc: vi.fn(async (name: string, args: unknown) => {
     calls.push({ table: 'rpc', method: name, args: [args] });
-    return results[`rpc.${name}`] ?? { data: null, error: null };
+    return results[`rpc.${name}`] ?? { data: true, error: null };
   }),
 } as unknown as SupabaseClient;
 
@@ -87,7 +87,7 @@ describe('Save topic tags (SRS-401.4)', () => {
       {
         table: 'rpc',
         method: 'replace_meeting_topics',
-        args: [{ p_meeting_id: 1, p_tags: [{ topic_id: 1, evidence_text: HOUSING_SENTENCE }] }],
+        args: [{ p_meeting_id: 1, p_tags: [{ topic_id: 1, evidence_text: HOUSING_SENTENCE }], p_agenda: DEMO_ITEMS }],
       },
     ]);
   });
@@ -101,7 +101,9 @@ describe('Save topic tags (SRS-401.4)', () => {
     const result = await classifyMeetingTopics(supabase, 1);
 
     expect(result).toEqual({ status: 'classified', tags: [] });
-    expect(saves()[0].args).toEqual([{ p_meeting_id: 1, p_tags: [] }]);
+    expect(saves()[0].args).toEqual([
+      { p_meeting_id: 1, p_tags: [], p_agenda: [{ agenda_item_id: 1, item_text: 'Approval of the minutes.' }] },
+    ]);
   });
 
   it.each([
@@ -125,6 +127,7 @@ describe('Save topic tags (SRS-401.4)', () => {
       ['eq', ['meeting_id', 1]],
       ['is', ['removed_at', null]],
       ['order', ['sort_order']],
+      ['order', ['agenda_item_id']],
     ]);
     expect(callsTo('topics').map(({ method, args }) => [method, args])).toEqual([
       ['select', ['topic_id, name']],
@@ -154,6 +157,37 @@ describe('Save topic tags (SRS-401.4)', () => {
       expect(saves()).toEqual([]);
     },
   );
+
+  it('sends the agenda exactly as read, including blank and empty text', async () => {
+    const items = [
+      { agenda_item_id: 4, item_text: null },
+      { agenda_item_id: 5, item_text: '  ' },
+      { agenda_item_id: 6, item_text: 'Housing update.' },
+    ];
+    results['agenda_items.select'] = { data: items, error: null };
+
+    await classifyMeetingTopics(supabase, 1);
+
+    expect(saves()[0].args).toEqual([
+      { p_meeting_id: 1, p_tags: [{ topic_id: 1, evidence_text: 'Housing update.' }], p_agenda: items },
+    ]);
+  });
+
+  it('reports that the agenda changed when the save is refused', async () => {
+    results['rpc.replace_meeting_topics'] = { data: false, error: null };
+
+    const result = await classifyMeetingTopics(supabase, 1);
+
+    expect(result).toEqual({ status: 'agenda_changed' });
+  });
+
+  it('returns an error when the save gives an unexpected answer', async () => {
+    results['rpc.replace_meeting_topics'] = { data: null, error: null };
+
+    const result = await classifyMeetingTopics(supabase, 1);
+
+    expect(result).toEqual({ status: 'error' });
+  });
 
   it('returns an error, without the database text, when saving fails', async () => {
     results['rpc.replace_meeting_topics'] = { data: null, error: dbError };
