@@ -8,7 +8,7 @@
 --   Part 4  avatars bucket     - public storage bucket for profile pictures
 --
 -- Part 2 is generated from database/schema.sql (the portable PostgreSQL script,
--- which is the source of truth). Only four things differ, and each is marked
+-- which is the source of truth). Only five things differ, and each is marked
 -- "Supabase:" inline:
 --
 --   1. is_valid_time_zone() is created as public.is_valid_time_zone() with a
@@ -22,6 +22,9 @@
 --   4. public.replace_followed_towns() replaces a user's followed towns in one
 --      transaction, so the API route can save them in a single call. Only the
 --      service role may run it.
+--   5. public.replace_meeting_topics() replaces a meeting's topic tags and marks
+--      the meeting Classified in one transaction. Only the service role may run
+--      it.
 -- =============================================================================
 -- =============================================================================
 -- PART 1. Profile table (used by app/api/profile)
@@ -40,7 +43,7 @@ add column if not exists avatar_url text;
 -- =============================================================================
 -- PART 2. Civic Radar schema
 -- Generated from database/schema.sql. See the notes at the top of this file for
--- the four Supabase-specific differences.
+-- the five Supabase-specific differences.
 --
 -- Conventions used throughout:
 --   * snake_case names; surrogate keys are <table_singular>_id.
@@ -121,6 +124,8 @@ drop table if exists user_accounts CASCADE;
 drop function IF exists public.is_valid_time_zone (TEXT) CASCADE;
 
 drop function IF exists public.replace_followed_towns (UUID, INTEGER[]) CASCADE;
+
+drop function IF exists public.replace_meeting_topics (BIGINT, JSONB) CASCADE;
 
 -- -----------------------------------------------------------------------------
 -- Helper function
@@ -505,6 +510,41 @@ create table meeting_topics (
   evidence_text TEXT not null check (btrim(evidence_text) <> ''), -- shown as the matching reason
   primary key (meeting_id, topic_id)
 );
+
+-- Function: replace_meeting_topics
+-- Reviewed by: EG (Erick Gonzalez)
+-- Supports: SRS-401.4
+-- Purpose: Replaces a meeting's topic tags with the given list and marks the
+--          meeting Classified, in one transaction. Locking the meeting row first
+--          makes overlapping runs for the same meeting happen one after the
+--          other. p_tags is a JSON array of {"topic_id", "evidence_text"}; an
+--          empty array removes every tag (agenda text that matches no topic).
+-- Supabase: not in database/schema.sql; called by lib/meetingTagging.ts.
+create function public.replace_meeting_topics (p_meeting_id BIGINT, p_tags JSONB) RETURNS void LANGUAGE plpgsql SECURITY INVOKER
+set
+  search_path = pg_catalog,
+  public -- Supabase: pin the search path (linter 0011)
+  as $$
+BEGIN
+  PERFORM 1 FROM meetings WHERE meeting_id = p_meeting_id FOR UPDATE;
+  IF NOT FOUND THEN
+    RAISE EXCEPTION 'Meeting % not found', p_meeting_id;
+  END IF;
+
+  DELETE FROM meeting_topics WHERE meeting_id = p_meeting_id;
+
+  INSERT INTO meeting_topics (meeting_id, topic_id, evidence_text)
+  SELECT p_meeting_id, (tag ->> 'topic_id')::INTEGER, tag ->> 'evidence_text'
+  FROM jsonb_array_elements(p_tags) AS tag;
+
+  UPDATE meetings SET topic_classification = 'Classified' WHERE meeting_id = p_meeting_id;
+END;
+$$;
+
+-- Supabase: only the API routes (service role) may run it, never the anon key.
+revoke all on function public.replace_meeting_topics (BIGINT, JSONB) from public, anon, authenticated;
+
+grant execute on function public.replace_meeting_topics (BIGINT, JSONB) to service_role;
 
 -- Table: user_followed_meetings
 -- Reviewed by: EG (Erick Gonzalez)
