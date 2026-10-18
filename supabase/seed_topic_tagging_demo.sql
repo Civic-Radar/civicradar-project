@@ -1,5 +1,5 @@
 -- =============================================================================
--- Demo data for SRS-401.4 (Topic tagging) — EG
+-- Demo data for SRS-401.4 (Topic tagging), EG
 -- Task 401.4-1 (issue #67)
 --
 -- Agenda retrieval is not built yet, so agenda_items is empty. This script
