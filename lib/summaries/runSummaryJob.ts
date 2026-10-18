@@ -1,6 +1,12 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { DocumentType } from '../sources/types';
-import { claimAttempt, insertFirstAttempt, type InProgressAttempt } from './attempts';
+import {
+  claimAttempt,
+  finishAttempt,
+  insertFirstAttempt,
+  type FinishResult,
+  type InProgressAttempt,
+} from './attempts';
 import { readStoredPdf, type StoredPdfResult } from './readStoredPdf';
 import { summarizeDocument, type SummaryResult } from './summarize';
 
@@ -17,8 +23,7 @@ export function missingSummarySettings(): string[] {
   return SUMMARY_SETTINGS.filter((name) => !process.env[name]?.trim());
 }
 
-export type SummaryJobOutcome =
-  | { kind: 'skipped'; documentId: number; reason: 'not_claimed' | 'not_pending' }
+type ProducedSummary =
   | { kind: 'succeeded'; attemptId: number; documentId: number; text: string; wordCount: number }
   | {
       kind: 'failed';
@@ -28,6 +33,12 @@ export type SummaryJobOutcome =
       reason: string;
       message?: string;
     };
+
+// finish is what finish_summary_attempt did with the result: 'closed' stored
+// it, anything else changed nothing.
+export type SummaryJobOutcome =
+  | { kind: 'skipped'; documentId: number; reason: 'not_claimed' | 'not_pending' }
+  | (ProducedSummary & { finish: FinishResult });
 
 interface SummaryDocumentRow {
   document_id: number;
@@ -78,8 +89,8 @@ async function produceSummary(
   attemptId: number,
   document: SummaryDocumentRow,
   townName: string,
-): Promise<SummaryJobOutcome> {
-  const failed = (stage: 'read' | 'summarize', reason: string, message?: string): SummaryJobOutcome => ({
+): Promise<ProducedSummary> {
+  const failed = (stage: 'read' | 'summarize', reason: string, message?: string): ProducedSummary => ({
     kind: 'failed',
     attemptId,
     documentId: document.document_id,
@@ -124,21 +135,30 @@ async function produceSummary(
 
 // Never logs the summary text or the file.
 function logOutcome(outcome: SummaryJobOutcome): void {
-  if (outcome.kind === 'succeeded') {
-    console.log(
-      `Summary job: document ${outcome.documentId} attempt ${outcome.attemptId} succeeded (${outcome.wordCount} words), not stored yet`,
-    );
-  } else if (outcome.kind === 'failed') {
-    const detail = outcome.message ? `: ${outcome.message}` : '';
-    console.error(
-      `Summary job: document ${outcome.documentId} attempt ${outcome.attemptId} failed at ${outcome.stage}: ${outcome.reason}${detail}`,
-    );
+  if (outcome.kind === 'skipped') {
+    return;
   }
+
+  const where = `Summary job: document ${outcome.documentId} attempt ${outcome.attemptId}`;
+  if (outcome.kind === 'succeeded') {
+    if (outcome.finish === 'closed') {
+      console.log(`${where} succeeded (${outcome.wordCount} words), stored, status Complete`);
+    } else {
+      console.error(`${where} succeeded (${outcome.wordCount} words), not stored: ${outcome.finish}`);
+    }
+    return;
+  }
+
+  const detail = outcome.message ? `: ${outcome.message}` : '';
+  const closed = outcome.finish === 'closed' ? 'attempt closed as Failed' : `attempt not closed: ${outcome.finish}`;
+  console.error(`${where} failed at ${outcome.stage}: ${outcome.reason}${detail}, ${closed}`);
 }
 
 // Claims an In progress attempt, loads its document and town name, reads the
-// stored PDF and summarizes it (SRS-204.1). A lost claim or a document that is
-// no longer Pending is skipped. A failed database read throws and leaves the
+// stored PDF, summarizes it and finishes the attempt (SRS-204.1): a summary is
+// stored and the attempt closed as Succeeded, any failure closes it as Failed
+// with no retry (SRS-210.1). A lost claim or a document that is no longer
+// Pending is skipped. A failed database read or finish throws and leaves the
 // attempt In progress for POST /api/summaries/process.
 export async function runSummaryJob(
   supabase: SupabaseClient,
@@ -155,7 +175,14 @@ export async function runSummaryJob(
   }
 
   const townName = await loadTownName(supabase, document.town_id);
-  const outcome = await produceSummary(supabase, attempt.attemptId, document, townName);
+  const produced = await produceSummary(supabase, attempt.attemptId, document, townName);
+  const finish = await finishAttempt(
+    supabase,
+    produced.attemptId,
+    produced.kind === 'succeeded' ? { outcome: 'Succeeded', summaryText: produced.text } : { outcome: 'Failed' },
+  );
+
+  const outcome: SummaryJobOutcome = { ...produced, finish };
   logOutcome(outcome);
   return outcome;
 }

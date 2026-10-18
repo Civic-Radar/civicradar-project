@@ -81,3 +81,43 @@ export async function findInProgressAttempts(supabase: SupabaseClient, limit: nu
 
   return (data ?? []).map(toAttempt);
 }
+
+// What finish_summary_attempt did: 'closed' changed rows, the others changed
+// nothing and say why.
+export type FinishResult = 'closed' | 'attempt_not_found' | 'attempt_not_in_progress' | 'document_not_pending';
+
+export type AttemptFinish = { outcome: 'Succeeded'; summaryText: string } | { outcome: 'Failed' };
+
+const FINISH_RESULTS: readonly FinishResult[] = [
+  'closed',
+  'attempt_not_found',
+  'attempt_not_in_progress',
+  'document_not_pending',
+];
+
+// Closes an attempt through the finish_summary_attempt SQL function, in one
+// transaction (SRS-204.1). Succeeded also stores the text and sets the document
+// Complete. Failed only closes the attempt (no retry, SRS-210.1). Throws on any
+// rpc error, never with error.details, which can hold the summary text.
+export async function finishAttempt(
+  supabase: SupabaseClient,
+  attemptId: number,
+  finish: AttemptFinish,
+): Promise<FinishResult> {
+  const { data, error } = await supabase.rpc('finish_summary_attempt', {
+    p_attempt_id: attemptId,
+    p_outcome: finish.outcome,
+    p_summary_text: finish.outcome === 'Succeeded' ? finish.summaryText : null,
+  });
+
+  if (error) {
+    throw new Error(
+      `Could not finish summary attempt ${attemptId} as ${finish.outcome} (${error.code}): ${error.message}`,
+    );
+  }
+  if (!FINISH_RESULTS.includes(data)) {
+    throw new Error(`Could not finish summary attempt ${attemptId} as ${finish.outcome}: unexpected result`);
+  }
+
+  return data;
+}
