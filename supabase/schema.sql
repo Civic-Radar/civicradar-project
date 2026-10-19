@@ -8,7 +8,7 @@
 --   Part 4  avatars bucket     - public storage bucket for profile pictures
 --
 -- Part 2 is generated from database/schema.sql (the portable PostgreSQL script,
--- which is the source of truth). Only four things differ, and each is marked
+-- which is the source of truth). Only five things differ, and each is marked
 -- "Supabase:" inline:
 --
 --   1. is_valid_time_zone() is created as public.is_valid_time_zone() with a
@@ -22,6 +22,9 @@
 --   4. public.replace_followed_towns() replaces a user's followed towns in one
 --      transaction, so the API route can save them in a single call. Only the
 --      service role may run it.
+--   5. public.match_meetings_for_user() returns the meetings in a user's
+--      followed towns that have one of the user's followed topic tags
+--      (SRS-401.1). Only the service role may run it.
 -- =============================================================================
 -- =============================================================================
 -- PART 1. Profile table (used by app/api/profile)
@@ -597,6 +600,38 @@ create table meeting_topics (
   evidence_text TEXT not null check (btrim(evidence_text) <> ''), -- shown as the matching reason
   primary key (meeting_id, topic_id)
 );
+
+-- Function: match_meetings_for_user
+-- Reviewed by: EG (Erick Gonzalez)
+-- Supports: SRS-401.1
+-- Purpose: Returns the meetings in a user's followed towns that have at least
+--          one of the user's followed topic tags. EXISTS checks the tags, so a
+--          meeting with several followed topics is returned once. A user with
+--          no followed towns or no followed topics gets no meetings.
+-- Supabase: not in database/schema.sql; called by the matching API route.
+create function public.match_meetings_for_user (p_user_id UUID) RETURNS SETOF meetings LANGUAGE sql STABLE SECURITY INVOKER
+set
+  search_path = pg_catalog,
+  public -- Supabase: pin the search path (linter 0011)
+  as $$
+  SELECT m.*
+  FROM meetings m
+  JOIN user_followed_towns uft
+    ON uft.town_id = m.town_id AND uft.user_id = p_user_id
+  WHERE EXISTS (
+    SELECT 1
+    FROM meeting_topics mt
+    JOIN user_followed_topics uftp
+      ON uftp.topic_id = mt.topic_id AND uftp.user_id = p_user_id
+    WHERE mt.meeting_id = m.meeting_id
+  )
+  ORDER BY m.start_at;
+$$;
+
+-- Supabase: only the API routes (service role) may run it, never the anon key.
+revoke all on function public.match_meetings_for_user (UUID) from public, anon, authenticated;
+
+grant execute on function public.match_meetings_for_user (UUID) to service_role;
 
 -- Table: user_followed_meetings
 -- Reviewed by: EG (Erick Gonzalez)
