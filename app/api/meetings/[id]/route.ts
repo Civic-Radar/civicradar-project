@@ -4,7 +4,8 @@ import { getSupabaseClient } from '../../../../lib/supabase';
 export const dynamic = 'force-dynamic';
 
 // Returns one stored meeting with its town and governing body names
-// (SRS-502.2, SRS-502.3, SRS-502.9), and its linked documents (SRS-220.7).
+// (SRS-502.2, SRS-502.3, SRS-502.9), its linked documents (SRS-220.7, SRS-502.4),
+// and whether the town's source provides agenda items and recordings (SRS-502.8).
 // No access control yet: any caller can read stored meetings.
 export async function GET(_request: Request, { params }: { params: { id: string } }) {
   const meetingId = Number(params.id);
@@ -40,7 +41,7 @@ export async function GET(_request: Request, { params }: { params: { id: string 
 
   const { data: town, error: townError } = await supabase
     .from('towns')
-    .select('name, meeting_time_zone')
+    .select('name, meeting_time_zone, provides_agenda_items, provides_recordings')
     .eq('town_id', meeting.town_id)
     .maybeSingle();
 
@@ -84,6 +85,9 @@ export async function GET(_request: Request, { params }: { params: { id: string 
         town_name: town?.name ?? null,
         meeting_time_zone: town?.meeting_time_zone ?? null,
         body_name: bodyName,
+        // Whether the town's source provides these (SRS-502.8).
+        provides_agenda_items: town?.provides_agenda_items ?? false,
+        provides_recordings: town?.provides_recordings ?? false,
       },
       documents: documents ?? [],
     },

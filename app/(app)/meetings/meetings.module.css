@@ -130,3 +130,43 @@
   color: rgb(var(--color-fg-faint)); /* fg-faint = slate-500 */
   font-style: italic;
 }
+
+.subheading {
+  margin: 2rem 0 0;
+  font-size: 1.25rem;
+  font-weight: 600;
+}
+
+.documentList {
+  margin: 1rem 0 0;
+  padding: 0;
+  list-style: none;
+  border: 1px solid rgb(var(--color-raised)); /* raised = slate-800 */
+  border-radius: 0.75rem;
+}
+
+.documentItem {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem 1rem;
+  padding: 0.75rem 1rem;
+  font-size: 0.875rem;
+}
+
+.documentItem + .documentItem {
+  border-top: 1px solid rgb(var(--color-raised)); /* raised = slate-800 */
+}
+
+.documentTitle {
+  margin: 0;
+  font-weight: 600;
+  color: rgb(var(--color-fg)); /* fg = slate-100 */
+}
+
+.documentType {
+  margin: 0.25rem 0 0;
+  font-size: 0.75rem;
+  color: rgb(var(--color-fg-subtle)); /* fg-subtle = slate-400 */
+}
