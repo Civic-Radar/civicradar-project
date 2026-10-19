@@ -165,8 +165,75 @@
   color: rgb(var(--color-fg)); /* fg = slate-100 */
 }
 
-.documentType {
-  margin: 0.25rem 0 0;
+.documentInfo {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem 0.75rem;
+  min-width: 0;
+}
+
+/* Document type labels, one color per type. */
+.badge {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 0.375rem;
+  padding: 0.125rem 0.5rem;
   font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.badgeAgenda {
+  background: rgb(var(--color-accent-wash)); /* accent-wash = emerald-900 */
+  color: rgb(var(--color-accent-soft)); /* accent-soft = emerald-200 */
+}
+
+.badgePacket {
+  background: rgb(var(--color-info-vivid) / 0.2); /* info-vivid/20 = sky-500/20 */
+  color: rgb(var(--color-info-soft)); /* info-soft = sky-200 */
+}
+
+.badgeMinutes {
+  background: rgb(var(--color-warning-vivid) / 0.2); /* warning-vivid/20 = amber-500/20 */
+  color: rgb(var(--color-warning-soft)); /* warning-soft = amber-200 */
+}
+
+.badgeOther {
+  background: rgb(var(--color-raised)); /* raised = slate-800 */
+  color: rgb(var(--color-fg-muted)); /* fg-muted = slate-300 */
+}
+
+/* Meeting details as label/value rows that wrap at phone width. */
+.details {
+  margin: 1.5rem 0 0;
+  border: 1px solid rgb(var(--color-raised)); /* raised = slate-800 */
+  border-radius: 0.75rem;
+  font-size: 0.875rem;
+}
+
+.detailRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem 1.5rem;
+  padding: 0.75rem 1rem;
+}
+
+.detailRow + .detailRow {
+  border-top: 1px solid rgb(var(--color-raised)); /* raised = slate-800 */
+}
+
+.detailLabel {
+  flex: 0 1 13rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
   color: rgb(var(--color-fg-subtle)); /* fg-subtle = slate-400 */
+}
+
+.detailValue {
+  flex: 1 1 16rem;
+  min-width: 0;
+  margin: 0;
+  color: rgb(var(--color-fg-muted)); /* fg-muted = slate-300 */
 }
