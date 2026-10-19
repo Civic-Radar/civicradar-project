@@ -607,7 +607,8 @@ create table meeting_topics (
 -- Purpose: Returns the meetings in a user's followed towns that have at least
 --          one of the user's followed topic tags. EXISTS checks the tags, so a
 --          meeting with several followed topics is returned once. A user with
---          no followed towns or no followed topics gets no meetings.
+--          no followed towns or no followed topics gets no meetings. Removed
+--          towns and topics never match, even if a follow row still exists.
 -- Supabase: not in database/schema.sql; called by the matching API route.
 create function public.match_meetings_for_user (p_user_id UUID) RETURNS SETOF meetings LANGUAGE sql STABLE SECURITY INVOKER
 set
@@ -618,11 +619,15 @@ set
   FROM meetings m
   JOIN user_followed_towns uft
     ON uft.town_id = m.town_id AND uft.user_id = p_user_id
+  JOIN towns t
+    ON t.town_id = m.town_id AND t.removed_at IS NULL
   WHERE EXISTS (
     SELECT 1
     FROM meeting_topics mt
     JOIN user_followed_topics uftp
       ON uftp.topic_id = mt.topic_id AND uftp.user_id = p_user_id
+    JOIN topics tp
+      ON tp.topic_id = mt.topic_id AND tp.removed_at IS NULL
     WHERE mt.meeting_id = m.meeting_id
   )
   ORDER BY m.start_at;
