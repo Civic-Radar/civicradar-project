@@ -130,3 +130,52 @@
   color: rgb(var(--color-fg-faint)); /* fg-faint = slate-500 */
   font-style: italic;
 }
+
+/* Unfollow confirmation dialog (SRS-404.2), opened with showModal(). */
+.dialog {
+  border: 1px solid rgb(var(--color-accent-strong)); /* accent-strong = emerald-400 */
+  border-radius: 1.5rem;
+  background: rgb(var(--color-card)); /* card = slate-900 */
+  padding: 0;
+  color: rgb(var(--color-fg)); /* fg = slate-100 */
+  width: min(24rem, calc(100vw - 2rem));
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+}
+
+.dialog::backdrop {
+  background: rgba(2, 6, 23, 0.7); /* slate-950/70 */
+}
+
+.dialogBody {
+  padding: 1.5rem;
+}
+
+.dialogTitle {
+  margin: 0;
+  font-size: 1.125rem;
+  font-weight: 600;
+  color: rgb(var(--color-accent)); /* accent = emerald-300 */
+}
+
+.dialogActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+
+.secondaryButton {
+  margin-top: 1.5rem;
+  border: 1px solid rgb(var(--color-line)); /* line = slate-700 */
+  border-radius: 0.75rem;
+  background: transparent;
+  padding: 0.75rem 1rem;
+  font-family: inherit;
+  font-size: 1rem;
+  font-weight: 600;
+  color: rgb(var(--color-fg)); /* fg = slate-100 */
+  cursor: pointer;
+}
+
+.secondaryButton:hover {
+  border-color: rgb(var(--color-accent-strong)); /* accent-strong = emerald-400 */
+}
