@@ -1,4 +1,5 @@
 
+import Link from "next/link";
 import { getSupabaseClient } from "../../../lib/supabase";
 
 export const dynamic = "force-dynamic";
@@ -124,9 +125,11 @@ export default async function DashboardPage() {
                 town?.meeting_time_zone || "America/New_York";
 
               return (
-                <div
+                // SRS-501.3: selecting a meeting opens its details page.
+                <Link
                   key={meeting.meeting_id}
-                  className="rounded-xl border border-line bg-card p-6"
+                  href={`/meetings/${meeting.meeting_id}`}
+                  className="block rounded-xl border border-line bg-card p-6 transition-colors hover:border-sidebar-icon hover:bg-raised focus:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-icon"
                 >
                   <h3 className="text-xl font-semibold">
                     {meeting.title}
@@ -145,7 +148,7 @@ export default async function DashboardPage() {
                         )
                       : "Not available"}
                   </p>
-                </div>
+                </Link>
               );
             })}
           </div>

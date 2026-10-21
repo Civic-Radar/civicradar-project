@@ -2,6 +2,12 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 type StoredRow = Record<string, unknown>;
 
+// Documents linked to meeting 42, as SRS-502.4's acceptance test describes for meeting 1192.
+const STORED_DOCUMENTS: StoredRow[] = [
+  { document_id: 1, title: 'Agenda', document_type: 'Agenda', source_url: 'https://example.com/agenda.pdf' },
+  { document_id: 2, title: 'Agenda Packet', document_type: 'Packet', source_url: 'https://example.com/packet.pdf' },
+];
+
 const STORED_MEETING: StoredRow = {
   meeting_id: 42,
   town_id: 1,
@@ -20,18 +26,26 @@ const STORED_MEETING: StoredRow = {
 function createFakeSupabase() {
   const tables: Record<string, { idColumn: string; rows: StoredRow[] }> = {
     meetings: { idColumn: 'meeting_id', rows: [STORED_MEETING] },
-    towns: { idColumn: 'town_id', rows: [{ town_id: 1, name: 'Salem', meeting_time_zone: 'America/New_York' }] },
+    towns: { idColumn: 'town_id', rows: [
+        {
+          town_id: 1,
+          name: 'Salem',
+          meeting_time_zone: 'America/New_York',
+          provides_agenda_items: false,
+          provides_recordings: false,
+        },
+      ], },
     governing_bodies: { idColumn: 'body_id', rows: [{ body_id: 7, name: 'City Council' }] },
   };
 
   return {
     from(table: string) {
-      // The meeting's linked documents (SRS-220.7); none in these tests.
+      // The meeting's linked documents (SRS-220.7): meeting 42 has two, others none.
       if (table === 'documents') {
         return {
           select: () => ({
-            eq: () => ({
-              order: async () => ({ data: [], error: null }),
+            eq: (_column: string, meetingId: unknown) => ({
+              order: async () => ({ data: meetingId === 42 ? STORED_DOCUMENTS : [], error: null }),
             }),
           }),
         };
@@ -95,7 +109,23 @@ describe('Meeting details API (SRS-502.2)', () => {
     });
   });
 
-  it('returns 404 for an unknown meeting id', async () => {
+  it('returns every document linked to the meeting (SRS-502.4)', async () => {
+    const response = await getMeeting('42');
+
+    expect(response.status).toBe(200);
+    const { documents } = await response.json();
+    expect(documents.map((document: StoredRow) => document.title)).toEqual(['Agenda', 'Agenda Packet']);
+  });
+
+  it("reports that Salem's source provides no agenda items or recordings (SRS-502.8)", async () => {
+    const response = await getMeeting('42');
+
+    const { meeting } = await response.json();
+    expect(meeting.provides_agenda_items).toBe(false);
+    expect(meeting.provides_recordings).toBe(false);
+  });
+
+    it('returns 404 for an unknown meeting id', async () => {
     const response = await getMeeting('999');
 
     expect(response.status).toBe(404);
