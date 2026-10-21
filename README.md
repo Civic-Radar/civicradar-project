@@ -1,6 +1,6 @@
-# SSU Starter App V2
+# Civic Radar
 
-Professor Brockenbrough's Next.js starter with Tailwind CSS, Supabase auth, and a user profile system.
+Civic Radar helps residents follow local government meetings and published documents for the towns and topics they care about. Built with Next.js, Tailwind CSS and Supabase, starting from Professor Brockenbrough's course starter.
 
 ## Prerequisites
 
