@@ -5,6 +5,7 @@ export const dynamic = 'force-dynamic';
 
 const FOLLOW_ERROR = 'This meeting could not be followed. Please try again.';
 const LOAD_ERROR = 'Whether you follow this meeting could not be loaded. Please try again.';
+const UNFOLLOW_ERROR = 'This meeting could not be unfollowed. Please try again.';
 
 function parseMeetingId(value: string): number | null {
   const id = Number(value);
@@ -76,4 +77,28 @@ export async function PUT(request: Request, { params }: { params: { meetingId: s
   if (followError) return Response.json({ error: FOLLOW_ERROR }, { status: 500 });
 
   return Response.json({ meeting_id: meetingId, followed: true }, { status: 200 });
+}
+
+// Unfollows one meeting for the signed-in resident (SRS-404.2). Only that
+// resident's row for the meeting is removed; unfollowing a meeting that is not
+// followed (or does not exist) removes nothing and still succeeds.
+export async function DELETE(request: Request, { params }: { params: { meetingId: string } }) {
+  const token = getToken(request);
+  if (!token) return Response.json({ error: 'Unauthorized' }, { status: 401 });
+
+  const { user, supabase, configError } = await getAuthenticatedUser(token);
+  if (configError) return Response.json({ error: 'Supabase credentials are not configured.' }, { status: 500 });
+  if (!user) return Response.json({ error: 'Invalid or expired token.' }, { status: 401 });
+
+  const meetingId = parseMeetingId(params.meetingId);
+  if (meetingId === null) return Response.json({ error: 'Invalid meeting id.' }, { status: 400 });
+
+  const { error } = await supabase!
+    .from('user_followed_meetings')
+    .delete()
+    .eq('user_id', user.id)
+    .eq('meeting_id', meetingId);
+  if (error) return Response.json({ error: UNFOLLOW_ERROR }, { status: 500 });
+
+  return Response.json({ meeting_id: meetingId, followed: false }, { status: 200 });
 }
