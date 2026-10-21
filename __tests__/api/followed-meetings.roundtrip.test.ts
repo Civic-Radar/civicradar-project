@@ -74,6 +74,15 @@ vi.mock('../../lib/supabase', () => {
       return { data: null, error: null };
     }
 
+    // Same outcome as DELETE ... WHERE user_id = $1 AND meeting_id = $2: removes
+    // the matching row, and matching no row is not an error.
+    if (shape === 'user_followed_meetings.delete(user_id,meeting_id)') {
+      store.follows = store.follows.filter(
+        (follow) => !(follow.user_id === value('user_id') && follow.meeting_id === value('meeting_id')),
+      );
+      return { data: null, error: null };
+    }
+
     return unsupported(table, query);
   }
 
@@ -84,6 +93,7 @@ vi.mock('../../lib/supabase', () => {
       upsert(payload: unknown, options: unknown) {
         query.operation = 'upsert'; query.payload = payload; query.options = options; return builder;
       },
+      delete() { query.operation = 'delete'; return builder; },
       eq(column: unknown, value: unknown) { query.filters.push({ column, value }); return builder; },
       maybeSingle() { query.single = true; return builder; },
       then(resolve: (value: unknown) => unknown, reject: (reason: unknown) => unknown) {
@@ -108,7 +118,7 @@ vi.mock('../../lib/supabase', () => {
   };
 });
 
-import { GET, PUT } from '../../app/api/followed-meetings/[meetingId]/route';
+import { DELETE, GET, PUT } from '../../app/api/followed-meetings/[meetingId]/route';
 
 const FIRST_SIGN_IN = 'token-resident-1-first-sign-in';
 const SECOND_SIGN_IN = 'token-resident-1-second-sign-in';
@@ -123,6 +133,10 @@ function request(method: string, token: string, meetingId: number) {
 
 async function follow(token: string, meetingId: number) {
   return PUT(request('PUT', token, meetingId), { params: { meetingId: String(meetingId) } });
+}
+
+async function unfollow(token: string, meetingId: number) {
+  return DELETE(request('DELETE', token, meetingId), { params: { meetingId: String(meetingId) } });
 }
 
 // A fresh request with nothing carried over but the stored rows, which is what
@@ -182,5 +196,50 @@ describe('Follow a meeting round trip (SRS-404.1)', () => {
 
     expect(response.status).toBe(404);
     expect(store.follows).toEqual([]);
+  });
+});
+
+describe('Unfollow a meeting round trip (SRS-404.2)', () => {
+  it('leaves meeting 1 not followed after signing back in, and keeps other followed meetings', async () => {
+    await follow(FIRST_SIGN_IN, 1);
+    await follow(FIRST_SIGN_IN, 9);
+
+    expect((await unfollow(FIRST_SIGN_IN, 1)).status).toBe(200);
+
+    expect(await isFollowed(SECOND_SIGN_IN, 1)).toBe(false);
+    expect(await isFollowed(SECOND_SIGN_IN, 9)).toBe(true);
+    expect(store.follows).toEqual([{ user_id: 'resident-1', meeting_id: 9 }]);
+  });
+
+  it('removes only the exact meeting id, not a meeting with the same title', async () => {
+    await follow(FIRST_SIGN_IN, 1);
+    await follow(FIRST_SIGN_IN, 5);
+
+    await unfollow(FIRST_SIGN_IN, 1);
+
+    expect(await isFollowed(SECOND_SIGN_IN, 1)).toBe(false);
+    expect(await isFollowed(SECOND_SIGN_IN, 5)).toBe(true);
+  });
+
+  it("does not remove another resident's follow of the same meeting", async () => {
+    await follow(FIRST_SIGN_IN, 1);
+    await follow(RESIDENT_2, 1);
+
+    await unfollow(FIRST_SIGN_IN, 1);
+
+    expect(await isFollowed(SECOND_SIGN_IN, 1)).toBe(false);
+    expect(await isFollowed(RESIDENT_2, 1)).toBe(true);
+  });
+
+  it('is safe to repeat and to use on a meeting that is not followed', async () => {
+    await follow(FIRST_SIGN_IN, 9);
+
+    for (const meetingId of [1, 1, 5]) {
+      const response = await unfollow(FIRST_SIGN_IN, meetingId);
+      expect(response.status).toBe(200);
+      expect(await response.json()).toEqual({ meeting_id: meetingId, followed: false });
+    }
+
+    expect(store.follows).toEqual([{ user_id: 'resident-1', meeting_id: 9 }]);
   });
 });
