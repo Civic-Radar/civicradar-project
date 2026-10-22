@@ -23,7 +23,9 @@ export default function DocumentsPage() {
         ) : (
           <ul className="mt-6 space-y-3">
             {state.documents.map((doc) => (
-              <li key={doc.document_id} className="break-words">{doc.title}</li>
+              <li key={doc.document_id} className="break-words">
+                <Link href={`/documents/${doc.document_id}`} className="text-accent hover:underline">{doc.title}</Link>
+              </li>
             ))}
           </ul>
         )}
