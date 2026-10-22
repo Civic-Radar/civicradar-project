@@ -8,30 +8,30 @@
 :root {
   color-scheme: dark;
 
-  /* Neutrals */
-  --color-surface: 2 6 23; /* slate-950 */
-  --color-card: 15 23 42; /* slate-900 */
-  --color-raised: 30 41 59; /* slate-800 */
-  --color-line: 51 65 85; /* slate-700 */
-  --color-line-strong: 71 85 105; /* slate-600 */
-  --color-fg-faint: 100 116 139; /* slate-500 */
-  --color-fg-subtle: 148 163 184; /* slate-400 */
-  --color-fg-muted: 203 213 225; /* slate-300 */
-  --color-fg-soft: 226 232 240; /* slate-200 */
-  --color-fg: 241 245 249; /* slate-100 */
-  --color-backdrop: 17 24 39; /* gray-900 */
+  /* Neutrals (Salem: plum-tinted darks) */
+  --color-surface: 13 8 20; /* near-black plum */
+  --color-card: 24 16 36; /* dark aubergine */
+  --color-raised: 39 27 56; /* aubergine */
+  --color-line: 62 46 84; /* muted purple */
+  --color-line-strong: 88 68 114; /* dusty purple */
+  --color-fg-faint: 128 112 150; /* purple-gray */
+  --color-fg-subtle: 168 154 188; /* light purple-gray */
+  --color-fg-muted: 210 200 224; /* pale lavender */
+  --color-fg-soft: 230 223 240; /* lavender white */
+  --color-fg: 244 240 250; /* lavender white */
+  --color-backdrop: 20 12 30; /* midnight plum */
 
-  /* Accent */
-  --color-accent-soft: 167 243 208; /* emerald-200 */
-  --color-accent: 110 231 183; /* emerald-300 */
-  --color-accent-strong: 52 211 153; /* emerald-400 */
-  --color-accent-vivid: 16 185 129; /* emerald-500 */
-  --color-accent-line: 6 95 70; /* emerald-800 */
-  --color-accent-wash: 6 78 59; /* emerald-900 */
+  /* Accent (Salem: pumpkin orange) */
+  --color-accent-soft: 254 215 170; /* orange-200 */
+  --color-accent: 253 186 116; /* orange-300 */
+  --color-accent-strong: 251 146 60; /* orange-400 */
+  --color-accent-vivid: 249 115 22; /* orange-500 */
+  --color-accent-line: 154 52 18; /* orange-800 */
+  --color-accent-wash: 124 45 18; /* orange-900 */
 
   /* Sidebar */
-  --color-sidebar-icon: 45 212 191; /* teal-400 */
-  --color-sidebar-active: 15 118 110; /* teal-700 */
+  --color-sidebar-icon: 167 139 250; /* violet-400 */
+  --color-sidebar-active: 109 40 217; /* violet-700 */
 
   /* Status */
   --color-danger-soft: 254 202 202; /* red-200 */
