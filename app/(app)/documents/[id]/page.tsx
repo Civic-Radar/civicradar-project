@@ -1,9 +1,10 @@
 'use client';
 
 import Link from 'next/link';
+import DocumentSummary from './DocumentSummary';
 import { useDocument } from './useDocument';
 
-// Document detail page (SRS-203.1). Identification only this sprint.
+// Document detail page. Identification and summary (SRS-203.1, SRS-204.2).
 export default function DocumentDetailPage({ params }: { params: { id: string } }) {
   const state = useDocument(params.id);
 
@@ -25,7 +26,10 @@ export default function DocumentDetailPage({ params }: { params: { id: string } 
         ) : state.status === 'loadFailed' ? (
           <p role="alert" className="text-danger">This document could not be loaded. Please try again.</p>
         ) : (
-          <h1 className="break-words text-3xl font-semibold">{state.document.title}</h1>
+          <>
+            <h1 className="break-words text-3xl font-semibold">{state.document.title}</h1>
+            <DocumentSummary text={state.document.summary_text} />
+          </>
         )}
       </div>
     </main>

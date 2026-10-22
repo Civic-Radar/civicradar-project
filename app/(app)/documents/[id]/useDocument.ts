@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 
-// Fields returned by GET /api/documents/[id] (SRS-203.1).
+// Fields returned by GET /api/documents/[id] (SRS-203.1). The summary fields
+// (SRS-204.2) are null unless the document's summary is Complete.
 export type DocumentIdentification = {
   document_id: number;
   meeting_id: number;
@@ -9,6 +10,8 @@ export type DocumentIdentification = {
   document_type: string;
   source_url: string;
   retrieved_at: string;
+  summary_text: string | null;
+  summary_generated_at: string | null;
 };
 
 export type DocumentState =
