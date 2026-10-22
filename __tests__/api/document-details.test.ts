@@ -45,7 +45,8 @@ vi.mock('../../lib/supabase', () => {
 import { GET } from '../../app/api/documents/[id]/route';
 import { getSupabaseClient } from '../../lib/supabase';
 
-const SELECTED_COLUMNS = 'document_id, meeting_id, town_id, title, document_type, source_url, retrieved_at';
+const SELECTED_COLUMNS =
+  'document_id, meeting_id, town_id, title, document_type, source_url, retrieved_at, summary_status, summary_text, summary_generated_at';
 const LOAD_ERROR = 'This document could not be loaded. Please try again.';
 const dbError = { message: 'relation "documents" does not exist (42P01)' };
 
@@ -58,6 +59,8 @@ const DOCUMENT = {
   source_url: 'https://example.org/files/7.pdf',
   retrieved_at: '2026-10-01T12:00:00+00:00',
 };
+const PENDING_ROW = { ...DOCUMENT, summary_status: 'Pending', summary_text: null, summary_generated_at: null };
+const PENDING_RESPONSE = { ...DOCUMENT, summary_text: null, summary_generated_at: null };
 
 function open(id: string, token: string | null = 'valid-token', headers?: Record<string, string>) {
   const request = new Request(`http://localhost/api/documents/${id}`, {
@@ -84,7 +87,7 @@ beforeEach(() => {
   vi.mocked(getSupabaseClient).mockClear();
   db.calls.length = 0;
   db.results = {
-    'documents.select': { data: DOCUMENT, error: null },
+    'documents.select': { data: PENDING_ROW, error: null },
   };
 });
 
@@ -98,18 +101,26 @@ describe('GET /api/documents/[id] (SRS-203.1)', () => {
     const body = await response.json();
 
     expect(response.status).toBe(200);
-    expect(body).toEqual({ document: DOCUMENT });
+    expect(body).toEqual({ document: PENDING_RESPONSE });
     expect(Object.keys(body)).toEqual(['document']);
-    expect(Object.keys(body.document).sort()).toEqual(
-      ['document_id', 'document_type', 'meeting_id', 'retrieved_at', 'source_url', 'title', 'town_id'],
-    );
+    expect(Object.keys(body.document).sort()).toEqual([
+      'document_id',
+      'document_type',
+      'meeting_id',
+      'retrieved_at',
+      'source_url',
+      'summary_generated_at',
+      'summary_text',
+      'title',
+      'town_id',
+    ]);
     expect(getUserMock()).toHaveBeenCalledWith('valid-token');
   });
 
   it('reads only the identification columns of one document by numeric id', async () => {
     await open('7');
 
-    // The route returns the row as is, so the select keeps out summary and storage fields.
+    // The select keeps out storage fields; summary_status is read but not returned.
     expect(callsTo('documents', 'select')).toEqual([
       { table: 'documents', method: 'select', args: [SELECTED_COLUMNS] },
     ]);
@@ -124,7 +135,7 @@ describe('GET /api/documents/[id] (SRS-203.1)', () => {
     const response = await open('007');
 
     expect(response.status).toBe(200);
-    expect(await response.json()).toEqual({ document: DOCUMENT });
+    expect(await response.json()).toEqual({ document: PENDING_RESPONSE });
     expect(callsTo('documents', 'eq')[0].args).toEqual(['document_id', 7]);
   });
 
