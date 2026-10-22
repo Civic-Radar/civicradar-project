@@ -12,5 +12,10 @@ export function getSupabaseClient() {
     auth: {
       persistSession: false,
     },
+    // Next.js caches fetch() calls made on the server, even in dynamic routes.
+    // Always read the current rows so a change shows up on the next request.
+    global: {
+      fetch: (input, init) => fetch(input, { ...init, cache: 'no-store' }),
+    },
   });
 }
