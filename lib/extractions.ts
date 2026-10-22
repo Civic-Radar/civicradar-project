@@ -3,6 +3,13 @@
 // SRS-301.6 — exact wording required by the SRS.
 export const UNSUPPORTED_FORMAT_MESSAGE = "This file can't be extracted. Only PDF documents are supported.";
 
+// SRS-303.2 — where the source link on an extraction result goes: the source
+// document's detail page (SRS-203.1). null when the extraction has no source
+// document any more (documents.document_id was removed), so nothing is linked.
+export function sourceDocumentHref(extraction: { document_id: number | null }): string | null {
+  return extraction.document_id === null ? null : `/documents/${extraction.document_id}`;
+}
+
 // SRS-310.2 — returned (with HTTP 403) when the signed-in user doesn't own the extraction.
 export const ACCESS_DENIED_MESSAGE = "You don't have access to this extraction.";
 
