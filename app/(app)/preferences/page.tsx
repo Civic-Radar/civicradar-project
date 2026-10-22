@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import TownPreferences from './TownPreferences';
+import TopicPreferences from './TopicPreferences';
 
 export default function PreferencesPage() {
   return (
@@ -9,6 +10,7 @@ export default function PreferencesPage() {
         <h1 className="mt-4 text-3xl font-semibold">Preferences</h1>
 
         <TownPreferences />
+        <TopicPreferences />
 
         <p className="mt-8 text-sm text-fg-muted">
           Back to <Link href="/" className="text-accent hover:underline">home</Link>
