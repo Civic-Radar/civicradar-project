@@ -5,9 +5,12 @@
 // GET /api/extractions/[id] -> one of the signed-in user's extractions, with its status,
 // plus the officials it found once it is Completed (SRS-302.1).
 //
-// Only the owner's extractions are returned; anything else is "not found".
-// (SRS-310.2 will turn that into an explicit access-denied response.)
+// SRS-310.2, AO, Ownership check: only the owner gets the extraction.
+//   200  the signed-in user's own extraction
+//   403  the extraction belongs to someone else (access denied; nothing about it is returned)
+//   404  no extraction with that id
 import { getSupabaseClient } from '../../../../lib/supabase';
+import { ACCESS_DENIED_MESSAGE } from '../../../../lib/extractions';
 
 // Always read the current row so a status change shows up on the next request.
 export const dynamic = 'force-dynamic';
@@ -39,11 +42,15 @@ export async function GET(request: Request, { params }: { params: { id: string }
     .from('extractions')
     .select(DETAIL_COLUMNS)
     .eq('extraction_id', extractionId)
-    .eq('user_id', user.id)
     .maybeSingle();
 
   if (error) return Response.json({ error: 'Could not load the extraction.' }, { status: 500 });
   if (!extraction) return Response.json({ error: 'Extraction not found.' }, { status: 404 });
+
+  // SRS-310.2: someone else's extraction is denied, with none of its details.
+  if (extraction.user_id !== user.id) {
+    return Response.json({ error: ACCESS_DENIED_MESSAGE }, { status: 403 });
+  }
 
   // SRS-302.1: a completed extraction also returns the officials it found.
   let officials: unknown[] = [];

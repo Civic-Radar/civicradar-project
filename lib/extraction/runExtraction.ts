@@ -30,6 +30,7 @@ const defaultDeps: RunDeps = {
 export type RunResult =
   | { outcome: 'ran'; status: 'Completed' | 'Failed'; officialsFound: number }
   | { outcome: 'not_found' }
+  | { outcome: 'denied' } // SRS-310.2: it belongs to another user
   | { outcome: 'not_queued'; status: string };
 
 const EXTRACTION_COLUMNS = 'extraction_id, user_id, document_id, status';
@@ -61,13 +62,15 @@ export async function runExtraction(
   if (claimError) throw new Error('Could not start the extraction.');
 
   if (!claimed) {
+    // Nothing was claimed: say why, without running anything.
     const { data: existing } = await supabase
       .from('extractions')
       .select(EXTRACTION_COLUMNS)
       .eq('extraction_id', extractionId)
-      .eq('user_id', userId)
       .maybeSingle();
-    return existing ? { outcome: 'not_queued', status: existing.status } : { outcome: 'not_found' };
+    if (!existing) return { outcome: 'not_found' };
+    if (existing.user_id !== userId) return { outcome: 'denied' };
+    return { outcome: 'not_queued', status: existing.status };
   }
 
   try {
