@@ -102,8 +102,11 @@ function DocumentList({ documents }: { documents: MeetingDocument[] }) {
         <li key={document.document_id} className={styles.documentItem}>
           <div className={styles.documentInfo}>
             {document.document_type ? <DocumentTypeBadge type={document.document_type} /> : null}
+            {/* The title opens the document's detail page (SRS-203.1); "Open document" opens the source copy. */}
             <p className={styles.documentTitle}>
-              <TextOrNotProvided value={document.title} />
+              <Link href={`/documents/${document.document_id}`} className={styles.documentTitleLink}>
+                <TextOrNotProvided value={document.title} />
+              </Link>
             </p>
           </div>
           {document.source_url ? (

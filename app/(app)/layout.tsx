@@ -2,7 +2,8 @@ import Sidebar from "../components/Sidebar";
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   return (
-    <div className="flex min-h-screen bg-surface">
+    // Stacked (top bar above the page) below 768px; sidebar beside the page from 768px up.
+    <div className="flex min-h-screen flex-col bg-surface md:flex-row">
       <Sidebar />
 
       <div className="min-w-0 flex-1">{children}</div>

@@ -286,3 +286,13 @@
 .secondaryButton:hover {
   border-color: rgb(var(--color-accent-strong)); /* accent-strong = emerald-400 */
 }
+
+.documentTitleLink {
+  color: inherit;
+  text-decoration: none;
+}
+
+.documentTitleLink:hover {
+  color: rgb(var(--color-accent)); /* accent = emerald-300 */
+  text-decoration: underline;
+}
