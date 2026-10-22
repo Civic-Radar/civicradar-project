@@ -13,6 +13,9 @@
 //
 // SRS-310.2, AO, Ownership check: opening another user's extraction (for
 // example by changing the address) shows "Access denied" and nothing else.
+//
+// SRS-303.2, AO, Source document link: the document title is a link to the
+// source document's detail page (SRS-203.1, /documents/<id>).
 
 import Link from 'next/link';
 import { useCallback, useEffect, useRef, useState } from 'react';
@@ -25,6 +28,7 @@ import {
   formatDateTime,
   isInProgress,
   sortByDetailsFound,
+  sourceDocumentHref,
 } from '../../../../lib/extractions';
 import type { ExtractedOfficial, ExtractionDetail } from '../../../../lib/extractions';
 
@@ -135,6 +139,8 @@ export default function ExtractionPage({ params }: { params: { id: string } }) {
     );
   }
 
+  const sourceHref = extraction ? sourceDocumentHref(extraction) : null;
+
   return (
     <main className="min-h-screen bg-surface text-fg px-4 py-10 sm:px-6">
       <div className="mx-auto w-full max-w-3xl space-y-6">
@@ -150,7 +156,14 @@ export default function ExtractionPage({ params }: { params: { id: string } }) {
         {extraction ? (
           <section className="rounded-3xl border border-raised bg-card/90 p-6">
             <p className="text-sm text-fg-subtle">Document</p>
-            <p className="mt-1 text-lg font-medium">{extraction.source_document_title}</p>
+            {/* SRS-303.2: the source link opens the document's detail page */}
+            {sourceHref ? (
+              <Link href={sourceHref} data-testid="source-document-link" className="mt-1 inline-block text-lg font-medium text-accent hover:underline">
+                {extraction.source_document_title}
+              </Link>
+            ) : (
+              <p className="mt-1 text-lg font-medium">{extraction.source_document_title}</p>
+            )}
 
             {/* SRS-306.1: the current status */}
             <div className="mt-6 flex items-center gap-3">
