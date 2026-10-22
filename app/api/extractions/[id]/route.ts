@@ -2,7 +2,8 @@
 // "The system shall display the extraction's current status (Queued, Processing,
 //  Completed, or Failed) while the user views an extraction request."
 //
-// GET /api/extractions/[id] -> one of the signed-in user's extractions, with its status.
+// GET /api/extractions/[id] -> one of the signed-in user's extractions, with its status,
+// plus the officials it found once it is Completed (SRS-302.1).
 //
 // Only the owner's extractions are returned; anything else is "not found".
 // (SRS-310.2 will turn that into an explicit access-denied response.)
@@ -44,5 +45,18 @@ export async function GET(request: Request, { params }: { params: { id: string }
   if (error) return Response.json({ error: 'Could not load the extraction.' }, { status: 500 });
   if (!extraction) return Response.json({ error: 'Extraction not found.' }, { status: 404 });
 
-  return Response.json({ extraction }, { status: 200 });
+  // SRS-302.1: a completed extraction also returns the officials it found.
+  let officials: unknown[] = [];
+  if (extraction.status === 'Completed') {
+    const { data, error: officialsError } = await supabase
+      .from('extracted_officials')
+      .select('extracted_official_id, full_name, title, role, email, phone')
+      .eq('extraction_id', extractionId)
+      .order('extracted_official_id', { ascending: true });
+
+    if (officialsError) return Response.json({ error: 'Could not load the extracted officials.' }, { status: 500 });
+    officials = data ?? [];
+  }
+
+  return Response.json({ extraction, officials }, { status: 200 });
 }

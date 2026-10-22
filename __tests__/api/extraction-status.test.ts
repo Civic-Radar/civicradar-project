@@ -1,5 +1,7 @@
-// Tests for SRS-306.1 (Extraction status display):
-// GET /api/extractions/[id] returns the extraction's current status for its owner.
+// Tests for GET /api/extractions/[id]:
+//   SRS-306.1 (Extraction status display): returns the extraction's current status for its owner.
+//   SRS-302.1 (Extracted official details): a completed extraction also returns each official's
+//   name, title, role, email address, and telephone number.
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { EXTRACTION_STATUSES } from '../../lib/extractions';
 
@@ -21,10 +23,12 @@ function extractionRow(overrides: Row = {}): Row {
   };
 }
 
-// Fake extractions table. eq() calls are collected and maybeSingle() returns
-// the first row that matches every one of them, like the real query.
+// Fake tables. eq() calls are collected; maybeSingle() returns the first matching
+// row and order() returns every matching row, like the real queries.
 let rows: Row[] = [];
+let officialRows: Row[] = [];
 const eqCalls: [string, unknown][] = [];
+const tablesRead: string[] = [];
 
 vi.mock('../../lib/supabase', () => ({
   getSupabaseClient: vi.fn(() => ({
@@ -36,8 +40,10 @@ vi.mock('../../lib/supabase', () => ({
       ),
     },
     from: vi.fn((table: string) => {
-      expect(table).toBe('extractions');
+      tablesRead.push(table);
+      const source = () => (table === 'extracted_officials' ? officialRows : rows);
       const filters: [string, unknown][] = [];
+      const matching = () => source().filter((row) => filters.every(([column, value]) => row[column] === value));
       const query = {
         select: vi.fn(() => query),
         eq: vi.fn((column: string, value: unknown) => {
@@ -45,10 +51,8 @@ vi.mock('../../lib/supabase', () => ({
           eqCalls.push([column, value]);
           return query;
         }),
-        maybeSingle: vi.fn(async () => ({
-          data: rows.find((row) => filters.every(([column, value]) => row[column] === value)) ?? null,
-          error: null,
-        })),
+        maybeSingle: vi.fn(async () => ({ data: matching()[0] ?? null, error: null })),
+        order: vi.fn(async () => ({ data: matching(), error: null })),
       };
       return query;
     }),
@@ -67,7 +71,9 @@ function get(id: string, token: string | null = 'valid-token') {
 describe('GET /api/extractions/[id] (SRS-306.1)', () => {
   beforeEach(() => {
     rows = [];
+    officialRows = [];
     eqCalls.length = 0;
+    tablesRead.length = 0;
   });
 
   it('has exactly the four statuses the SRS names', () => {
@@ -130,5 +136,77 @@ describe('GET /api/extractions/[id] (SRS-306.1)', () => {
   it('returns 401 for an invalid token', async () => {
     const response = await get('7', 'bad-token');
     expect(response.status).toBe(401);
+  });
+});
+
+function officialRow(overrides: Row = {}): Row {
+  return {
+    extracted_official_id: 1,
+    extraction_id: 7,
+    full_name: 'Maureen Elizabeth Fisher',
+    title: 'City Clerk',
+    role: 'Attests the record',
+    email: 'clerk@salem.com',
+    phone: '978-555-0100',
+    ...overrides,
+  };
+}
+
+describe('GET /api/extractions/[id] officials (SRS-302.1)', () => {
+  beforeEach(() => {
+    rows = [];
+    officialRows = [];
+    eqCalls.length = 0;
+    tablesRead.length = 0;
+  });
+
+  it('returns all five values for an official found by a completed extraction', async () => {
+    rows = [extractionRow({ status: 'Completed', completed_at: '2026-10-13T14:49:00Z' })];
+    officialRows = [officialRow()];
+
+    const body = await (await get('7')).json();
+
+    expect(body.officials).toHaveLength(1);
+    expect(body.officials[0]).toMatchObject({
+      full_name: 'Maureen Elizabeth Fisher',
+      title: 'City Clerk',
+      role: 'Attests the record',
+      email: 'clerk@salem.com',
+      phone: '978-555-0100',
+    });
+  });
+
+  it('returns each official as a separate entry', async () => {
+    rows = [extractionRow({ status: 'Completed', completed_at: '2026-10-13T14:49:00Z' })];
+    officialRows = [
+      officialRow(),
+      officialRow({ extracted_official_id: 2, full_name: 'Jonathan Berk', title: null, role: 'Planning Board Chair', email: null, phone: null }),
+      officialRow({ extracted_official_id: 3, full_name: 'Alice Merkl', title: 'City Councillor', role: 'Presiding', email: null, phone: null }),
+    ];
+
+    const body = await (await get('7')).json();
+
+    expect(body.officials).toHaveLength(3);
+    expect(body.officials[1]).toMatchObject({ full_name: 'Jonathan Berk', email: null, phone: null });
+  });
+
+  it("only returns this extraction's officials", async () => {
+    rows = [extractionRow({ status: 'Completed', completed_at: '2026-10-13T14:49:00Z' })];
+    officialRows = [officialRow(), officialRow({ extracted_official_id: 2, extraction_id: 99, full_name: 'Someone Else' })];
+
+    const body = await (await get('7')).json();
+
+    expect(body.officials).toHaveLength(1);
+    expect(eqCalls).toContainEqual(['extraction_id', 7]);
+  });
+
+  it('does not load officials before the extraction is Completed', async () => {
+    rows = [extractionRow({ status: 'Processing' })];
+    officialRows = [officialRow()];
+
+    const body = await (await get('7')).json();
+
+    expect(body.officials).toEqual([]);
+    expect(tablesRead).not.toContain('extracted_officials');
   });
 });

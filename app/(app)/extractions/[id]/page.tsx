@@ -6,17 +6,30 @@
 //
 // While the extraction is still Queued or Processing, the page re-checks the
 // status every few seconds so a change shows up without reloading.
+//
+// SRS-302.1, AO, Extracted official details: once Completed, each official is
+// shown as its own entry with name, title, role, email, and phone, each next
+// to its field name. A detail the document didn't give shows "Not found".
 
 import Link from 'next/link';
-import { useCallback, useEffect, useState } from 'react';
-import { STATUS_STYLES, formatDateTime, isInProgress } from '../../../../lib/extractions';
-import type { ExtractionDetail } from '../../../../lib/extractions';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import {
+  NOT_FOUND_LABEL,
+  NO_OFFICIALS_MESSAGE,
+  OFFICIAL_FIELDS,
+  STATUS_STYLES,
+  formatDateTime,
+  isInProgress,
+  sortByDetailsFound,
+} from '../../../../lib/extractions';
+import type { ExtractedOfficial, ExtractionDetail } from '../../../../lib/extractions';
 
 const REFRESH_MS = 3000;
 
 export default function ExtractionPage({ params }: { params: { id: string } }) {
   const [token, setToken] = useState<string | null>(null);
   const [extraction, setExtraction] = useState<ExtractionDetail | null>(null);
+  const [officials, setOfficials] = useState<ExtractedOfficial[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
@@ -40,6 +53,7 @@ export default function ExtractionPage({ params }: { params: { id: string } }) {
       }
       setError('');
       setExtraction(data.extraction);
+      setOfficials(sortByDetailsFound(data.officials ?? []));
     },
     [params.id],
   );
@@ -51,6 +65,20 @@ export default function ExtractionPage({ params }: { params: { id: string } }) {
     if (!stored) { setLoading(false); return; }
     load(stored);
   }, [load]);
+
+  // SRS-302.1: if the extraction is still waiting to run, start it once.
+  // (The server only runs a Queued extraction, so a second start is ignored.)
+  const runStarted = useRef(false);
+  useEffect(() => {
+    if (!token || extraction?.status !== 'Queued' || runStarted.current) return;
+    runStarted.current = true;
+    fetch(`/api/extractions/${encodeURIComponent(params.id)}/run`, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${token}` },
+    })
+      .then(() => load(token))
+      .catch(() => {});
+  }, [token, extraction?.status, params.id, load]);
 
   // Keep the status current while the extraction is still running.
   useEffect(() => {
@@ -125,6 +153,57 @@ export default function ExtractionPage({ params }: { params: { id: string } }) {
               ) : null}
             </dl>
           </section>
+        ) : null}
+
+        {/* SRS-302.1: the officials found, one entry each */}
+        {extraction?.status === 'Completed' ? (
+          <section className="rounded-3xl border border-raised bg-card/90 p-6">
+            <h2 className="text-lg font-medium">Officials found</h2>
+            {officials.length === 0 ? (
+              <p className="mt-4 text-sm text-fg-subtle">{NO_OFFICIALS_MESSAGE}</p>
+            ) : (
+              <ul className="mt-4 space-y-3" aria-label="Extracted officials">
+                {officials.map((official) => (
+                  <li
+                    key={official.extracted_official_id}
+                    data-testid="official-entry"
+                    className="rounded-2xl border border-raised bg-surface/50 p-4"
+                  >
+                    {/* Name and title on top, then role, then the contact details.
+                        Every field keeps its label; a missing one shows "Not found". */}
+                    <dl className="grid gap-x-6 gap-y-3 text-sm sm:grid-cols-2">
+                      {OFFICIAL_FIELDS.map(({ key, label }) => {
+                        const value = official[key];
+                        const href = value && key === 'email' ? `mailto:${value}` : value && key === 'phone' ? `tel:${value.replace(/[^\d+]/g, '')}` : null;
+                        return (
+                          <div key={key} className={key === 'role' ? 'sm:col-span-2' : undefined}>
+                            <dt className="text-xs uppercase tracking-wide text-fg-subtle">{label}</dt>
+                            <dd
+                              className={`mt-0.5 break-words ${
+                                !value ? 'text-fg-faint italic' : key === 'full_name' ? 'text-base font-medium' : ''
+                              }`}
+                            >
+                              {href ? (
+                                <a href={href} className="text-accent hover:underline">{value}</a>
+                              ) : (
+                                value ?? NOT_FOUND_LABEL
+                              )}
+                            </dd>
+                          </div>
+                        );
+                      })}
+                    </dl>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </section>
+        ) : null}
+
+        {extraction?.status === 'Failed' ? (
+          <p role="alert" className="rounded-xl border border-danger-line bg-danger-wash/30 p-3 text-sm text-danger">
+            Extraction was not completed.
+          </p>
         ) : null}
 
         <p className="text-sm text-fg-subtle">

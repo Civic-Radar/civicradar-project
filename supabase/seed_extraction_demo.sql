@@ -1,9 +1,13 @@
 -- =============================================================================
 -- Demo data for SRS-301.4 (Extraction request) — AO
 --
--- The document retrieval job (UR-220) is not built yet, so the documents table
--- is empty. This script adds Salem, MA with one City Council meeting and a few
--- documents so the /extract page has something to pick from.
+-- Adds Salem, MA with one City Council meeting and one Word file, so the
+-- /extract page can show that a non-PDF document is rejected (SRS-301.5).
+-- The real PDFs to extract come from supabase/seed_extraction_salem_documents.sql.
+--
+-- It also removes the two placeholder PDFs this script used to add in Sprint 1.
+-- They had no real file behind them, so extracting them could only fail.
+-- Requests already made for them are kept (their document link becomes empty).
 --
 -- Run it in the Supabase SQL Editor AFTER supabase/schema.sql.
 -- Safe to run more than once: it skips rows that already exist.
@@ -49,18 +53,16 @@ begin
   from meetings
   where town_id = v_town_id and source_meeting_id = 'demo-2026-09-14';
 
-  -- Documents: two PDFs (extractable) and one Word file (rejected per SRS-301.5)
+  -- Remove the two Sprint 1 placeholder PDFs.
+  delete from documents
+  where town_id = v_town_id and source_file_id in ('demo-file-1', 'demo-file-2');
+
+  -- Document: one Word file (rejected per SRS-301.5)
   insert into documents (
     meeting_id, town_id, source_file_id, title, document_type,
     source_url, storage_path, mime_type, file_size_bytes, file_sha256
   )
   values
-    (v_meeting_id, v_town_id, 'demo-file-1', 'City Council Regular Meeting - Agenda', 'Agenda',
-     'https://salemma.portal.civicclerk.com/', 'demo/salem/city-council-2026-09-14-agenda.pdf',
-     'application/pdf', 245760, encode(sha256('demo-file-1'::bytea), 'hex')),
-    (v_meeting_id, v_town_id, 'demo-file-2', 'City Council Regular Meeting - Minutes', 'Minutes',
-     'https://salemma.portal.civicclerk.com/', 'demo/salem/city-council-2026-09-14-minutes.pdf',
-     'application/pdf', 512000, encode(sha256('demo-file-2'::bytea), 'hex')),
     (v_meeting_id, v_town_id, 'demo-file-3', 'City Council Regular Meeting - Public Comment Notes', 'Other',
      'https://salemma.portal.civicclerk.com/', 'demo/salem/city-council-2026-09-14-notes.docx',
      'application/vnd.openxmlformats-officedocument.wordprocessingml.document', 40960,
@@ -68,7 +70,7 @@ begin
   on conflict (town_id, source_file_id) do nothing;
 end $$;
 
--- Quick check: should list the three demo documents.
+-- Quick check: should list only the Word file.
 select document_id, title, document_type, mime_type
 from documents
 where source_file_id like 'demo-file-%'

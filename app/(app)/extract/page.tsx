@@ -7,11 +7,33 @@
 //   301.4  confirming creates one extraction request linked to the user
 // Also shows SRS-301.6 (non-PDF message) and SRS-306.3 (no duplicate in-flight request).
 // Each request links to its own page, which shows its status (SRS-306.1).
+//
+// Documents are grouped by meeting, newest meeting first, with a search box.
+// Only the most recent meetings are shown until the user asks for more.
 
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
-import { STATUS_STYLES, formatDateTime } from '../../../lib/extractions';
+import { STATUS_STYLES, formatDateTime, formatMeetingDate } from '../../../lib/extractions';
 import type { ExtractableDocument, Extraction } from '../../../lib/extractions';
+
+const MEETINGS_PER_PAGE = 8;
+
+type MeetingGroup = { key: string; title: string; startAt: string | null; documents: ExtractableDocument[] };
+
+// Groups the (already sorted) documents by meeting, keeping their order.
+function groupByMeeting(documents: ExtractableDocument[]): MeetingGroup[] {
+  const groups = new Map<string, MeetingGroup>();
+  for (const doc of documents) {
+    const key = doc.meeting ? String(doc.meeting.meeting_id) : 'none';
+    let group = groups.get(key);
+    if (!group) {
+      group = { key, title: doc.meeting?.title.trim() || 'Other documents', startAt: doc.meeting?.start_at ?? null, documents: [] };
+      groups.set(key, group);
+    }
+    group.documents.push(doc);
+  }
+  return [...groups.values()];
+}
 
 export default function ExtractPage() {
   const [token, setToken] = useState<string | null>(null);
@@ -20,6 +42,8 @@ export default function ExtractPage() {
   const [documents, setDocuments] = useState<ExtractableDocument[]>([]);
   const [extractions, setExtractions] = useState<Extraction[]>([]);
   const [selectedId, setSelectedId] = useState<number | null>(null);
+  const [query, setQuery] = useState('');
+  const [meetingsShown, setMeetingsShown] = useState(MEETINGS_PER_PAGE);
 
   const [confirming, setConfirming] = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -64,6 +88,18 @@ export default function ExtractPage() {
 
   const selected = documents.find((d) => d.document_id === selectedId) ?? null;
 
+  // Search matches the document title or its meeting's title, ignoring case.
+  // While searching, every matching meeting is shown.
+  const search = query.trim().toLowerCase();
+  const matching = search
+    ? documents.filter(
+        (d) => d.title.toLowerCase().includes(search) || (d.meeting?.title.toLowerCase().includes(search) ?? false),
+      )
+    : documents;
+  const groups = groupByMeeting(matching);
+  const shownGroups = search ? groups : groups.slice(0, meetingsShown);
+  const hiddenMeetings = groups.length - shownGroups.length;
+
   // SRS-306.3: the selected document already has a Queued/Processing request.
   const selectedInFlight = selected
     ? extractions.some(
@@ -103,6 +139,16 @@ export default function ExtractPage() {
     }
 
     setSuccess(`Extraction requested for "${data.extraction.source_document_title}".`);
+
+    // SRS-302.1: start reading the document right away. The run takes a few
+    // seconds, so don't wait for it; the list refreshes when it finishes.
+    fetch(`/api/extractions/${data.extraction.extraction_id}/run`, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${token}` },
+    })
+      .then(() => refreshExtractions())
+      .catch(() => {});
+
     await refreshExtractions();
   }
 
@@ -151,40 +197,80 @@ export default function ExtractPage() {
 
           {documents.length === 0 ? (
             <p className="mt-4 text-sm text-fg-subtle">
-              No documents have been retrieved yet. (Run <code className="text-fg-muted">supabase/seed_extraction_demo.sql</code> to load demo documents.)
+              No documents have been retrieved yet. (Run <code className="text-fg-muted">supabase/seed_extraction_salem_documents.sql</code> to load Salem documents.)
             </p>
           ) : (
-            <ul className="mt-4 space-y-2" role="radiogroup" aria-label="Documents">
-              {documents.map((doc) => {
-                const isSelected = doc.document_id === selectedId;
-                const isPdf = doc.mime_type === 'application/pdf';
-                return (
-                  <li key={doc.document_id}>
-                    <button
-                      type="button"
-                      role="radio"
-                      aria-checked={isSelected}
-                      onClick={() => selectDocument(doc.document_id)}
-                      className={`w-full rounded-2xl border px-4 py-3 text-left transition ${
-                        isSelected
-                          ? 'border-accent-strong bg-accent-vivid/10'
-                          : 'border-raised bg-surface/50 hover:border-line-strong'
-                      }`}
-                    >
-                      <span className="flex items-start justify-between gap-3">
-                        <span className="font-medium">{doc.title}</span>
-                        {isSelected ? (
-                          <span className="shrink-0 rounded-full bg-accent-strong px-2 py-0.5 text-xs font-semibold text-surface">Selected</span>
-                        ) : null}
-                      </span>
-                      <span className="mt-1 block text-xs text-fg-subtle">
-                        {doc.document_type} · {isPdf ? 'PDF' : 'Not a PDF'}
-                      </span>
-                    </button>
-                  </li>
-                );
-              })}
-            </ul>
+            <>
+              <label htmlFor="document-search" className="sr-only">Search documents</label>
+              <input
+                id="document-search"
+                type="search"
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                placeholder="Search by meeting or document title"
+                className="mt-4 w-full rounded-xl border border-line bg-surface px-4 py-3 text-fg outline-none transition focus:border-accent-strong"
+              />
+              <p className="mt-2 text-xs text-fg-subtle">
+                {matching.length} {matching.length === 1 ? 'document' : 'documents'} from {groups.length}{' '}
+                {groups.length === 1 ? 'meeting' : 'meetings'}, newest first
+              </p>
+
+              {matching.length === 0 ? (
+                <p className="mt-4 text-sm text-fg-subtle">No documents match &ldquo;{query.trim()}&rdquo;.</p>
+              ) : (
+                <div className="mt-4 space-y-5" role="radiogroup" aria-label="Documents">
+                  {shownGroups.map((group) => (
+                    <section key={group.key} aria-label={group.title}>
+                      <h3 className="text-sm font-medium text-fg-muted">
+                        {group.title}
+                        {group.startAt ? <span className="font-normal text-fg-subtle"> · {formatMeetingDate(group.startAt)}</span> : null}
+                      </h3>
+                      <ul className="mt-2 space-y-2">
+                        {group.documents.map((doc) => {
+                          const isSelected = doc.document_id === selectedId;
+                          const isPdf = doc.mime_type === 'application/pdf';
+                          return (
+                            <li key={doc.document_id}>
+                              <button
+                                type="button"
+                                role="radio"
+                                aria-checked={isSelected}
+                                onClick={() => selectDocument(doc.document_id)}
+                                className={`w-full rounded-2xl border px-4 py-3 text-left transition ${
+                                  isSelected
+                                    ? 'border-accent-strong bg-accent-vivid/10'
+                                    : 'border-raised bg-surface/50 hover:border-line-strong'
+                                }`}
+                              >
+                                <span className="flex items-start justify-between gap-3">
+                                  <span className="font-medium">{doc.title}</span>
+                                  {isSelected ? (
+                                    <span className="shrink-0 rounded-full bg-accent-strong px-2 py-0.5 text-xs font-semibold text-surface">Selected</span>
+                                  ) : null}
+                                </span>
+                                <span className="mt-1 block text-xs text-fg-subtle">
+                                  {doc.document_type} · {isPdf ? 'PDF' : 'Not a PDF'}
+                                </span>
+                              </button>
+                            </li>
+                          );
+                        })}
+                      </ul>
+                    </section>
+                  ))}
+                </div>
+              )}
+
+              {hiddenMeetings > 0 ? (
+                <button
+                  type="button"
+                  onClick={() => setMeetingsShown((n) => n + MEETINGS_PER_PAGE)}
+                  className="mt-5 rounded-full border border-line px-5 py-2 text-sm hover:border-fg-faint"
+                >
+                  Show older meetings ({hiddenMeetings} more)
+                </button>
+              ) : null}
+            </>
           )}
         </section>
 

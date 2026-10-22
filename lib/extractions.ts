@@ -43,9 +43,40 @@ export function formatDateTime(iso: string): string {
   return `${date} ${time}`;
 }
 
+// SRS-302.1 — one official found by an extraction. null means the document
+// didn't give that detail; the page shows NOT_FOUND_LABEL in its place.
+export type ExtractedOfficial = {
+  extracted_official_id: number;
+  full_name: string;
+  title: string | null;
+  role: string | null;
+  email: string | null;
+  phone: string | null;
+};
+
+// SRS-302.1 — the five fields, in display order, each shown next to its name.
+export const OFFICIAL_FIELDS = [
+  { key: 'full_name', label: 'Name' },
+  { key: 'title', label: 'Title' },
+  { key: 'role', label: 'Role' },
+  { key: 'email', label: 'Email address' },
+  { key: 'phone', label: 'Telephone number' },
+] as const;
+
+export const NOT_FOUND_LABEL = 'Not found';
+
+// SRS-302.4 — exact wording when a completed extraction found nobody.
+export const NO_OFFICIALS_MESSAGE = 'No officials could be extracted from this document.';
+
 // One extraction as returned by GET /api/extractions/[id].
 export type ExtractionDetail = Extraction & {
   failure_cause: 'Unreadable file' | 'File too large' | 'Missing source file' | 'Other' | null;
+};
+
+// GET /api/extractions/[id] response: officials is filled once the extraction is Completed.
+export type ExtractionDetailResponse = {
+  extraction: ExtractionDetail;
+  officials: ExtractedOfficial[];
 };
 
 export type ExtractableDocument = {
@@ -54,4 +85,33 @@ export type ExtractableDocument = {
   document_type: 'Agenda' | 'Minutes' | 'Packet' | 'Other';
   mime_type: string;
   retrieved_at: string;
+  // The meeting the document belongs to, for grouping on the extraction page.
+  meeting: { meeting_id: number; title: string; start_at: string } | null;
 };
+
+const DOCUMENT_TYPE_ORDER: Record<string, number> = { Agenda: 0, Packet: 1, Minutes: 2, Other: 3 };
+
+// Extraction page document list: newest meeting first, then within a meeting
+// the agenda, packet, minutes, and anything else.
+export function sortDocuments(documents: ExtractableDocument[]): ExtractableDocument[] {
+  return [...documents].sort(
+    (a, b) =>
+      (b.meeting?.start_at ?? '').localeCompare(a.meeting?.start_at ?? '') ||
+      (a.meeting?.meeting_id ?? 0) - (b.meeting?.meeting_id ?? 0) ||
+      (DOCUMENT_TYPE_ORDER[a.document_type] ?? 9) - (DOCUMENT_TYPE_ORDER[b.document_type] ?? 9) ||
+      a.title.localeCompare(b.title),
+  );
+}
+
+// Formats a meeting's start time as "Mon, Oct 19, 2026" in the user's time zone.
+export function formatMeetingDate(iso: string): string {
+  return new Date(iso).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' });
+}
+
+// SRS-302.1 — officials with the most details found are listed first, so the
+// most useful contacts are at the top. Ties keep the order they were found in.
+export function sortByDetailsFound(officials: ExtractedOfficial[]): ExtractedOfficial[] {
+  const found = (o: ExtractedOfficial) => [o.title, o.role, o.email, o.phone].filter(Boolean).length;
+  const contact = (o: ExtractedOfficial) => (o.email || o.phone ? 1 : 0);
+  return [...officials].sort((a, b) => contact(b) - contact(a) || found(b) - found(a));
+}
