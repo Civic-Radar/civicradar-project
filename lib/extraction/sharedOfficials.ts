@@ -8,6 +8,8 @@
 //     entry with the details this document found; a detail it didn't find is
 //     left as it was, never blanked out
 //   - otherwise -> add a new entry
+// Either way the document is linked to the official (official_sources), so the
+// entry keeps a link to every document it came from.
 //
 // The governing body is the one of the document's meeting. Meetings without a
 // catalog body (meetings.body_id is NULL) can't be placed in the list, so their
@@ -128,6 +130,11 @@ export async function addToSharedOfficials(
     }
     if (shared.added) result.added += 1;
     else result.updated += 1;
+
+    // Keep a link to every document the official came from (one row per pair).
+    await supabase
+      .from('official_sources')
+      .upsert({ official_id: shared.officialId, document_id: documentId }, { onConflict: 'official_id,document_id', ignoreDuplicates: true });
   }
 
   return result;
