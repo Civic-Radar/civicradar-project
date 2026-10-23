@@ -2,8 +2,8 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import type { SourceFile } from '../sources/types';
 import { createSummaryStarter } from '../summaries/runSummaryJob';
 import { hashFile } from './hashFile';
-import { insertDocument, type DocumentMeeting } from './insertDocument';
-import { storeDocumentFile } from './storeDocumentFile';
+import { DocumentExistsError, insertDocument, type DocumentMeeting } from './insertDocument';
+import { StoragePathExistsError, storeDocumentFile } from './storeDocumentFile';
 
 // The source client's file download, passed in so this file stays source-agnostic.
 export type DownloadFile = (file: SourceFile) => Promise<{ bytes: Uint8Array; mimeType: string }>;
@@ -73,14 +73,39 @@ async function loadExistingFileIds(
   return new Set((data ?? []).map((row) => row.source_file_id as string));
 }
 
+// One read after the upload found the path taken: true only when a documents
+// row for the file now exists. A failed read is logged and counts as no row.
+async function hasDocumentRow(
+  supabase: SupabaseClient,
+  townId: number,
+  sourceFileId: string,
+  where: string,
+): Promise<boolean> {
+  const { data, error } = await supabase
+    .from('documents')
+    .select('document_id')
+    .eq('town_id', townId)
+    .eq('source_file_id', sourceFileId)
+    .maybeSingle();
+
+  if (error) {
+    console.error(`Document retrieval: ${where} could not read documents after store: ${error.message}`);
+    return false;
+  }
+
+  return data !== null;
+}
+
 // Downloads, stores and inserts every file the source lists under the town's
 // meetings (SRS-208.2). Files are processed one at a time. A failure on one
 // file is logged and the run moves on. A meeting with no meetings row is
 // logged and its files are skipped. A file that already has a documents row
 // for the town is skipped before the download and never changes its row
-// (SRS-208.3). Each inserted document gets summary attempt 1 (SRS-204.1),
-// and after the run the first few queued summary jobs start without being
-// awaited.
+// (SRS-208.3). A row a concurrent run inserted first (a unique violation, or
+// a taken Storage path with a row behind it) also counts as already
+// retrieved, not failed. Each inserted document gets summary attempt 1
+// (SRS-204.1), and after the run the first few queued summary jobs start
+// without being awaited.
 export async function retrieveDocuments(
   supabase: SupabaseClient,
   townId: number,
@@ -146,10 +171,27 @@ export async function retrieveDocuments(
         documentId = await insertDocument(supabase, meeting, file, { storagePath, mimeType, sha256, sizeBytes });
         result.stored += 1;
       } catch (error: unknown) {
-        result.failed += 1;
-        console.error(`Document retrieval: ${where} failed at ${step}: ${errorMessage(error)}`);
-        if (step === 'insert' && storagePath) {
+        if (error instanceof DocumentExistsError) {
+          // A concurrent run inserted the row first. This run's upload left a
+          // file no row points at, so its path stays visible in the log.
+          result.alreadyRetrieved += 1;
+          console.log(`Document retrieval: ${where} already retrieved at insert`);
           console.error(`Document retrieval: ${where} ${storagePath} stored but no documents row`);
+        } else if (error instanceof StoragePathExistsError) {
+          // The Storage file is never overwritten, adopted or deleted.
+          if (await hasDocumentRow(supabase, meeting.town_id, file.sourceFileId, where)) {
+            result.alreadyRetrieved += 1;
+            console.log(`Document retrieval: ${where} already retrieved at store`);
+          } else {
+            result.failed += 1;
+            console.error(`Document retrieval: ${where} failed at store: ${error.path} stored but no documents row`);
+          }
+        } else {
+          result.failed += 1;
+          console.error(`Document retrieval: ${where} failed at ${step}: ${errorMessage(error)}`);
+          if (step === 'insert' && storagePath) {
+            console.error(`Document retrieval: ${where} ${storagePath} stored but no documents row`);
+          }
         }
       }
 
