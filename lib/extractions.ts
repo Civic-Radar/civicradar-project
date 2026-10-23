@@ -45,6 +45,12 @@ export const STATUS_STYLES: Record<ExtractionStatus, string> = {
   Failed: 'border-danger-vivid/40 bg-danger-vivid/10 text-danger-soft',
 };
 
+// SRS-304.1 — when an extraction was performed: when it finished, or when it was
+// requested if it hasn't finished.
+export function extractionDate(extraction: { requested_at: string; completed_at: string | null }): string {
+  return extraction.completed_at ?? extraction.requested_at;
+}
+
 // MM/DD/YYYY h:mm AM, the date format used throughout the SRS.
 export function formatDateTime(iso: string): string {
   const d = new Date(iso);
