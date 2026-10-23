@@ -164,10 +164,11 @@ function summarySection(markup: string): string | undefined {
   return markup.match(/<section\b[^>]*>[\s\S]*?<\/section>/)?.[0];
 }
 
-// The paragraphs inside the summary section, unescaped back to plain text.
+// The text paragraphs inside the summary section (the div after the
+// disclaimer), unescaped back to plain text.
 function summaryParagraphs(markup: string): string[] {
-  const section = summarySection(markup) ?? '';
-  return Array.from(section.matchAll(/<p\b[^>]*>([\s\S]*?)<\/p>/g), ([, inner]) => unescapeHtml(inner));
+  const textBlock = (summarySection(markup) ?? '').match(/<div\b[^>]*>[\s\S]*?<\/div>/)?.[0] ?? '';
+  return Array.from(textBlock.matchAll(/<p\b[^>]*>([\s\S]*?)<\/p>/g), ([, inner]) => unescapeHtml(inner));
 }
 
 beforeEach(() => {
@@ -385,5 +386,38 @@ describe('Document detail page summary section (SRS-204.2)', () => {
     expect(markup).toContain(marker);
     expect(markup).not.toContain('<section');
     expect(markup).not.toContain('Summary');
+  });
+});
+
+describe('Document detail page AI-generated disclaimer (SRS-204.4)', () => {
+  const DISCLAIMER = 'AI-generated summary. Verify against the source document.';
+
+  beforeEach(() => {
+    vi.stubGlobal('React', React);
+  });
+
+  afterEach(() => {
+    hook.state = { status: 'loading' };
+  });
+
+  it('shows the exact sentence directly above a Complete document\'s summary text', () => {
+    const section = summarySection(renderLoaded('First paragraph.\n\nSecond paragraph.')) ?? '';
+
+    expect(section).toMatch(
+      new RegExp(`<\\/h2><p\\b[^>]*>${DISCLAIMER.replace(/\./g, '\\.')}<\\/p><div\\b[^>]*><p>First paragraph\\.<\\/p>`),
+    );
+  });
+
+  it('shows no disclaimer for a document with no summary', () => {
+    expect(renderLoaded(null)).not.toContain(DISCLAIMER);
+  });
+
+  it('shows the sentence once, after the Summary heading and before the text', () => {
+    const markup = renderLoaded('First paragraph.\n\nSecond paragraph.');
+    const at = markup.indexOf(DISCLAIMER);
+
+    expect(markup.split(DISCLAIMER)).toHaveLength(2);
+    expect(at).toBeGreaterThan(markup.indexOf('Summary</h2>'));
+    expect(at).toBeLessThan(markup.indexOf('First paragraph.'));
   });
 });
