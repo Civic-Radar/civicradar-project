@@ -7,7 +7,7 @@
 // Saved Extractions page, Then both are listed, each with its source document
 // title and extraction date.
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { extractionDate } from '../../lib/extractions';
+import { extractionDate, filterSavedExtractions, officialsFoundLabel } from '../../lib/extractions';
 
 const USER = { id: 'user-a', email: 'a@example.com' };
 type Row = Record<string, unknown>;
@@ -113,5 +113,33 @@ describe('Saved extraction list (SRS-304.1)', () => {
   it('uses the finish time as the extraction date', () => {
     expect(extractionDate({ requested_at: '2026-09-20T18:04:00Z', completed_at: '2026-09-20T18:05:00Z' })).toBe('2026-09-20T18:05:00Z');
     expect(extractionDate({ requested_at: '2026-09-20T18:04:00Z', completed_at: null })).toBe('2026-09-20T18:04:00Z');
+  });
+});
+
+describe('Officials found and search on the Saved Extractions page (Task 304.1-5)', () => {
+  it('returns how many officials each saved extraction found', async () => {
+    rows = [extraction(24, { officials: [{ count: 3 }] }), extraction(25, { officials: [{ count: 0 }] })];
+
+    const { extractions } = await (await listSaved()).json();
+
+    expect(extractions.map((e: Row) => e.officials_found)).toEqual([3, 0]);
+    expect(extractions[0]).not.toHaveProperty('officials');
+  });
+
+  it('labels the count in words', () => {
+    expect(officialsFoundLabel(0)).toBe('No officials found');
+    expect(officialsFoundLabel(1)).toBe('1 official found');
+    expect(officialsFoundLabel(5)).toBe('5 officials found');
+  });
+
+  it('filters by document title, ignoring letter case, and shows all for an empty search', () => {
+    const list = [
+      { source_document_title: 'Salem City Council Special Meeting October 15, 2026' },
+      { source_document_title: 'Joint Public Hearing with the Planning Board Monday October 19, 2026' },
+    ];
+    expect(filterSavedExtractions(list, 'planning')).toEqual([list[1]]);
+    expect(filterSavedExtractions(list, '  OCTOBER ')).toEqual(list);
+    expect(filterSavedExtractions(list, '')).toEqual(list);
+    expect(filterSavedExtractions(list, 'treasurer')).toEqual([]);
   });
 });

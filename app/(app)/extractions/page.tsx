@@ -8,18 +8,24 @@
 // A saved extraction is one that completed and has stored results. Each entry
 // opens its results (/extractions/<id>), which are read from the database, so no
 // new extraction runs.
+//
+// Task 304.1-5 (beyond the SRS wording, noted on issue #202): each entry also
+// shows how many officials it found, and a search box filters by document title.
 
 import Link from 'next/link';
 import ContactsTabs from '../../components/ContactsTabs';
 import { useEffect, useState } from 'react';
-import { extractionDate, formatDateTime } from '../../../lib/extractions';
-import type { Extraction } from '../../../lib/extractions';
+import { extractionDate, filterSavedExtractions, formatDateTime, officialsFoundLabel } from '../../../lib/extractions';
+import type { SavedExtraction } from '../../../lib/extractions';
 
 export default function SavedExtractionsPage() {
   const [token, setToken] = useState<string | null>(null);
-  const [extractions, setExtractions] = useState<Extraction[]>([]);
+  const [extractions, setExtractions] = useState<SavedExtraction[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  // Task 304.1-5: search the saved extractions by source document title.
+  const [search, setSearch] = useState('');
+  const shown = filterSavedExtractions(extractions, search);
 
   useEffect(() => {
     const stored = localStorage.getItem('access_token');
@@ -85,16 +91,35 @@ export default function SavedExtractionsPage() {
               <Link href="/extract" className="text-accent hover:underline">Contact Extraction</Link> page.
             </p>
           ) : (
-            <ul className="divide-y divide-raised" aria-label="Saved extractions">
-              {extractions.map((e) => (
-                <li key={e.extraction_id} data-testid="saved-extraction" className="py-3">
-                  <Link href={`/extractions/${e.extraction_id}`} className="-mx-3 block rounded-xl px-3 py-1 hover:bg-raised/60">
-                    <p className="font-medium">{e.source_document_title}</p>
-                    <p className="text-xs text-fg-subtle">Extracted {formatDateTime(extractionDate(e))}</p>
-                  </Link>
-                </li>
-              ))}
-            </ul>
+            <>
+              <label htmlFor="saved-search" className="sr-only">Search saved extractions</label>
+              <input
+                id="saved-search"
+                type="search"
+                value={search}
+                onChange={(event) => setSearch(event.target.value)}
+                placeholder="Search by document title"
+                className="w-full rounded-xl border border-line bg-surface px-4 py-3 text-fg outline-none transition focus:border-accent-strong"
+              />
+              <p className="mt-2 text-xs text-fg-subtle">
+                {shown.length} of {extractions.length} saved {extractions.length === 1 ? 'extraction' : 'extractions'}
+              </p>
+
+              {shown.length === 0 ? (
+                <p className="mt-4 text-sm text-fg-subtle">No saved extractions match &ldquo;{search.trim()}&rdquo;.</p>
+              ) : null}
+
+              <ul className="mt-2 divide-y divide-raised" aria-label="Saved extractions">
+                {shown.map((e) => (
+                  <li key={e.extraction_id} data-testid="saved-extraction" className="py-3">
+                    <Link href={`/extractions/${e.extraction_id}`} className="-mx-3 block rounded-xl px-3 py-1 hover:bg-raised/60">
+                      <p className="font-medium">{e.source_document_title}</p>
+                      <p className="text-xs text-fg-subtle">Extracted {formatDateTime(extractionDate(e))} · {officialsFoundLabel(e.officials_found)}</p>
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            </>
           )}
         </section>
       </div>
