@@ -9,6 +9,7 @@
 // "Not found" (as in SRS-308.1). Each entry links to every document it came from.
 
 import Link from 'next/link';
+import ContactsTabs from '../../components/ContactsTabs';
 import { useEffect, useState } from 'react';
 import { NOT_FOUND_LABEL, OFFICIAL_FIELDS } from '../../../lib/extractions';
 import type { SharedOfficial } from '../../../lib/extractions';
@@ -71,6 +72,8 @@ export default function OfficialsPage() {
             Everyone found by contact extractions, listed once, with the most recent details and the documents they came from.
           </p>
         </header>
+
+        <ContactsTabs />
 
         {error ? (
           <p role="alert" className="rounded-xl border border-danger-line bg-danger-wash/30 p-3 text-sm text-danger">{error}</p>
