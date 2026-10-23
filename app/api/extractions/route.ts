@@ -4,6 +4,7 @@
 //
 // POST /api/extractions   { document_id }  -> creates one Queued extraction
 // GET  /api/extractions                    -> lists the signed-in user's extractions
+// GET  /api/extractions?saved=1            -> only the completed ones (SRS-304.1)
 //
 // Also covers SRS-301.5 / SRS-301.6 (non-PDF files are rejected with the exact
 // message from the SRS) and SRS-306.3 (a second request for a document that is
@@ -101,12 +102,14 @@ export async function GET(request: Request) {
   if (configError) return Response.json({ error: 'Supabase credentials are not configured.' }, { status: 500 });
   if (!user) return Response.json({ error: 'Invalid or expired token.' }, { status: 401 });
 
+  // SRS-304.1: ?saved=1 returns only saved extractions, the completed ones that
+  // have results, newest extraction first (for the Saved Extractions page).
+  const saved = new URL(request.url).searchParams.get('saved') === '1';
+
   // Only the signed-in user's own extractions are returned.
-  const { data, error } = await supabase!
-    .from('extractions')
-    .select(EXTRACTION_COLUMNS)
-    .eq('user_id', user.id)
-    .order('requested_at', { ascending: false });
+  let query = supabase!.from('extractions').select(EXTRACTION_COLUMNS).eq('user_id', user.id);
+  if (saved) query = query.eq('status', 'Completed');
+  const { data, error } = await query.order(saved ? 'completed_at' : 'requested_at', { ascending: false });
 
   if (error) return Response.json({ error: 'Could not load your extractions.' }, { status: 500 });
 
