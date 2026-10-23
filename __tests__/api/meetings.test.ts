@@ -26,6 +26,9 @@ function fixtureEvent(page: FixturePage, id: number): FixtureEvent {
 
 const SALEM: RetrievalTown = { town_id: 1, meeting_time_zone: 'America/New_York' };
 
+// Page bound passed to fetchMeetings. The stub serves a single page.
+const MAX_PAGES = 2;
+
 // Serves one page with no next link, so fetchMeetings reads only the sample.
 function stubCivicClerk(events: FixtureEvent[]) {
   const page = { ...readFixture(), value: events };
@@ -103,7 +106,7 @@ describe('Meeting details storage (SRS-220.3)', () => {
     const fetchMock = stubCivicClerk(fixture.value);
     const { supabase, stored } = createFakeSupabase();
 
-    const meetings = await fetchMeetings('salemma');
+    const { meetings } = await fetchMeetings('salemma', MAX_PAGES);
     await saveMeetings(supabase, SALEM, meetings);
 
     expect(fetchMock).toHaveBeenCalledTimes(1);
@@ -136,7 +139,7 @@ describe('Meeting details storage (SRS-220.3)', () => {
     stubCivicClerk(fixture.value);
     const { supabase, stored, upsertOptions } = createFakeSupabase();
 
-    const meetings = await fetchMeetings('salemma');
+    const { meetings } = await fetchMeetings('salemma', MAX_PAGES);
     expect(meetings).toHaveLength(fixture.value.length);
 
     expect(await saveMeetings(supabase, SALEM, meetings)).toBe(meetings.length);
@@ -158,7 +161,7 @@ describe('Meeting details storage (SRS-220.3)', () => {
     stubCivicClerk([synthetic]);
     const { supabase, stored } = createFakeSupabase();
 
-    await saveMeetings(supabase, SALEM, await fetchMeetings('salemma'));
+    await saveMeetings(supabase, SALEM, (await fetchMeetings('salemma', MAX_PAGES)).meetings);
 
     const row = storedMeeting(stored, '900001');
     expect(row.title).toBeNull();

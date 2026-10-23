@@ -227,7 +227,11 @@ function runRetrieval(townId = SALEM_TOWN_ID) {
 }
 
 function listFiles(files: SourceFile[]) {
-  vi.mocked(fetchMeetingFiles).mockResolvedValueOnce(new Map([[MEETING_1192.sourceMeetingId, files]]));
+  vi.mocked(fetchMeetingFiles).mockResolvedValueOnce({
+    filesByMeeting: new Map([[MEETING_1192.sourceMeetingId, files]]),
+    complete: true,
+    pagesRead: 1,
+  });
 }
 
 describe('New document retrieval (SRS-208.2)', () => {
@@ -244,7 +248,7 @@ describe('New document retrieval (SRS-208.2)', () => {
     fake = createFakeSupabase();
     vi.mocked(getSupabaseClient).mockReturnValue(fake.client as unknown as ReturnType<typeof getSupabaseClient>);
 
-    vi.mocked(fetchMeetings).mockResolvedValue([MEETING_1192]);
+    vi.mocked(fetchMeetings).mockResolvedValue({ meetings: [MEETING_1192], complete: true, pagesRead: 1 });
     vi.mocked(downloadFile).mockImplementation(async (file: SourceFile) => ({
       bytes: FILE_BYTES[file.sourceFileId],
       mimeType: 'application/pdf',

@@ -226,13 +226,15 @@ describe('Meeting document link (SRS-220.7)', () => {
     fake = createFakeSupabase();
     vi.mocked(getSupabaseClient).mockReturnValue(fake.client as unknown as ReturnType<typeof getSupabaseClient>);
 
-    vi.mocked(fetchMeetings).mockResolvedValue([MEETING_1192, MEETING_1165]);
-    vi.mocked(fetchMeetingFiles).mockResolvedValue(
-      new Map([
+    vi.mocked(fetchMeetings).mockResolvedValue({ meetings: [MEETING_1192, MEETING_1165], complete: true, pagesRead: 1 });
+    vi.mocked(fetchMeetingFiles).mockResolvedValue({
+      filesByMeeting: new Map([
         [MEETING_1192.sourceMeetingId, [FILE_1166, FILE_1167]],
         [MEETING_1165.sourceMeetingId, []],
       ]),
-    );
+      complete: true,
+      pagesRead: 1,
+    });
     vi.mocked(downloadFile).mockImplementation(async (file: SourceFile) => ({
       bytes: new TextEncoder().encode(`%PDF-1.4 file ${file.sourceFileId}`),
       mimeType: 'application/pdf',
