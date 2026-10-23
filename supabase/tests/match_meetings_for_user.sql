@@ -1,5 +1,5 @@
 -- =============================================================================
--- Test: match_meetings_for_user (SRS-401.1, Task 401.1-3)
+-- Test: match_meetings_for_user (SRS-401.1, Task 401.1-3; SRS-401.2, Task 401.2-2)
 -- Reviewed by: EG (Erick Gonzalez)
 --
 -- How to run: in the Supabase SQL editor, replace PASTE-YOUR-USER-ID below with
@@ -23,6 +23,7 @@ DECLARE
   housing INTEGER; zoning INTEGER; transit INTEGER; parks INTEGER;
   m1 BIGINT; m2 BIGINT; m3 BIGINT; m4 BIGINT; m5 BIGINT;
   m6 BIGINT; m7 BIGINT; m8 BIGINT; m9 BIGINT;
+  m10 BIGINT; m11 BIGINT; m12 BIGINT;
 
   test_towns INTEGER[];
   matched BIGINT[];
@@ -64,6 +65,10 @@ BEGIN
   INSERT INTO meetings (town_id, source_meeting_id) VALUES (town_d, 'test-7') RETURNING meeting_id INTO m7;
   INSERT INTO meetings (town_id, source_meeting_id) VALUES (town_a, 'test-8') RETURNING meeting_id INTO m8;
   INSERT INTO meetings (town_id, source_meeting_id) VALUES (town_a, 'test-9') RETURNING meeting_id INTO m9;
+  -- Town A meetings for the unfollow checks (SRS-401.2): P, Q, R.
+  INSERT INTO meetings (town_id, source_meeting_id) VALUES (town_a, 'test-10') RETURNING meeting_id INTO m10;
+  INSERT INTO meetings (town_id, source_meeting_id) VALUES (town_a, 'test-11') RETURNING meeting_id INTO m11;
+  INSERT INTO meetings (town_id, source_meeting_id) VALUES (town_a, 'test-12') RETURNING meeting_id INTO m12;
 
   INSERT INTO meeting_topics (meeting_id, topic_id, evidence_text) VALUES
     (m1, housing, 'Test agenda item about housing'),
@@ -75,7 +80,9 @@ BEGIN
     (m7, housing, 'Test agenda item about housing'),
     (m8, transit, 'Test agenda item about transit'),
     (m9, transit, 'Test agenda item about transit'),
-    (m9, zoning, 'Test agenda item about zoning');
+    (m9, zoning, 'Test agenda item about zoning'),
+    (m10, housing, 'Test agenda item about housing'),
+    (m12, housing, 'Test agenda item about housing');
 
   SELECT coalesce(array_agg(meeting_id), '{}') INTO matched
   FROM match_meetings_for_user(v_user)
@@ -116,6 +123,51 @@ BEGIN
     RAISE EXCEPTION 'CHECK FAILED: No followed towns returns nothing (expected 0 row(s), got %)', n;
   END IF;
 
-  RAISE EXCEPTION 'ALL CHECKS PASSED (11 checks). This error rolls back the test data.';
+  -- Resident unfollows Town A (SRS-401.2). Direct follows are added only here,
+  -- so the two "returns nothing" checks above still hold.
+  --   P (m10): Town A, Housing, not followed directly -> returned, then gone
+  --   Q (m11): Town A, no tags, followed directly      -> returned both times
+  --   R (m12): Town A, Housing, followed directly      -> returned once both times
+  INSERT INTO user_followed_towns (user_id, town_id) VALUES (v_user, town_a);
+  INSERT INTO user_followed_meetings (user_id, meeting_id) VALUES (v_user, m11), (v_user, m12);
+
+  SELECT coalesce(array_agg(meeting_id), '{}') INTO matched
+  FROM match_meetings_for_user(v_user)
+  WHERE town_id = ANY (test_towns);
+
+  FOR c IN
+    SELECT * FROM (VALUES
+      ('Before unfollow: P (Town A, Housing) is returned', m10, 1),
+      ('Before unfollow: Q (followed directly) is returned', m11, 1),
+      ('Before unfollow: R (Housing and followed directly) is returned once', m12, 1)
+    ) AS t (label, meeting, expected)
+  LOOP
+    SELECT count(*) INTO n FROM unnest(matched) AS id WHERE id = c.meeting;
+    IF n <> c.expected THEN
+      RAISE EXCEPTION 'CHECK FAILED: % (expected % row(s), got %)', c.label, c.expected, n;
+    END IF;
+  END LOOP;
+
+  -- Saving town preferences without Town A deletes its follow row.
+  DELETE FROM user_followed_towns WHERE user_id = v_user AND town_id = town_a;
+
+  SELECT coalesce(array_agg(meeting_id), '{}') INTO matched
+  FROM match_meetings_for_user(v_user)
+  WHERE town_id = ANY (test_towns);
+
+  FOR c IN
+    SELECT * FROM (VALUES
+      ('After unfollow: P no longer qualifies through town matching', m10, 0),
+      ('After unfollow: Q stays because it is followed directly', m11, 1),
+      ('After unfollow: R stays, returned once', m12, 1)
+    ) AS t (label, meeting, expected)
+  LOOP
+    SELECT count(*) INTO n FROM unnest(matched) AS id WHERE id = c.meeting;
+    IF n <> c.expected THEN
+      RAISE EXCEPTION 'CHECK FAILED: % (expected % row(s), got %)', c.label, c.expected, n;
+    END IF;
+  END LOOP;
+
+  RAISE EXCEPTION 'ALL CHECKS PASSED (17 checks). This error rolls back the test data.';
 END;
 $$;
