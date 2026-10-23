@@ -1,4 +1,4 @@
-import type { DocumentType, SourceFile, SourceMeeting } from './types';
+import type { DocumentType, MeetingFilesListing, MeetingListing, SourceFile, SourceMeeting } from './types';
 
 // All CivicClerk specifics live in this file. {code} is the town's
 // towns.source_account_id (e.g. Salem is "salemma").
@@ -11,6 +11,10 @@ const PORTAL_EVENT_URL = 'https://{code}.portal.civicclerk.com/event/{id}/overvi
 // File bytes are streamed by file id. The relative `url` on a published file
 // is not used.
 const FILE_STREAM_URL = `${API_BASE_URL}/Meetings/GetMeetingFileStream(fileId={id},plainText=false)`;
+
+// Each Events page, body included, must arrive within this time, or the page
+// counts as failed (SRS-220.1).
+const PAGE_TIMEOUT_MS = 15_000;
 
 // CivicClerk file types mapped to documents.document_type. Any other or
 // missing type is Other.
@@ -123,85 +127,124 @@ function toSourceFile(file: CivicClerkPublishedFile, sourceMeetingId: string, so
   };
 }
 
-// Yields every event the source lists, following @odata.nextLink until the
-// last page. A page is fetched only after the caller has consumed the one
-// before it. Throws on any failed page.
-async function* fetchEvents(sourceAccountId: string): AsyncGenerator<CivicClerkEvent> {
+// Fetches one page of events. Throws on a failed request, a timeout and a
+// page without a meeting list.
+async function fetchEventPage(url: string): Promise<{ events: CivicClerkEvent[]; nextLink: string | undefined }> {
+  // The same signal also covers reading the body, so a hung page fails.
+  const signal = AbortSignal.timeout(PAGE_TIMEOUT_MS);
+
+  let response: Response;
+  try {
+    response = await fetch(url, { headers: { Accept: 'application/json' }, signal });
+  } catch (error) {
+    throw new Error(`CivicClerk could not be reached: ${(error as Error).message}`);
+  }
+
+  if (!response.ok) {
+    throw new Error(`CivicClerk request failed with status ${response.status}: ${url}`);
+  }
+
+  const page = (await response.json()) as CivicClerkPage;
+  if (!Array.isArray(page.value)) {
+    throw new Error(`CivicClerk returned a page without a meeting list: ${url}`);
+  }
+
+  return { events: page.value, nextLink: page['@odata.nextLink'] };
+}
+
+// Reads the source's events newest first, following @odata.nextLink, for at
+// most maxPages pages (SRS-220.1). Each page is converted before the next one
+// is fetched, and a page counts only if every event on it converted. complete
+// is true only when a page with no next link is read within the bound. Pages
+// left at the bound give false, with no read past it. A failed first page
+// throws, since nothing was read. A later failed page or timeout is logged
+// and ends the read with complete false, keeping the pages before it.
+async function readEventPages<T>(
+  sourceAccountId: string,
+  maxPages: number,
+  convert: (event: CivicClerkEvent) => T,
+): Promise<{ items: T[]; complete: boolean; pagesRead: number }> {
   if (!/^[a-z0-9-]+$/i.test(sourceAccountId)) {
     throw new Error(`Invalid CivicClerk account id: "${sourceAccountId}"`);
+  }
+
+  // A bad bound is never "no bound".
+  if (!Number.isSafeInteger(maxPages) || maxPages < 1) {
+    throw new Error(`Invalid page bound: ${maxPages}`);
   }
 
   const baseUrl = API_BASE_URL.replace('{code}', sourceAccountId);
   const apiHost = new URL(baseUrl).host;
   const visited = new Set<string>();
+  const items: T[] = [];
+  let pagesRead = 0;
   let nextUrl: string | undefined = `${baseUrl}/Events?$orderby=startDateTime desc`;
 
   while (nextUrl) {
-    if (visited.has(nextUrl)) {
-      throw new Error(`CivicClerk returned the same page link twice: ${nextUrl}`);
+    if (pagesRead === maxPages) {
+      return { items, complete: false, pagesRead };
     }
-    visited.add(nextUrl);
 
-    let response: Response;
     try {
-      response = await fetch(nextUrl, { headers: { Accept: 'application/json' } });
+      if (visited.has(nextUrl)) {
+        throw new Error(`CivicClerk returned the same page link twice: ${nextUrl}`);
+      }
+      visited.add(nextUrl);
+
+      if (new URL(nextUrl).host !== apiHost) {
+        throw new Error(`CivicClerk next page link points to another host: ${nextUrl}`);
+      }
+
+      const page = await fetchEventPage(nextUrl);
+      items.push(...page.events.map(convert));
+      nextUrl = page.nextLink;
     } catch (error) {
-      throw new Error(`CivicClerk could not be reached: ${(error as Error).message}`);
+      if (pagesRead === 0) {
+        throw error;
+      }
+      console.error(`CivicClerk listing stopped after ${pagesRead} pages: ${(error as Error).message}`);
+      return { items, complete: false, pagesRead };
     }
 
-    if (!response.ok) {
-      throw new Error(`CivicClerk request failed with status ${response.status}: ${nextUrl}`);
-    }
-
-    const page = (await response.json()) as CivicClerkPage;
-    if (!Array.isArray(page.value)) {
-      throw new Error(`CivicClerk returned a page without a meeting list: ${nextUrl}`);
-    }
-
-    yield* page.value;
-
-    const nextLink = page['@odata.nextLink'];
-    if (nextLink && new URL(nextLink).host !== apiHost) {
-      throw new Error(`CivicClerk next page link points to another host: ${nextLink}`);
-    }
-    nextUrl = nextLink;
+    pagesRead += 1;
   }
+
+  return { items, complete: true, pagesRead };
 }
 
-// Returns every meeting the source lists, following @odata.nextLink until
-// the last page (SRS-220.1). Nothing is filtered out (SRS-220.2, SRS-220.8).
-// Throws on any failed page: a failed fetch is never "no meetings".
-export async function fetchMeetings(sourceAccountId: string): Promise<SourceMeeting[]> {
-  const meetings: SourceMeeting[] = [];
+// Returns the meetings on the first maxPages pages the source lists, newest
+// first, and whether the whole list was read (SRS-220.1). Nothing is filtered
+// out (SRS-220.2, SRS-220.8). Throws when the first page fails: a failed
+// fetch is never "no meetings".
+export async function fetchMeetings(sourceAccountId: string, maxPages: number): Promise<MeetingListing> {
+  const { items, complete, pagesRead } = await readEventPages(sourceAccountId, maxPages, (event) =>
+    toSourceMeeting(event, sourceAccountId),
+  );
 
-  for await (const event of fetchEvents(sourceAccountId)) {
-    meetings.push(toSourceMeeting(event, sourceAccountId));
-  }
-
-  return meetings;
+  return { meetings: items, complete, pagesRead };
 }
 
 // Returns the files each meeting lists, keyed by source meeting id, read from
-// the same pages as fetchMeetings (SRS-208.2). A meeting with no files maps
-// to an empty list. Nothing is filtered out. Throws on any failed page, on a
-// meeting without a file list, and on a file without an id or name: a failed
-// listing is never "no files".
-export async function fetchMeetingFiles(sourceAccountId: string): Promise<Map<string, SourceFile[]>> {
-  const filesByMeeting = new Map<string, SourceFile[]>();
+// the same pages and with the same bound as fetchMeetings (SRS-208.2,
+// SRS-220.1), and whether the whole list was read. A meeting with no files
+// maps to an empty list. Nothing is filtered out. A meeting without a file
+// list or a file without an id or name fails its page. Throws when the first
+// page fails: a failed listing is never "no files".
+export async function fetchMeetingFiles(sourceAccountId: string, maxPages: number): Promise<MeetingFilesListing> {
+  const { items, complete, pagesRead } = await readEventPages(
+    sourceAccountId,
+    maxPages,
+    (event): [string, SourceFile[]] => {
+      const sourceMeetingId = eventId(event);
+      if (!Array.isArray(event.publishedFiles)) {
+        throw new Error(`CivicClerk returned meeting ${sourceMeetingId} without a file list`);
+      }
 
-  for await (const event of fetchEvents(sourceAccountId)) {
-    const sourceMeetingId = eventId(event);
-    if (!Array.isArray(event.publishedFiles)) {
-      throw new Error(`CivicClerk returned meeting ${sourceMeetingId} without a file list`);
-    }
+      return [sourceMeetingId, event.publishedFiles.map((file) => toSourceFile(file, sourceMeetingId, sourceAccountId))];
+    },
+  );
 
-    filesByMeeting.set(
-      sourceMeetingId,
-      event.publishedFiles.map((file) => toSourceFile(file, sourceMeetingId, sourceAccountId)),
-    );
-  }
-
-  return filesByMeeting;
+  return { filesByMeeting: new Map(items), complete, pagesRead };
 }
 
 // Downloads one file's bytes and returns them with the MIME type the source

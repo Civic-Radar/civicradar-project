@@ -27,3 +27,20 @@ export interface SourceFile {
   sourcePageUrl: string; // public source page the user can open
   sizeBytes: number | null; // null when the source does not send a size
 }
+
+// How far a source client's paged listing got (SRS-220.1). complete is true
+// only when the source's last page was read within the page bound. A failed
+// page, a timeout or pages left at the bound make it false. pagesRead counts
+// only pages that converted fully.
+export interface ListingProgress {
+  complete: boolean;
+  pagesRead: number;
+}
+
+export interface MeetingListing extends ListingProgress {
+  meetings: SourceMeeting[];
+}
+
+export interface MeetingFilesListing extends ListingProgress {
+  filesByMeeting: Map<string, SourceFile[]>; // keyed by source meeting id
+}

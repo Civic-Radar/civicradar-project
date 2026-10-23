@@ -410,7 +410,11 @@ function runRetrieval() {
 }
 
 function listFiles(files: SourceFile[]) {
-  vi.mocked(fetchMeetingFiles).mockResolvedValueOnce(new Map([[MEETING_1192.sourceMeetingId, files]]));
+  vi.mocked(fetchMeetingFiles).mockResolvedValueOnce({
+    filesByMeeting: new Map([[MEETING_1192.sourceMeetingId, files]]),
+    complete: true,
+    pagesRead: 1,
+  });
 }
 
 // Lets the job that retrieval started without awaiting run as far as it can.
@@ -458,7 +462,7 @@ describe('Summary generation start (SRS-204.1)', () => {
     fake = createFakeSupabase();
     filesSeen = [];
     vi.mocked(getSupabaseClient).mockReturnValue(fake.client as unknown as ReturnType<typeof getSupabaseClient>);
-    vi.mocked(fetchMeetings).mockResolvedValue([MEETING_1192]);
+    vi.mocked(fetchMeetings).mockResolvedValue({ meetings: [MEETING_1192], complete: true, pagesRead: 1 });
     vi.mocked(downloadFile).mockImplementation(async (file: SourceFile) => {
       filesSeen.push(file.sourceFileId);
       return { bytes: fileBytes(file.sourceFileId), mimeType: 'application/pdf' };
@@ -504,7 +508,7 @@ describe('Summary generation start (SRS-204.1)', () => {
     // does not await the job.
     const response = await runRetrieval();
     expect(response.status).toBe(200);
-    expect(await response.json()).toEqual({ saved: 1 });
+    expect(await response.json()).toEqual({ saved: 1, complete: true });
 
     await vi.waitFor(() => expect(summarizeDocument).toHaveBeenCalledTimes(1));
 
