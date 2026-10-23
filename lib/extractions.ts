@@ -75,6 +75,42 @@ export const OFFICIAL_FIELDS = [
 
 export const NOT_FOUND_LABEL = 'Not found';
 
+// SRS-311.1 — one entry in the shared officials list (GET /api/officials).
+// title, role, email, phone: the most recent found (SRS-311.2); null = unavailable.
+export type SharedOfficial = {
+  official_id: number;
+  full_name: string;
+  title: string | null;
+  role: string | null;
+  email: string | null;
+  phone: string | null;
+  body_name: string | null;
+  sources: { document_id: number; title: string }[];
+};
+
+// One officials row as Supabase returns it, with its body and source documents embedded.
+export type SharedOfficialRow = Omit<SharedOfficial, 'body_name' | 'sources'> & {
+  body: { name: string } | null;
+  sources: { document: { document_id: number; title: string } | null }[] | null;
+};
+
+// Flattens one row: the body's name, and the source documents oldest first.
+export function toSharedOfficial(row: SharedOfficialRow): SharedOfficial {
+  return {
+    official_id: row.official_id,
+    full_name: row.full_name,
+    title: row.title,
+    role: row.role,
+    email: row.email,
+    phone: row.phone,
+    body_name: row.body?.name ?? null,
+    sources: (row.sources ?? [])
+      .map((s) => s.document)
+      .filter((d): d is { document_id: number; title: string } => d !== null)
+      .sort((a, b) => a.document_id - b.document_id),
+  };
+}
+
 // SRS-302.4 — exact wording when a completed extraction found nobody.
 export const NO_OFFICIALS_MESSAGE = 'No officials could be extracted from this document.';
 
