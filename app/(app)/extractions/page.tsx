@@ -14,6 +14,9 @@
 //
 // SRS-305.2, AO, Deletion confirmation: selecting Delete on an extraction asks
 // the user to confirm, naming its source document.
+//
+// SRS-305.4, AO, Permanent deletion: confirming deletes the extraction for good;
+// it leaves the list and its page can no longer be opened.
 
 import Link from 'next/link';
 import ContactsTabs from '../../components/ContactsTabs';
@@ -31,6 +34,27 @@ export default function SavedExtractionsPage() {
   const shown = filterSavedExtractions(extractions, search);
   // SRS-305.2: the saved extraction whose Delete control was selected.
   const [confirmingId, setConfirmingId] = useState<number | null>(null);
+  const [deleting, setDeleting] = useState(false);
+
+  // SRS-305.4: confirming deletes the extraction for good and removes it from the list.
+  async function deleteExtraction(extractionId: number) {
+    if (!token) return;
+    setDeleting(true);
+    setError('');
+    const res = await fetch(`/api/extractions/${extractionId}`, {
+      method: 'DELETE',
+      headers: { Authorization: `Bearer ${token}` },
+    }).catch(() => null);
+    setDeleting(false);
+
+    if (!res?.ok) {
+      const data = res ? await res.json().catch(() => ({})) : {};
+      setError(data.error || 'The extraction could not be deleted.');
+      return;
+    }
+    setConfirmingId(null);
+    setExtractions((list) => list.filter((e) => e.extraction_id !== extractionId));
+  }
 
   useEffect(() => {
     const stored = localStorage.getItem('access_token');
@@ -140,7 +164,16 @@ export default function SavedExtractionsPage() {
                         <div className="mt-3 flex flex-wrap gap-3">
                           <button
                             type="button"
+                            onClick={() => deleteExtraction(e.extraction_id)}
+                            disabled={deleting}
+                            className="rounded-full bg-danger-vivid px-5 py-2 text-sm font-semibold text-fg hover:bg-danger disabled:opacity-50"
+                          >
+                            {deleting ? 'Deleting…' : 'Delete extraction'}
+                          </button>
+                          <button
+                            type="button"
                             onClick={() => setConfirmingId(null)}
+                            disabled={deleting}
                             className="rounded-full border border-line px-5 py-2 text-sm hover:border-fg-faint"
                           >
                             Cancel
