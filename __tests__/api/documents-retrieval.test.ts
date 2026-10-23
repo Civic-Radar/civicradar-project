@@ -157,6 +157,17 @@ function createFakeSupabase() {
               },
             }),
           }),
+          // The per-meeting lookup of already retrieved files (SRS-208.3).
+          select: () => ({
+            eq: (_column: string, townId: number) => ({
+              in: async (_inColumn: string, sourceFileIds: string[]) => ({
+                data: documents
+                  .filter((row) => row.town_id === townId && sourceFileIds.includes(row.source_file_id as string))
+                  .map((row) => ({ source_file_id: row.source_file_id })),
+                error: null,
+              }),
+            }),
+          }),
         };
       }
 
@@ -272,7 +283,7 @@ describe('New document retrieval (SRS-208.2)', () => {
   });
 
   it('adds only the extra file when a later listing has one more file', async () => {
-    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const consoleLog = vi.spyOn(console, 'log').mockImplementation(() => {});
 
     listFiles([FILE_1166]);
     expect((await runRetrieval()).status).toBe(200);
@@ -284,8 +295,9 @@ describe('New document retrieval (SRS-208.2)', () => {
     expect(response.status).toBe(200);
     expect(await response.json()).toEqual({ saved: 1 });
 
-    // The already stored file is rejected by Storage and logged.
-    expect(consoleError).toHaveBeenCalledWith(expect.stringContaining('file 1166 failed at store'));
+    // The already retrieved file is skipped before the download and logged.
+    expect(consoleLog).toHaveBeenCalledWith('Document retrieval: town 1 file 1166 already retrieved, skipped');
+    expect(downloadFile).toHaveBeenCalledTimes(2);
 
     expect(fake.uploads.map((upload) => upload.path)).toEqual(['1/1166.pdf', '1/1167.pdf']);
     expect(fake.uploads[1].body).toEqual(FILE_BYTES['1167']);
