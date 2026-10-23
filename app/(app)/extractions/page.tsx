@@ -11,11 +11,14 @@
 //
 // Task 304.1-5 (beyond the SRS wording, noted on issue #202): each entry also
 // shows how many officials it found, and a search box filters by document title.
+//
+// SRS-305.2, AO, Deletion confirmation: selecting Delete on an extraction asks
+// the user to confirm, naming its source document.
 
 import Link from 'next/link';
 import ContactsTabs from '../../components/ContactsTabs';
 import { useEffect, useState } from 'react';
-import { extractionDate, filterSavedExtractions, formatDateTime, officialsFoundLabel } from '../../../lib/extractions';
+import { deletionConfirmationMessage, extractionDate, filterSavedExtractions, formatDateTime, officialsFoundLabel } from '../../../lib/extractions';
 import type { SavedExtraction } from '../../../lib/extractions';
 
 export default function SavedExtractionsPage() {
@@ -129,6 +132,22 @@ export default function SavedExtractionsPage() {
                         Delete
                       </button>
                     </div>
+
+                    {/* SRS-305.2: confirm the deletion, naming the source document */}
+                    {confirmingId === e.extraction_id ? (
+                      <div role="alertdialog" aria-label="Confirm deletion" className="mt-3 rounded-2xl border border-danger-line bg-danger-wash/20 p-4">
+                        <p className="text-sm" data-testid="delete-confirmation">{deletionConfirmationMessage(e.source_document_title)}</p>
+                        <div className="mt-3 flex flex-wrap gap-3">
+                          <button
+                            type="button"
+                            onClick={() => setConfirmingId(null)}
+                            className="rounded-full border border-line px-5 py-2 text-sm hover:border-fg-faint"
+                          >
+                            Cancel
+                          </button>
+                        </div>
+                      </div>
+                    ) : null}
                   </li>
                 ))}
               </ul>
