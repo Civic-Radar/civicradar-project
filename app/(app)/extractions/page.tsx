@@ -26,6 +26,8 @@ export default function SavedExtractionsPage() {
   // Task 304.1-5: search the saved extractions by source document title.
   const [search, setSearch] = useState('');
   const shown = filterSavedExtractions(extractions, search);
+  // SRS-305.2: the saved extraction whose Delete control was selected.
+  const [confirmingId, setConfirmingId] = useState<number | null>(null);
 
   useEffect(() => {
     const stored = localStorage.getItem('access_token');
@@ -112,10 +114,21 @@ export default function SavedExtractionsPage() {
               <ul className="mt-2 divide-y divide-raised" aria-label="Saved extractions">
                 {shown.map((e) => (
                   <li key={e.extraction_id} data-testid="saved-extraction" className="py-3">
-                    <Link href={`/extractions/${e.extraction_id}`} className="-mx-3 block rounded-xl px-3 py-1 hover:bg-raised/60">
-                      <p className="font-medium">{e.source_document_title}</p>
-                      <p className="text-xs text-fg-subtle">Extracted {formatDateTime(extractionDate(e))} · {officialsFoundLabel(e.officials_found)}</p>
-                    </Link>
+                    <div className="flex items-center justify-between gap-3">
+                      <Link href={`/extractions/${e.extraction_id}`} className="-mx-3 min-w-0 flex-1 rounded-xl px-3 py-1 hover:bg-raised/60">
+                        <p className="font-medium">{e.source_document_title}</p>
+                        <p className="text-xs text-fg-subtle">Extracted {formatDateTime(extractionDate(e))} · {officialsFoundLabel(e.officials_found)}</p>
+                      </Link>
+                      {/* SRS-305.2: a Delete control on each saved extraction */}
+                      <button
+                        type="button"
+                        onClick={() => setConfirmingId(e.extraction_id)}
+                        aria-label={`Delete the extraction of ${e.source_document_title}`}
+                        className="shrink-0 rounded-full border border-line px-4 py-1.5 text-sm text-fg-muted hover:border-danger-line hover:text-danger"
+                      >
+                        Delete
+                      </button>
+                    </div>
                   </li>
                 ))}
               </ul>
