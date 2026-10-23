@@ -10,6 +10,7 @@
 // new extraction runs.
 
 import Link from 'next/link';
+import ContactsTabs from '../../components/ContactsTabs';
 import { useEffect, useState } from 'react';
 import { extractionDate, formatDateTime } from '../../../lib/extractions';
 import type { Extraction } from '../../../lib/extractions';
@@ -70,6 +71,8 @@ export default function SavedExtractionsPage() {
           <h1 className="mt-2 text-3xl font-semibold">Saved extractions</h1>
           <p className="mt-2 text-fg-subtle">Every extraction you've completed, with the officials it found.</p>
         </header>
+
+        <ContactsTabs />
 
         {error ? (
           <p role="alert" className="rounded-xl border border-danger-line bg-danger-wash/30 p-3 text-sm text-danger">{error}</p>
