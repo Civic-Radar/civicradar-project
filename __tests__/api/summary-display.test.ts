@@ -164,10 +164,11 @@ function summarySection(markup: string): string | undefined {
   return markup.match(/<section\b[^>]*>[\s\S]*?<\/section>/)?.[0];
 }
 
-// The paragraphs inside the summary section, unescaped back to plain text.
+// The text paragraphs inside the summary section (the div after the
+// disclaimer), unescaped back to plain text.
 function summaryParagraphs(markup: string): string[] {
-  const section = summarySection(markup) ?? '';
-  return Array.from(section.matchAll(/<p\b[^>]*>([\s\S]*?)<\/p>/g), ([, inner]) => unescapeHtml(inner));
+  const textBlock = (summarySection(markup) ?? '').match(/<div\b[^>]*>[\s\S]*?<\/div>/)?.[0] ?? '';
+  return Array.from(textBlock.matchAll(/<p\b[^>]*>([\s\S]*?)<\/p>/g), ([, inner]) => unescapeHtml(inner));
 }
 
 beforeEach(() => {

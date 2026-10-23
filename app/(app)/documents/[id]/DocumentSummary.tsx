@@ -7,6 +7,7 @@ export default function DocumentSummary({ text }: { text: string | null }) {
   return (
     <section className="mt-8 break-words">
       <h2 className="text-lg font-semibold">Summary</h2>
+      <p className="mt-2 text-sm text-fg-subtle">AI-generated summary. Verify against the source document.</p>
       <div className="mt-2 space-y-3 text-fg-muted">
         {paragraphs.map((paragraph, index) => <p key={index}>{paragraph}</p>)}
       </div>
