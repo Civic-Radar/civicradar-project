@@ -388,3 +388,36 @@ describe('Document detail page summary section (SRS-204.2)', () => {
     expect(markup).not.toContain('Summary');
   });
 });
+
+describe('Document detail page AI-generated disclaimer (SRS-204.4)', () => {
+  const DISCLAIMER = 'AI-generated summary. Verify against the source document.';
+
+  beforeEach(() => {
+    vi.stubGlobal('React', React);
+  });
+
+  afterEach(() => {
+    hook.state = { status: 'loading' };
+  });
+
+  it('shows the exact sentence directly above a Complete document\'s summary text', () => {
+    const section = summarySection(renderLoaded('First paragraph.\n\nSecond paragraph.')) ?? '';
+
+    expect(section).toMatch(
+      new RegExp(`<\\/h2><p\\b[^>]*>${DISCLAIMER.replace(/\./g, '\\.')}<\\/p><div\\b[^>]*><p>First paragraph\\.<\\/p>`),
+    );
+  });
+
+  it('shows no disclaimer for a document with no summary', () => {
+    expect(renderLoaded(null)).not.toContain(DISCLAIMER);
+  });
+
+  it('shows the sentence once, after the Summary heading and before the text', () => {
+    const markup = renderLoaded('First paragraph.\n\nSecond paragraph.');
+    const at = markup.indexOf(DISCLAIMER);
+
+    expect(markup.split(DISCLAIMER)).toHaveLength(2);
+    expect(at).toBeGreaterThan(markup.indexOf('Summary</h2>'));
+    expect(at).toBeLessThan(markup.indexOf('First paragraph.'));
+  });
+});
