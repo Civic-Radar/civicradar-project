@@ -26,8 +26,9 @@
 --      the meeting Classified in one transaction, unless the meeting's agenda
 --      changed after it was tagged. Only the service role may run it.
 --   6. public.match_meetings_for_user() returns the meetings in a user's
---      followed towns that have one of the user's followed topic tags
---      (SRS-401.1). Only the service role may run it.
+--      followed towns that have one of the user's followed topic tags, plus
+--      the meetings the user follows directly (SRS-401.1, SRS-401.2). Only the
+--      service role may run it.
 -- =============================================================================
 -- =============================================================================
 -- PART 1. Profile table (used by app/api/profile)
@@ -661,15 +662,30 @@ revoke all on function public.replace_meeting_topics (BIGINT, JSONB, JSONB) from
 
 grant execute on function public.replace_meeting_topics (BIGINT, JSONB, JSONB) to service_role;
 
+-- Table: user_followed_meetings
+-- Reviewed by: EG (Erick Gonzalez)
+-- Supports: SRS-401.2, SRS-404.1, SRS-404.2, SRS-405.1, SRS-408.1, SRS-501.1
+-- Purpose: Stores the individual meetings each resident follows directly.
+create table user_followed_meetings (
+  user_id UUID not null references user_accounts (user_id) on delete CASCADE,
+  meeting_id BIGINT not null references meetings (meeting_id),
+  primary key (user_id, meeting_id)
+);
+
 -- Function: match_meetings_for_user
 -- Reviewed by: EG (Erick Gonzalez)
--- Supports: SRS-401.1
--- Purpose: Returns the meetings in a user's followed towns that have at least
---          one of the user's followed topic tags. EXISTS checks the tags, so a
---          meeting with several followed topics is returned once. A user with
---          no followed towns or no followed topics gets no meetings. Removed
---          towns and topics never match, even if a follow row still exists.
+-- Supports: SRS-401.1, SRS-401.2
+-- Purpose: Returns the meetings relevant to a user: meetings in the user's
+--          followed towns that have at least one of the user's followed topic
+--          tags, or meetings the user follows directly. Every check is an
+--          EXISTS on meetings alone, so a meeting that qualifies more than one
+--          way is returned once. Removed towns and topics never match through
+--          town and topic, even if a follow row still exists; a directly
+--          followed meeting is returned even if its town was removed. Follows
+--          are read on every call, so the latest saved choices always apply.
 -- Supabase: not in database/schema.sql; called by the matching API route.
+-- Defined after user_followed_meetings because a SQL function's body is
+-- checked against existing tables when it is created.
 create function public.match_meetings_for_user (p_user_id UUID) RETURNS SETOF meetings LANGUAGE sql STABLE SECURITY INVOKER
 set
   search_path = pg_catalog,
@@ -677,18 +693,28 @@ set
   as $$
   SELECT m.*
   FROM meetings m
-  JOIN user_followed_towns uft
-    ON uft.town_id = m.town_id AND uft.user_id = p_user_id
-  JOIN towns t
-    ON t.town_id = m.town_id AND t.removed_at IS NULL
-  WHERE EXISTS (
+  WHERE (
+    EXISTS (
+      SELECT 1
+      FROM user_followed_towns uft
+      JOIN towns t
+        ON t.town_id = uft.town_id AND t.removed_at IS NULL
+      WHERE uft.user_id = p_user_id AND uft.town_id = m.town_id
+    )
+    AND EXISTS (
+      SELECT 1
+      FROM meeting_topics mt
+      JOIN user_followed_topics uftp
+        ON uftp.topic_id = mt.topic_id AND uftp.user_id = p_user_id
+      JOIN topics tp
+        ON tp.topic_id = mt.topic_id AND tp.removed_at IS NULL
+      WHERE mt.meeting_id = m.meeting_id
+    )
+  )
+  OR EXISTS (
     SELECT 1
-    FROM meeting_topics mt
-    JOIN user_followed_topics uftp
-      ON uftp.topic_id = mt.topic_id AND uftp.user_id = p_user_id
-    JOIN topics tp
-      ON tp.topic_id = mt.topic_id AND tp.removed_at IS NULL
-    WHERE mt.meeting_id = m.meeting_id
+    FROM user_followed_meetings ufm
+    WHERE ufm.user_id = p_user_id AND ufm.meeting_id = m.meeting_id
   )
   ORDER BY m.start_at;
 $$;
@@ -697,16 +723,6 @@ $$;
 revoke all on function public.match_meetings_for_user (UUID) from public, anon, authenticated;
 
 grant execute on function public.match_meetings_for_user (UUID) to service_role;
-
--- Table: user_followed_meetings
--- Reviewed by: EG (Erick Gonzalez)
--- Supports: SRS-404.1, SRS-404.2, SRS-405.1, SRS-408.1, SRS-501.1
--- Purpose: Stores the individual meetings each resident follows directly.
-create table user_followed_meetings (
-  user_id UUID not null references user_accounts (user_id) on delete CASCADE,
-  meeting_id BIGINT not null references meetings (meeting_id),
-  primary key (user_id, meeting_id)
-);
 
 -- Table: meeting_updates
 -- Reviewed by: EG (Erick Gonzalez)
