@@ -23,8 +23,12 @@ function retrievalMaxPages(): number {
 }
 
 // Retrieves a town's meetings from its source and saves them (SRS-220.3),
-// then stores each file listed under them as a document (SRS-208.2).
-// No access control yet: any caller can trigger a retrieval run.
+// then stores each file listed under them as a document (SRS-208.2). Both
+// passes read at most the page bound. The meetings and files from every page
+// read are kept, even when a later page fails, and complete is true only when
+// both passes read the whole list (SRS-220.1). Nothing is written for the
+// flag yet (SRS-222.2). No access control yet: any caller can trigger a
+// retrieval run.
 export async function POST(request: Request) {
   let townId: unknown;
   try {
@@ -92,6 +96,11 @@ export async function POST(request: Request) {
     );
   }
 
+  const complete = meetingListing.complete && fileListing.complete;
+  console.log(
+    `Meeting retrieval: town ${town.town_id} read ${meetingListing.pagesRead} meeting pages and ${fileListing.pagesRead} file pages, bound ${maxPages}, complete ${complete}`,
+  );
+
   // Per-file failures are logged inside and never stop the run (SRS-208.2).
   try {
     await retrieveDocuments(supabase, town.town_id, fileListing.filesByMeeting, downloadFile);
@@ -103,5 +112,5 @@ export async function POST(request: Request) {
     );
   }
 
-  return Response.json({ saved }, { status: 200 });
+  return Response.json({ saved, complete }, { status: 200 });
 }

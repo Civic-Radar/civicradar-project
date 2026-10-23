@@ -242,7 +242,7 @@ describe('Meeting document link (SRS-220.7)', () => {
 
     const response = await runRetrieval();
     expect(response.status).toBe(200);
-    expect(await response.json()).toEqual({ saved: 2 });
+    expect(await response.json()).toEqual({ saved: 2, complete: true });
   });
 
   afterEach(() => {

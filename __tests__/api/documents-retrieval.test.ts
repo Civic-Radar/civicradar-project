@@ -266,7 +266,7 @@ describe('New document retrieval (SRS-208.2)', () => {
     const response = await runRetrieval();
 
     expect(response.status).toBe(200);
-    expect(await response.json()).toEqual({ saved: 1 });
+    expect(await response.json()).toEqual({ saved: 1, complete: true });
 
     const meeting = fake.meetings.get(`${SALEM_TOWN_ID}:1192`);
     expect(meeting).toBeDefined();
@@ -305,7 +305,7 @@ describe('New document retrieval (SRS-208.2)', () => {
     const response = await runRetrieval();
 
     expect(response.status).toBe(200);
-    expect(await response.json()).toEqual({ saved: 1 });
+    expect(await response.json()).toEqual({ saved: 1, complete: true });
 
     // The already retrieved file is skipped before the download and logged.
     expect(consoleLog).toHaveBeenCalledWith('Document retrieval: town 1 file 1166 already retrieved, skipped');
@@ -340,7 +340,7 @@ describe('New document retrieval (SRS-208.2)', () => {
       const response = await runRetrieval();
 
       expect(response.status).toBe(200);
-      expect(await response.json()).toEqual({ saved: 1 });
+      expect(await response.json()).toEqual({ saved: 1, complete: true });
 
       expect(fake.documents.map((row) => row.source_file_id)).toEqual(['1166', '1167']);
       expect(fake.uploads.map((upload) => upload.path)).toEqual(['1/1166.pdf', '1/1167.pdf']);
@@ -391,7 +391,7 @@ describe('New document retrieval (SRS-208.2)', () => {
       const response = await runRetrieval();
 
       expect(response.status).toBe(200);
-      expect(await response.json()).toEqual({ saved: 1 });
+      expect(await response.json()).toEqual({ saved: 1, complete: true });
       expect(fake.documents).toEqual([concurrent]);
       expect(fake.attempts).toEqual([]);
 

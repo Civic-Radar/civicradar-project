@@ -508,7 +508,7 @@ describe('Summary generation start (SRS-204.1)', () => {
     // does not await the job.
     const response = await runRetrieval();
     expect(response.status).toBe(200);
-    expect(await response.json()).toEqual({ saved: 1 });
+    expect(await response.json()).toEqual({ saved: 1, complete: true });
 
     await vi.waitFor(() => expect(summarizeDocument).toHaveBeenCalledTimes(1));
 
