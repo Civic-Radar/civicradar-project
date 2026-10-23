@@ -595,7 +595,7 @@ describe('Summary generation start (SRS-204.1)', () => {
     expect(consoleOutput()).toContain('failed at summarize: over_word_limit, attempt closed as Failed');
   });
 
-  it('records no attempt when the documents insert is rejected because the file already has a row', async () => {
+  it('records no attempt for a file that already has a documents row', async () => {
     // Like seeded rows 13 to 15: the row exists but its Storage path is free.
     const seeded: Row = {
       document_id: 13,
@@ -627,9 +627,13 @@ describe('Summary generation start (SRS-204.1)', () => {
     expect(fake.events.filter((event) => event.startsWith('summary_attempts.claim'))).toEqual([]);
     expect(fake.documents).toEqual([seeded]);
 
+    // Skipped before the download, so nothing is stored or inserted.
+    expect(fake.objects.size).toBe(0);
+    expect(fake.events.filter((event) => event.startsWith('documents.insert'))).toEqual([]);
+
     const output = consoleOutput();
-    expect(output).toContain('file 1166 failed at insert');
-    expect(output).toContain('1/1166.pdf stored but no documents row');
+    expect(output).toContain('town 1 file 1166 already retrieved, skipped');
+    expect(output).not.toContain('failed at');
     expect(output).not.toContain('Summary start');
   });
 
@@ -661,7 +665,7 @@ describe('Summary generation start (SRS-204.1)', () => {
     expect(attemptsFor(fake, 32)).toEqual([expect.objectContaining({ attempt_number: 1, outcome: 'Succeeded' })]);
 
     const output = consoleOutput();
-    expect(output).toContain('file 1166 failed at store');
+    expect(output).toContain('town 1 file 1166 already retrieved, skipped');
     expect(output).not.toContain('has no summary attempt');
   });
 

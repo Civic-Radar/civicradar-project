@@ -18,6 +18,12 @@ import { downloadFile, fetchMeetingFiles, fetchMeetings } from '../../lib/source
 import { POST } from '../../app/api/retrieval/meetings/route';
 
 const SALEM_TOWN_ID = 1;
+const OTHER_TOWN_ID = 2;
+
+const TOWNS: Record<number, Row> = {
+  [SALEM_TOWN_ID]: { town_id: SALEM_TOWN_ID, source_account_id: 'salemma', meeting_time_zone: 'America/New_York' },
+  [OTHER_TOWN_ID]: { town_id: OTHER_TOWN_ID, source_account_id: 'example-two', meeting_time_zone: 'America/New_York' },
+};
 
 // Salem meeting 1192, which lists Agenda file 1166 and Agenda Packet file 1167.
 const MEETING_1192: SourceMeeting = {
@@ -71,12 +77,15 @@ interface Upload {
 
 // Fake Supabase client. Storage rejects an existing path (upload with
 // upsert: false) and documents rejects a repeated (town_id, source_file_id)
-// or storage_path with 23505, the way the real ones do.
+// or storage_path with 23505, the way the real ones do. beforeInsert runs
+// just before each documents insert, so a test can play a concurrent run.
 function createFakeSupabase() {
   const meetings = new Map<string, Row>();
   const documents: Row[] = [];
   const uploads: Upload[] = [];
+  const attempts: Row[] = [];
   const storedPaths = new Set<string>();
+  const hooks: { beforeInsert?: (row: Row) => void } = {};
   let nextMeetingId = 501;
   let nextDocumentId = 1;
   let nextAttemptId = 1;
@@ -86,12 +95,9 @@ function createFakeSupabase() {
       if (table === 'towns') {
         return {
           select: () => ({
-            eq: () => ({
+            eq: (_column: string, townId: number) => ({
               is: () => ({
-                maybeSingle: async () => ({
-                  data: { town_id: SALEM_TOWN_ID, source_account_id: 'salemma', meeting_time_zone: 'America/New_York' },
-                  error: null,
-                }),
+                maybeSingle: async () => ({ data: TOWNS[townId] ?? null, error: null }),
               }),
             }),
           }),
@@ -140,6 +146,7 @@ function createFakeSupabase() {
           insert: (row: Row) => ({
             select: () => ({
               single: async () => {
+                hooks.beforeInsert?.(row);
                 const duplicate = documents.some(
                   (existing) =>
                     (existing.town_id === row.town_id && existing.source_file_id === row.source_file_id) ||
@@ -157,6 +164,17 @@ function createFakeSupabase() {
               },
             }),
           }),
+          // The per-meeting lookup of already retrieved files (SRS-208.3).
+          select: () => ({
+            eq: (_column: string, townId: number) => ({
+              in: async (_inColumn: string, sourceFileIds: string[]) => ({
+                data: documents
+                  .filter((row) => row.town_id === townId && sourceFileIds.includes(row.source_file_id as string))
+                  .map((row) => ({ source_file_id: row.source_file_id })),
+                error: null,
+              }),
+            }),
+          }),
         };
       }
 
@@ -166,10 +184,11 @@ function createFakeSupabase() {
         return {
           insert: (row: Row) => ({
             select: () => ({
-              single: async () => ({
-                data: { attempt_id: nextAttemptId++, document_id: row.document_id, started_at: new Date().toISOString() },
-                error: null,
-              }),
+              single: async () => {
+                const attempt = { attempt_id: nextAttemptId++, document_id: row.document_id, started_at: new Date().toISOString() };
+                attempts.push(attempt);
+                return { data: attempt, error: null };
+              },
             }),
           }),
         };
@@ -194,15 +213,15 @@ function createFakeSupabase() {
     },
   };
 
-  return { client, meetings, documents, uploads };
+  return { client, meetings, documents, uploads, attempts, hooks };
 }
 
-function runRetrieval() {
+function runRetrieval(townId = SALEM_TOWN_ID) {
   return POST(
     new Request('http://localhost/api/retrieval/meetings', {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ townId: SALEM_TOWN_ID }),
+      body: JSON.stringify({ townId }),
     }),
   );
 }
@@ -272,7 +291,7 @@ describe('New document retrieval (SRS-208.2)', () => {
   });
 
   it('adds only the extra file when a later listing has one more file', async () => {
-    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const consoleLog = vi.spyOn(console, 'log').mockImplementation(() => {});
 
     listFiles([FILE_1166]);
     expect((await runRetrieval()).status).toBe(200);
@@ -284,8 +303,9 @@ describe('New document retrieval (SRS-208.2)', () => {
     expect(response.status).toBe(200);
     expect(await response.json()).toEqual({ saved: 1 });
 
-    // The already stored file is rejected by Storage and logged.
-    expect(consoleError).toHaveBeenCalledWith(expect.stringContaining('file 1166 failed at store'));
+    // The already retrieved file is skipped before the download and logged.
+    expect(consoleLog).toHaveBeenCalledWith('Document retrieval: town 1 file 1166 already retrieved, skipped');
+    expect(downloadFile).toHaveBeenCalledTimes(2);
 
     expect(fake.uploads.map((upload) => upload.path)).toEqual(['1/1166.pdf', '1/1167.pdf']);
     expect(fake.uploads[1].body).toEqual(FILE_BYTES['1167']);
@@ -301,6 +321,97 @@ describe('New document retrieval (SRS-208.2)', () => {
       storage_path: '1/1167.pdf',
       file_size_bytes: FILE_BYTES['1167'].length,
       file_sha256: sha256(FILE_BYTES['1167']),
+    });
+  });
+
+  // Shares the setup above: one fake per test, kept across both runs.
+  describe('Duplicate entry prevention (SRS-208.3)', () => {
+    it('keeps one row and one stored file per source file id when the same listing runs twice', async () => {
+      vi.spyOn(console, 'log').mockImplementation(() => {});
+
+      listFiles([FILE_1166, FILE_1167]);
+      expect((await runRetrieval()).status).toBe(200);
+
+      listFiles([FILE_1166, FILE_1167]);
+      const response = await runRetrieval();
+
+      expect(response.status).toBe(200);
+      expect(await response.json()).toEqual({ saved: 1 });
+
+      expect(fake.documents.map((row) => row.source_file_id)).toEqual(['1166', '1167']);
+      expect(fake.uploads.map((upload) => upload.path)).toEqual(['1/1166.pdf', '1/1167.pdf']);
+      expect(downloadFile).toHaveBeenCalledTimes(2);
+      expect(fake.attempts.map((attempt) => attempt.document_id)).toEqual([1, 2]);
+    });
+
+    it("leaves an existing row's retrieved_at and summary fields unchanged", async () => {
+      vi.spyOn(console, 'log').mockImplementation(() => {});
+      const existing: Row = {
+        document_id: 40,
+        meeting_id: 501,
+        town_id: SALEM_TOWN_ID,
+        source_file_id: '1166',
+        storage_path: '1/1166.pdf',
+        retrieved_at: '2026-10-01T12:00:00.000000+00:00',
+        summary_status: 'Complete',
+        summary_text: 'An earlier summary.',
+        summary_generated_at: '2026-10-01T12:05:00.000000+00:00',
+      };
+      fake.documents.push({ ...existing });
+      listFiles([FILE_1166]);
+
+      expect((await runRetrieval()).status).toBe(200);
+
+      expect(fake.documents).toEqual([existing]);
+      expect(downloadFile).not.toHaveBeenCalled();
+      expect(fake.uploads).toEqual([]);
+      expect(fake.attempts).toEqual([]);
+    });
+
+    it('treats a concurrent duplicate insert as already retrieved, with no error and no attempt', async () => {
+      const consoleLog = vi.spyOn(console, 'log').mockImplementation(() => {});
+      const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+      // Another run inserts the row after this run's lookup found none.
+      const concurrent: Row = {
+        document_id: 99,
+        town_id: SALEM_TOWN_ID,
+        source_file_id: '1166',
+        storage_path: '1/1166.bin',
+      };
+      fake.hooks.beforeInsert = () => {
+        if (!fake.documents.some((row) => row.document_id === 99)) fake.documents.push({ ...concurrent });
+      };
+      listFiles([FILE_1166]);
+
+      const response = await runRetrieval();
+
+      expect(response.status).toBe(200);
+      expect(await response.json()).toEqual({ saved: 1 });
+      expect(fake.documents).toEqual([concurrent]);
+      expect(fake.attempts).toEqual([]);
+
+      expect(consoleLog).toHaveBeenCalledWith(expect.stringContaining('file 1166 already retrieved at insert'));
+      expect(consoleError).toHaveBeenCalledWith(expect.stringContaining('1/1166.pdf stored but no documents row'));
+      expect(consoleError).not.toHaveBeenCalledWith(expect.stringContaining('failed at'));
+    });
+
+    it('creates a separate row for the same source file id in a different town', async () => {
+      vi.spyOn(console, 'log').mockImplementation(() => {});
+
+      listFiles([FILE_1166]);
+      expect((await runRetrieval(SALEM_TOWN_ID)).status).toBe(200);
+
+      listFiles([FILE_1166]);
+      expect((await runRetrieval(OTHER_TOWN_ID)).status).toBe(200);
+
+      expect(fake.documents.map((row) => [row.town_id, row.source_file_id, row.storage_path])).toEqual([
+        [SALEM_TOWN_ID, '1166', '1/1166.pdf'],
+        [OTHER_TOWN_ID, '1166', '2/1166.pdf'],
+      ]);
+      expect(fake.uploads.map((upload) => upload.path)).toEqual(['1/1166.pdf', '2/1166.pdf']);
+      expect(fake.documents[0].meeting_id).not.toBe(fake.documents[1].meeting_id);
+      expect(fake.attempts.map((attempt) => attempt.document_id)).toEqual([1, 2]);
     });
   });
 });

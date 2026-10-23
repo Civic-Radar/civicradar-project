@@ -9,9 +9,21 @@ function extensionFor(mimeType: string): string {
   return mimeType === 'application/pdf' ? 'pdf' : 'bin';
 }
 
+// Thrown when the upload finds a file already at the path (SRS-208.3). The
+// file in Storage is left as it is.
+export class StoragePathExistsError extends Error {
+  readonly path: string;
+
+  constructor(path: string) {
+    super(`Storage path already exists: ${path}`);
+    this.name = 'StoragePathExistsError';
+    this.path = path;
+  }
+}
+
 // Uploads a downloaded file to <town_id>/<source_file_id>.<ext> and returns
 // the value for documents.storage_path. Never overwrites: an existing path
-// is an upload error and throws.
+// throws StoragePathExistsError, and any other upload error throws.
 export async function storeDocumentFile(
   supabase: SupabaseClient,
   townId: number,
@@ -30,6 +42,10 @@ export async function storeDocumentFile(
     .upload(path, bytes, { contentType: mimeType, upsert: false });
 
   if (error) {
+    // storage-js reports an existing path with statusCode '409'.
+    if ('statusCode' in error && error.statusCode === '409') {
+      throw new StoragePathExistsError(path);
+    }
     throw new Error(`Storage upload failed for ${path}: ${error.message}`);
   }
 

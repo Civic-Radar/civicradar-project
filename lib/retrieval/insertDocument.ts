@@ -16,10 +16,19 @@ export interface StoredDocumentFile {
   sizeBytes: number;
 }
 
+// Thrown when the insert hits a unique key (Postgres 23505): another run
+// already inserted the row for this file (SRS-208.3).
+export class DocumentExistsError extends Error {
+  constructor(sourceFileId: string) {
+    super(`Document for source file ${sourceFileId} already exists (23505)`);
+    this.name = 'DocumentExistsError';
+  }
+}
+
 // Inserts one documents row for a newly retrieved file (SRS-208.2) and returns
-// its document_id. retrieved_at and summary_status keep their defaults. There
-// is no duplicate guard (SRS-208.3): an existing (town_id, source_file_id) or
-// storage_path is an insert error and throws.
+// its document_id. retrieved_at and summary_status keep their defaults. An
+// existing (town_id, source_file_id) or storage_path throws
+// DocumentExistsError, and any other insert error throws.
 export async function insertDocument(
   supabase: SupabaseClient,
   meeting: DocumentMeeting,
@@ -44,6 +53,9 @@ export async function insertDocument(
     .single();
 
   if (error) {
+    if (error.code === '23505') {
+      throw new DocumentExistsError(file.sourceFileId);
+    }
     throw new Error(`Could not insert document for source file ${file.sourceFileId} (${error.code}): ${error.message}`);
   }
 
