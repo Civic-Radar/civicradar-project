@@ -34,5 +34,21 @@ export async function GET(request: Request) {
 
   if (error) return Response.json({ error: LOAD_ERROR }, { status: 500 });
 
-  return Response.json({ documents: documents ?? [] }, { status: 200 });
+  // Each entry's town name for its tag (SRS-212.1). documents has no foreign key to towns, so no embed.
+  const { data: towns, error: townsError } = await supabase!
+    .from('towns')
+    .select('town_id, name')
+    .in('town_id', townIds);
+
+  if (townsError) return Response.json({ error: LOAD_ERROR }, { status: 500 });
+
+  const townNames = new Map(
+    ((towns ?? []) as { town_id: number; name: string | null }[]).map((row) => [row.town_id, row.name]),
+  );
+  const entries = ((documents ?? []) as { town_id: number }[]).map((row) => ({
+    ...row,
+    town_name: townNames.get(row.town_id) ?? null,
+  }));
+
+  return Response.json({ documents: entries }, { status: 200 });
 }

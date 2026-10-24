@@ -24,7 +24,7 @@ const CONSOLE_METHODS = ['log', 'error', 'warn', 'info', 'debug'] as const;
 type Anchor = { attributes: Record<string, string>; text: string };
 
 function entry(document_id: number, title: string): DocumentListEntry {
-  return { document_id, title, town_id: 1, meeting_id: 9, retrieved_at: '2026-10-01T12:00:00+00:00' };
+  return { document_id, title, town_id: 1, meeting_id: 9, retrieved_at: '2026-10-01T12:00:00+00:00', town_name: 'Town A' };
 }
 
 // Vitest compiles this project's JSX to React.createElement, and the page does
