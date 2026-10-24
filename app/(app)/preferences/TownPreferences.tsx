@@ -1,7 +1,11 @@
 'use client';
 
-import Link from 'next/link';
+import { MapPin } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
+import { alertClasses } from '../../components/ui/Alert';
+import { buttonClasses } from '../../components/ui/Button';
+import { cardClasses } from '../../components/ui/Card';
+import SignedOutNotice from '../../components/ui/SignedOutNotice';
 
 type Town = { town_id: number; name: string; followed: boolean };
 
@@ -78,28 +82,21 @@ export default function TownPreferences() {
   }
 
   if (loading) {
-    return <p className="mt-6 text-fg-subtle">Loading…</p>;
+    return <p className="text-fg-subtle">Loading…</p>;
   }
 
   if (signedOut) {
-    return (
-      <div className="mt-6 space-y-4">
-        <p className="text-fg-muted">You must be logged in to manage your preferences.</p>
-        <Link href="/login" className="inline-block rounded-full border border-line bg-raised px-4 py-2 text-sm hover:border-accent-strong hover:text-accent-soft">
-          Go to login
-        </Link>
-      </div>
-    );
+    return <SignedOutNotice className="md:col-span-2" message="You must be logged in to manage your preferences." />;
   }
 
   if (loadError) {
     return (
-      <div className="mt-6 space-y-4">
-        <p role="alert" className="rounded-xl border border-danger-line bg-danger-wash/30 p-3 text-sm text-danger">{loadError}</p>
+      <div className="space-y-4">
+        <p role="alert" className={alertClasses('error')}>{loadError}</p>
         <button
           type="button"
           onClick={() => token && loadTowns(token)}
-          className="rounded-full border border-line bg-raised px-4 py-2 text-sm hover:border-accent-strong hover:text-accent-soft"
+          className={buttonClasses({ variant: 'secondary' })}
         >
           Try again
         </button>
@@ -108,18 +105,21 @@ export default function TownPreferences() {
   }
 
   return (
-    <form onSubmit={handleSave} className="mt-6">
+    <form onSubmit={handleSave} className={cardClasses('min-w-0')}>
       <fieldset disabled={saving} className="min-w-0">
-        <legend className="text-xs uppercase tracking-widest text-fg-subtle">Towns</legend>
+        <legend className="mb-4 flex w-full items-center gap-3 text-lg font-semibold tracking-tight text-fg">
+          Towns
+          <MapPin aria-hidden="true" className="ml-auto h-5 w-5" />
+        </legend>
 
         {towns.length === 0 ? (
-          <p className="mt-3 text-fg-muted">No towns are available yet.</p>
+          <p className="text-sm text-fg-muted">No towns are available yet.</p>
         ) : (
           <>
-            <ul className="mt-3 space-y-2">
+            <ul className="mb-7 flex flex-col gap-2">
               {towns.map((town) => (
                 <li key={town.town_id}>
-                  <label className="flex items-center gap-3 rounded-xl border border-line bg-surface px-4 py-3 text-fg">
+                  <label className="flex min-h-12 cursor-pointer items-center gap-3 rounded-md border border-line p-3 text-sm text-fg has-[:checked]:border-line-strong has-[:checked]:bg-accent-wash/50">
                     <input
                       type="checkbox"
                       checked={town.followed}
@@ -133,7 +133,7 @@ export default function TownPreferences() {
             </ul>
             <button
               type="submit"
-              className="mt-4 rounded-xl bg-accent-strong px-4 py-2 text-sm font-semibold text-surface hover:bg-accent disabled:cursor-not-allowed disabled:opacity-70"
+              className={buttonClasses()}
             >
               {saving ? 'Saving…' : 'Save'}
             </button>
@@ -142,12 +142,12 @@ export default function TownPreferences() {
       </fieldset>
 
       {saved ? (
-        <p role="status" className="mt-4 rounded-xl border border-line bg-raised/80 p-3 text-sm text-fg">
+        <p role="status" className={alertClasses('success', 'mt-4')}>
           Town preferences saved.
         </p>
       ) : null}
       {saveError ? (
-        <p role="alert" className="mt-4 rounded-xl border border-danger-line bg-danger-wash/30 p-3 text-sm text-danger">{saveError}</p>
+        <p role="alert" className={alertClasses('error', 'mt-4')}>{saveError}</p>
       ) : null}
     </form>
   );

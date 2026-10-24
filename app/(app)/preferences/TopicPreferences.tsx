@@ -3,7 +3,11 @@
 // SRS-101.5: the topic selection section shows every topic in the catalog.
 // SRS-101.4: residents select topics and save them as their followed topics.
 
+import { Leaf } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
+import { alertClasses } from '../../components/ui/Alert';
+import { buttonClasses } from '../../components/ui/Button';
+import { cardClasses } from '../../components/ui/Card';
 
 type Topic = { topic_id: number; name: string; followed: boolean };
 
@@ -79,23 +83,26 @@ export default function TopicPreferences() {
   // The towns section already asks signed-out users to log in.
   if (!token) return null;
 
-  if (loading) return <p className="mt-8 text-fg-subtle">Loading…</p>;
+  if (loading) return <p className="text-fg-subtle">Loading…</p>;
 
   if (loadError) {
     return (
-      <p role="alert" className="mt-8 rounded-xl border border-danger-line bg-danger-wash/30 p-3 text-sm text-danger">{loadError}</p>
+      <p role="alert" className={alertClasses('error')}>{loadError}</p>
     );
   }
 
   return (
-    <form onSubmit={handleSave} className="mt-8">
+    <form onSubmit={handleSave} className={cardClasses('min-w-0')}>
       <fieldset disabled={saving} className="min-w-0">
-        <legend className="text-xs uppercase tracking-widest text-fg-subtle">Topics</legend>
+        <legend className="mb-4 flex w-full items-center gap-3 text-lg font-semibold tracking-tight text-fg">
+          Topics
+          <Leaf aria-hidden="true" className="ml-auto h-5 w-5" />
+        </legend>
 
-        <ul className="mt-3 space-y-2">
+        <ul className="mb-7 grid gap-2 xl:grid-cols-2">
           {topics.map((topic) => (
             <li key={topic.topic_id}>
-              <label className="flex items-center gap-3 rounded-xl border border-line bg-surface px-4 py-3 text-fg">
+              <label className="flex min-h-12 cursor-pointer items-center gap-3 rounded-md border border-line p-3 text-sm text-fg has-[:checked]:border-line-strong has-[:checked]:bg-accent-wash/50">
                 <input
                   type="checkbox"
                   checked={topic.followed}
@@ -110,19 +117,19 @@ export default function TopicPreferences() {
 
         <button
           type="submit"
-          className="mt-4 rounded-xl bg-accent-strong px-4 py-2 text-sm font-semibold text-surface hover:bg-accent disabled:cursor-not-allowed disabled:opacity-70"
+          className={buttonClasses()}
         >
           {saving ? 'Saving…' : 'Save topics'}
         </button>
       </fieldset>
 
       {saved ? (
-        <p role="status" className="mt-4 rounded-xl border border-line bg-raised/80 p-3 text-sm text-fg">
+        <p role="status" className={alertClasses('success', 'mt-4')}>
           Topic preferences saved.
         </p>
       ) : null}
       {saveError ? (
-        <p role="alert" className="mt-4 rounded-xl border border-danger-line bg-danger-wash/30 p-3 text-sm text-danger">{saveError}</p>
+        <p role="alert" className={alertClasses('error', 'mt-4')}>{saveError}</p>
       ) : null}
     </form>
   );
