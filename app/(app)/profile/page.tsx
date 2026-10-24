@@ -168,7 +168,7 @@ export default function ProfilePage() {
                     {profile.username[0].toUpperCase()}
                   </span>
                 )}
-                <span className="absolute inset-0 flex items-center justify-center rounded-full bg-black/50 text-xs text-white opacity-0 transition group-hover:opacity-100">
+                <span className="absolute inset-0 flex items-center justify-center rounded-full bg-black/50 text-xs text-on-dark opacity-0 transition group-hover:opacity-100">
                   {uploading ? 'Uploading…' : 'Change photo'}
                 </span>
               </button>

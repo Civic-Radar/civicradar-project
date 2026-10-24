@@ -21,13 +21,13 @@ const features = [
 
 export default function Home() {
   return (
-    <main className="min-h-screen bg-surface text-white">
+    <main className="min-h-screen bg-surface text-fg">
       <header className="mx-auto flex max-w-5xl items-center justify-between px-4 py-6 sm:px-6">
         <div className="flex items-center gap-3">
           <Landmark className="h-7 w-7 text-sidebar-icon" aria-hidden="true" />
           <span className="text-xl font-bold sm:text-2xl">Civic Radar</span>
         </div>
-        <Link href="/login" className="rounded-lg px-4 py-2 text-fg-muted transition-colors hover:bg-raised hover:text-white">
+        <Link href="/login" className="rounded-lg px-4 py-2 text-fg-muted transition-colors hover:bg-raised hover:text-fg">
           Sign in
         </Link>
       </header>
@@ -43,13 +43,13 @@ export default function Home() {
         <div className="mt-8 flex flex-wrap gap-3">
           <Link
             href="/register"
-            className="rounded-lg bg-sidebar-active px-6 py-3 font-semibold text-white transition hover:bg-sidebar-icon hover:text-surface"
+            className="rounded-lg bg-sidebar-active px-6 py-3 font-semibold text-on-dark transition hover:bg-sidebar-icon hover:text-surface"
           >
             Create an account
           </Link>
           <Link
             href="/login"
-            className="rounded-lg border border-line px-6 py-3 font-semibold text-white transition hover:bg-raised"
+            className="rounded-lg border border-line px-6 py-3 font-semibold text-fg transition hover:bg-raised"
           >
             Sign in
           </Link>

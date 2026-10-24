@@ -91,7 +91,7 @@ export default async function DashboardPage() {
   }
 
   return (
-    <main className="min-w-0 flex-1 p-8 text-white">
+    <main className="min-w-0 flex-1 p-8 text-fg">
       <h1 className="text-3xl font-bold">
         Civic Radar Dashboard
       </h1>

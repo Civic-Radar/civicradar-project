@@ -74,7 +74,7 @@ export default function RegisterPage() {
         <p
           role="status"
           className={`mt-4 rounded-lg border p-3 text-sm ${
-            success ? 'border-sidebar-active bg-raised text-white' : 'border-danger-line bg-danger-wash/40 text-danger-soft'
+            success ? 'border-sidebar-active bg-raised text-fg' : 'border-danger-line bg-danger-wash/40 text-danger-soft'
           }`}
         >
           {message}{' '}
