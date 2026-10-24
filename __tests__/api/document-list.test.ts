@@ -3,13 +3,14 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 type Stored = Record<string, string | number | null>;
 type Call = { table: string; method: string; args: unknown[] };
 
-// An in-memory stand-in for the two tables the route reads, so the route's own
+// An in-memory stand-in for the three tables the route reads, so the route's own
 // select, eq, in and order calls decide what comes back. It models only those
 // calls and throws on anything else, and it is stricter than PostgREST on
 // purpose (see the guard rails at the bottom of this file).
 const db = vi.hoisted(() => ({
   follows: [] as Stored[],
   documents: [] as Stored[],
+  towns: [] as Stored[],
   calls: [] as Call[],
   failures: {} as Record<string, { message: string }>,
 }));
@@ -21,6 +22,10 @@ vi.mock('../../lib/supabase', () => {
       'document_id', 'meeting_id', 'town_id', 'source_file_id', 'title', 'document_type', 'source_url',
       'storage_path', 'mime_type', 'file_size_bytes', 'file_sha256', 'retrieved_at', 'baselined_at',
       'summary_status', 'summary_text', 'summary_generated_at',
+    ],
+    towns: [
+      'town_id', 'name', 'source_account_id', 'meeting_time_zone', 'provides_agenda_items',
+      'provides_recordings', 'publishes_vote_records', 'removed_at',
     ],
   };
 
@@ -68,7 +73,7 @@ vi.mock('../../lib/supabase', () => {
     const unknown = query.columns.find((column) => !COLUMNS[query.table].includes(column));
     if (unknown) return { data: null, error: { message: `column ${query.table}.${unknown} does not exist` } };
 
-    const source = query.table === 'documents' ? db.documents : db.follows;
+    const source = query.table === 'documents' ? db.documents : query.table === 'towns' ? db.towns : db.follows;
     const rows = source
       .filter((row) =>
         query.filters.every((filter) =>
@@ -178,7 +183,8 @@ const BOTH_USER = 'user-789'; // token "both-token", follows both towns
 
 const SELECTED_FOLLOWS = 'town_id';
 const SELECTED_DOCUMENTS = 'document_id, title, town_id, meeting_id, retrieved_at';
-const RETURNED_KEYS = ['document_id', 'meeting_id', 'retrieved_at', 'title', 'town_id'];
+const RETURNED_KEYS = ['document_id', 'meeting_id', 'retrieved_at', 'title', 'town_id', 'town_name'];
+const TOWN_NAMES: Record<number, string> = { [SALEM]: 'Town A', [BROOKLINE]: 'Town B' };
 const LOAD_ERROR = 'Documents could not be loaded. Please try again.';
 const dbError = { message: 'relation "documents" does not exist (42P01)' };
 
@@ -222,12 +228,16 @@ const TOWN_A_IDS = [104, 102, 103, 101, 105]; // 10-05 (104 before 102), 09-20, 
 const TOWN_B_IDS = [202, 201, 203]; // 10-10, 10-05, 07-01
 const TOWNS_A_AND_B_IDS = [202, 201, 104, 102, 103, 101, 105, 203]; // 10-10, 10-05 (201, 104, 102), 09-20, 09-01, 08-15, 07-01
 
-// What the list returns for a document: the five selected columns only.
+function town(townId: number): Stored {
+  return { town_id: townId, name: TOWN_NAMES[townId], source_account_id: `account-${townId}`, removed_at: null };
+}
+
+// What the list returns for a document: the five selected columns plus its town's name.
 function listed(id: number) {
   const row = STORED.find((stored) => stored.document_id === id);
   if (!row) throw new Error(`No fixture document ${id}`);
   const { document_id, title, town_id, meeting_id, retrieved_at } = row;
-  return { document_id, title, town_id, meeting_id, retrieved_at };
+  return { document_id, title, town_id, meeting_id, retrieved_at, town_name: TOWN_NAMES[town_id as number] };
 }
 
 function follow(userId: string, ...townIds: number[]) {
@@ -262,6 +272,7 @@ beforeEach(() => {
   db.calls.length = 0;
   db.failures = {};
   db.documents = STORED.map((row) => ({ ...row }));
+  db.towns = [town(SALEM), town(BROOKLINE)];
   db.follows = [];
   // Other residents' follows are always stored, so a read that ignored the user would leak.
   follow(OTHER_USER, BROOKLINE);
@@ -338,7 +349,7 @@ describe('GET /api/documents: which documents are listed (SRS-201.1)', () => {
 });
 
 describe('GET /api/documents: what the route asks the database', () => {
-  it('reads the followed towns, then one filtered and ordered documents query, with no writes', async () => {
+  it('reads the followed towns, then one filtered and ordered documents query, then the town names, with no writes', async () => {
     follow(USER, SALEM, BROOKLINE);
 
     await list();
@@ -350,6 +361,8 @@ describe('GET /api/documents: what the route asks the database', () => {
       'documents.in',
       'documents.order',
       'documents.order',
+      'towns.select',
+      'towns.in',
     ]);
     expect(callsTo('user_followed_towns', 'select')[0].args).toEqual([SELECTED_FOLLOWS]);
     expect(callsTo('user_followed_towns', 'eq')[0].args).toEqual(['user_id', USER]);
@@ -385,7 +398,7 @@ describe('GET /api/documents: what the route asks the database', () => {
     expect(ids.slice(1, 4)).toEqual([201, 104, 102]);
   });
 
-  it('returns exactly the five selected keys on each row and nothing else', async () => {
+  it('returns exactly the five selected keys and town_name on each row and nothing else', async () => {
     follow(USER, SALEM, BROOKLINE);
 
     const body = await (await list()).json();
@@ -484,13 +497,13 @@ describe('GET /api/documents: read errors', () => {
 });
 
 // The stand-in refuses what the route must not do. These prove the guards are live,
-// so a later change to the route (a write, limit/range pagination, a towns read,
+// so a later change to the route (a write, limit/range pagination, a meetings read,
 // an unordered or empty-list query) fails a test and needs a deliberate update.
 describe('stand-in guard rails', () => {
   const client = () => getSupabaseClient()!;
 
   it('refuses a table the route does not read', () => {
-    expect(() => client().from('towns')).toThrow(/no table towns/);
+    expect(() => client().from('meetings')).toThrow(/no table meetings/);
   });
 
   it.each(['insert', 'update', 'upsert', 'delete', 'limit', 'range'])('refuses .%s()', (method) => {
