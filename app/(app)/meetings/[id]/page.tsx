@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import { FileText } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import styles from '../meetings.module.css';
 import FollowMeetingButton from './FollowMeetingButton';
@@ -94,12 +95,15 @@ function DocumentTypeBadge({ type }: { type: string }) {
 // SRS-502.4: lists every document linked to the meeting, each opening the source copy.
 function DocumentList({ documents }: { documents: MeetingDocument[] }) {
   if (documents.length === 0) {
-    return <p className={styles.muted}>{NO_DOCUMENTS}</p>;
+    return <p className={styles.documentsEmpty}>{NO_DOCUMENTS}</p>;
   }
   return (
     <ul className={styles.documentList}>
       {documents.map((document) => (
         <li key={document.document_id} className={styles.documentItem}>
+          <div className={styles.documentIcon} aria-hidden="true">
+            <FileText size={20} strokeWidth={1.5} />
+          </div>
           <div className={styles.documentInfo}>
             {document.document_type ? <DocumentTypeBadge type={document.document_type} /> : null}
             {/* The title opens the document's detail page (SRS-203.1); "Open document" opens the source copy. */}
@@ -109,13 +113,15 @@ function DocumentList({ documents }: { documents: MeetingDocument[] }) {
               </Link>
             </p>
           </div>
-          {document.source_url ? (
-            <a href={document.source_url} target="_blank" rel="noopener noreferrer" className={styles.link}>
-              Open document
-            </a>
-          ) : (
-            <span className={styles.missing}>{NOT_PROVIDED}</span>
-          )}
+          <div className={styles.documentSource}>
+            {document.source_url ? (
+              <a href={document.source_url} target="_blank" rel="noopener noreferrer" className={styles.link}>
+                Open document
+              </a>
+            ) : (
+              <span className={styles.missing}>{NOT_PROVIDED}</span>
+            )}
+          </div>
         </li>
       ))}
     </ul>
@@ -155,12 +161,12 @@ export default function MeetingDetailsPage({ params }: { params: { id: string } 
 
   return (
     <main className={styles.main}>
-      <section className={styles.card}>
-        <Link href="/meetings" className={styles.link}>
+      <section className={styles.overview}>
+        <Link href="/meetings" className={styles.backLink}>
           Back to meetings
         </Link>
 
-        <p className={styles.eyebrow} style={{ marginTop: '1.5rem' }}>
+        <p className={styles.eyebrow}>
           Meeting details
         </p>
 
@@ -172,11 +178,15 @@ export default function MeetingDetailsPage({ params }: { params: { id: string } 
           <p className={styles.error}>{loadError}</p>
         ) : meeting ? (
           <>
-            <h1 className={styles.heading}>
-              <TextOrNotProvided value={meeting.title} />
-            </h1>
+            <div className={styles.overviewHeader}>
+              <h1 className={styles.heading}>
+                <TextOrNotProvided value={meeting.title} />
+              </h1>
 
-            <FollowMeetingButton meetingId={meeting.meeting_id} />
+              <div className={styles.headerActions}>
+                <FollowMeetingButton meetingId={meeting.meeting_id} />
+              </div>
+            </div>
 
             {/* A label/value list instead of a table so each row wraps at phone width. */}
             <dl className={styles.details}>

@@ -117,7 +117,7 @@ export default function FollowMeetingButton({ meetingId }: { meetingId: number }
   if (status === 'signedOut') {
     return (
       <p className={styles.muted}>
-        <Link href="/login" className={styles.link}>Log in to follow this meeting.</Link>
+        <Link href="/login" className={styles.button}>Log in to follow this meeting.</Link>
       </p>
     );
   }
