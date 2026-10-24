@@ -1,5 +1,8 @@
 
 import Link from "next/link";
+import { ArrowUpRight, BookOpen, Clock3, MapPin } from "lucide-react";
+import { cardClasses } from "../../components/ui/Card";
+import PageShell from "../../components/ui/PageShell";
 import { getSupabaseClient } from "../../../lib/supabase";
 
 export const dynamic = "force-dynamic";
@@ -91,31 +94,30 @@ export default async function DashboardPage() {
   }
 
   return (
-    <main className="min-w-0 flex-1 p-8 text-fg">
-      <h1 className="text-3xl font-bold">
-        Civic Radar Dashboard
-      </h1>
-
-      <p className="mt-4 text-fg-muted">
+    <PageShell title="Civic Radar Dashboard">
+      <p className="mt-3 text-sm leading-relaxed text-fg-muted">
         Stay informed about your local government
         meetings and community updates.
       </p>
 
-      <section className="mt-10">
-        <h2 className="mb-5 text-2xl font-semibold">
+      <section className="mt-7 md:mt-9">
+        <h2 className="mb-4 font-display text-2xl font-normal tracking-tight">
           Upcoming Meetings
         </h2>
 
         {error ? (
-          <p className="text-warning">
+          <p className="rounded-md bg-warning/10 px-5 py-4 text-sm leading-relaxed text-warning">
             Could not load meetings. Please try again later.
           </p>
         ) : meetings.length === 0 ? (
-          <p className="text-fg-muted">
-            No matching meetings found.
-          </p>
+          <div className="flex min-h-[260px] flex-col items-center justify-center gap-4 px-6 py-16 text-center text-fg-muted">
+            <BookOpen aria-hidden="true" className="h-[30px] w-[30px] text-accent" />
+            <p className="text-base font-semibold">
+              No matching meetings found.
+            </p>
+          </div>
         ) : (
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+          <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
             {meetings.map((meeting) => {
               const town = towns.find(
                 (item) => item.town_id === meeting.town_id
@@ -129,31 +131,38 @@ export default async function DashboardPage() {
                 <Link
                   key={meeting.meeting_id}
                   href={`/meetings/${meeting.meeting_id}`}
-                  className="block rounded-xl border border-line bg-card p-6 transition-colors hover:border-sidebar-icon hover:bg-raised focus:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-icon"
+                  className={cardClasses("flex min-h-[210px] flex-col gap-4 transition first:border-accent-wash first:bg-accent-wash/50 hover:border-accent focus:outline-none focus-visible:ring-2 focus-visible:ring-accent motion-safe:hover:-translate-y-[3px]")}
                 >
-                  <h3 className="text-xl font-semibold">
-                    {meeting.title}
-                  </h3>
+                  <div className="flex items-start justify-between gap-3">
+                    <h3 className="text-base font-semibold leading-relaxed">
+                      {meeting.title}
+                    </h3>
+                    <ArrowUpRight aria-hidden="true" className="mt-1 h-4 w-4 shrink-0 text-fg-subtle" />
+                  </div>
 
-                  <p className="mt-3 text-fg-muted">
-                    Town: {town?.name ?? "Unknown town"}
-                  </p>
+                  <div className="mt-auto flex flex-col gap-2 border-t border-line pt-3 text-xs text-fg-muted md:border-t-0 md:pt-1">
+                    <p className="flex items-start gap-2">
+                      <MapPin aria-hidden="true" className="mt-px h-3.5 w-3.5 shrink-0" />
+                      Town: {town?.name ?? "Unknown town"}
+                    </p>
 
-                  <p className="mt-2 text-fg-muted">
-                    Date &amp; Time:{" "}
-                    {meeting.start_at
-                      ? formatMeetingTime(
-                          meeting.start_at,
-                          timeZone
-                        )
-                      : "Not available"}
-                  </p>
+                    <p className="flex items-start gap-2">
+                      <Clock3 aria-hidden="true" className="mt-px h-3.5 w-3.5 shrink-0" />
+                      Date &amp; Time:{" "}
+                      {meeting.start_at
+                        ? formatMeetingTime(
+                            meeting.start_at,
+                            timeZone
+                          )
+                        : "Not available"}
+                    </p>
+                  </div>
                 </Link>
               );
             })}
           </div>
         )}
       </section>
-    </main>
+    </PageShell>
   );
 }
