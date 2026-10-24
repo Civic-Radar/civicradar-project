@@ -2,6 +2,8 @@
 
 Snapshot of every file that renders UI, taken on branch `ui/foundation` at commit `0e11baf` (2026-10-24). The goal is to plan the restyle: which files are safe to touch now, and which need their logic separated from their markup first.
 
+> **Corrected 2026-10-24 on `ui/restyle`:** the notes on `app/components/ui/`, UI tests, `globals.css`, `meetings.module.css`, the Tailwind `content` setting, page shells, text colors and the suggested order of work were updated after the restyle. Line counts, last authors and the rest of the snapshot are unchanged.
+
 Excluded from the scan: `docs/figma-reference/`, `node_modules/`, `.next/`.
 
 ## At a glance
@@ -9,8 +11,8 @@ Excluded from the scan: `docs/figma-reference/`, `node_modules/`, `.next/`.
 - **22 UI files**: 14 pages, 2 layouts, 2 shared components, 4 page-specific components.
 - **12 of the 22 need a logic/view split** before restyling.
 - **No route-level `loading.tsx`, `error.tsx`, or `not-found.tsx` exist.** Each page handles its own loading and error states inline.
-- **There is no root `components/` folder.** The only shared components live in `app/components/`.
-- **No test renders or imports any UI file.** All 37 test files in `__tests__/` cover API routes and `lib/`. Restyling has no automated safety net, even though `extract` and `extractions/[id]` carry `data-testid` attributes for tests that were never written.
+- **There is no root `components/` folder.** Shared components live in `app/components/`. The restyle's shared primitives (`Button`, `Card`, `Alert`, `TextField`, `Badge`, `PageShell`, `SignedOutNotice` and the `cx` helper) are in `app/components/ui/`.
+- **Three tests render a UI file**, all with `renderToStaticMarkup`: `document-list-link.test.ts` and `document-town-tag.test.ts` render the Documents page, and `summary-display.test.ts` renders the document detail page. `document-town-tag` asserts the exact town tag markup `<span class="text-fg-muted">…</span>`. The other test files in `__tests__/` (37 in all) cover API routes and `lib/`. No other page has an automated safety net, even though `extract` and `extractions/[id]` carry `data-testid` attributes for tests that were never written.
 
 ## How the app is laid out
 
@@ -303,11 +305,11 @@ Note: this page sits outside `(app)`, so it renders without the sidebar. Its "Ba
 
 | File | Lines | Last author | Used by | Notes |
 |---|---|---|---|---|
-| `app/globals.css` | 56 | Marcos Salazar | Root layout | Defines all theme color tokens as CSS variables (currently a Halloween palette: purple-black + pumpkin orange). The body uses a gradient background. |
-| `app/(app)/meetings/meetings.module.css` | 298 | Yolanda | `/meetings`, `/meetings/[id]`, `FollowMeetingButton` | Uses the same tokens, but its comments are out of date (they name emerald/slate, which the tokens no longer are). It duplicates card, button, alert and badge styles that exist as Tailwind classes elsewhere. |
-| `tailwind.config.js` | 57 | Marcos Salazar | All Tailwind files | Maps the tokens. **`content` only scans `app/**` and `components/**`, not `lib/**`.** See the warning below. |
+| `app/globals.css` | 56 | Marcos Salazar | Root layout | Defines all theme color tokens as CSS variables, using the Figma prototype's Local Lookout palette (light green-grey neutrals, green accent, dark green sidebar). Each value's comment names the prototype token it comes from. The body uses a flat `surface` background. |
+| `app/(app)/meetings/meetings.module.css` | 298 | Yolanda | `/meetings`, `/meetings/[id]`, `FollowMeetingButton` | Uses the same tokens; each comment names the prototype token the value comes from. Its rules copy the look of the shared primitives in `app/components/ui/` (`.button` = `Button` primary, `.secondaryButton` = secondary, `.message` / `.error` = `Alert` success / error, `.eyebrow` / `.heading` = `PageShell`) instead of importing them. |
+| `tailwind.config.js` | 57 | Marcos Salazar | All Tailwind files | Maps the tokens. `content` scans `app/**`, `components/**` and `lib/**`. |
 
-> **Likely styling bug (not verified with a build):** `STATUS_STYLES` in `lib/extractions.ts` holds class names like `border-warning-vivid/40`, `bg-info-vivid/10`, `text-info-soft`, `border-accent-vivid/40` and `bg-danger-vivid/10`. None of these appear anywhere in `app/`, and Tailwind doesn't scan `lib/`, so the extraction status pills on `/extract` and `/extractions/[id]` are probably rendering without their border and background colors. To fix it, add `./lib/**/*.{ts,tsx}` to `content` or move the map into `app/`.
+> **Resolved:** `STATUS_STYLES` in `lib/extractions.ts` holds class names like `border-warning-vivid/40`, `bg-info-vivid/10`, `text-info-soft`, `border-accent-vivid/40` and `bg-danger-vivid/10`, which appear nowhere in `app/`. `content` now includes `./lib/**/*.{ts,tsx}`, so Tailwind generates them and the extraction status pills on `/extract` and `/extractions/[id]` get their border and background colors.
 
 ---
 
@@ -395,7 +397,7 @@ Close behind:
 | **Primary button**, in 4 different looks | `bg-sidebar-active` (landing, search, `AuthCard`); `bg-accent-strong rounded-xl` (preferences ×2, profile, admin); `bg-accent-strong rounded-full` (extract); CSS-module `.button` (meetings, follow) | `<Button variant="primary">` |
 | **Secondary / pill button** | `rounded-full border border-line bg-raised px-4 py-2 text-sm hover:border-accent-strong hover:text-accent-soft` appears 7 times; `rounded-xl border border-line bg-raised` Cancel buttons ×2; `rounded-full border border-line px-5 py-2` ×2; CSS `.secondaryButton` | `<Button variant="secondary">` |
 | **Card / panel**, in 3 styles | `rounded-xl border-line bg-card p-6` (landing, dashboard, search, `AuthCard`); `rounded-3xl border-raised bg-card/90 shadow-2xl` (preferences, profile, admin, extract ×3, extractions ×2); CSS `.card` (meetings) | `<Card>` |
-| **Page shell** | Pages inside `(app)` use 3 different outer wrappers: `p-8 text-white` (dashboard, search); `min-h-screen bg-surface … flex items-center justify-center` centered card (preferences, profile, admin, extract states); CSS `.main` (meetings). The centered versions repeat the background that `(app)/layout.tsx` already sets. | `<PageShell title eyebrow>` |
+| **Page shell** | Pages inside `(app)` now use `PageShell` (dashboard, documents, search) or copy its `<main>` classes `min-w-0 flex-1 p-4 text-fg sm:p-8` where it would add an unwanted `<h1>` (documents/[id], extract, extractions/[id], preferences, profile). CSS `.main` (meetings) uses the same padding. Only `admin/towns`, outside `(app)`, still uses the old centered card. | `<PageShell title eyebrow>` (done) |
 | **Eyebrow label** | `text-sm uppercase tracking-[0.25em] text-accent` in preferences, profile, admin, extract, extractions; CSS `.eyebrow` | part of `<PageShell>` or `<Eyebrow>` |
 | **Text input + label** | `AuthCard.inputClass`; profile ×3 inline copies; `admin/towns` `inputClass()`; extract search box | `<TextField>` |
 | **Checkbox follow list + Save** | `TownPreferences` and `TopicPreferences` share near-identical markup **and** logic | `<FollowChecklist>` + `useFollowedItems(endpoint, key)` |
@@ -403,12 +405,12 @@ Close behind:
 | **"Not provided" helpers + meeting time formatting** | `TextOrNotProvided`, `LinkOrNotProvided`, `NOT_PROVIDED` and `formatStartTime` are each written twice (meetings, meetings/[id]); `dashboard` has a third time formatter | move to a `meetings/` shared module and `lib/` |
 | **Meeting card / row** | dashboard meeting cards; meetings table rows; extract meeting groups | `<MeetingCard>` |
 | **Brand mark** (Landmark icon + "Civic Radar") | `page.tsx` header, `AuthCard`, `Sidebar` `Brand` | export `Brand` from `Sidebar` or `<Logo>` |
-| **Text colors** | `text-white` (landing, auth, dashboard, search, sidebar) vs `text-fg` token (everything else) | pick one |
+| **Text colors** | Resolved: the restyled files use the `text-fg` / `text-on-dark` tokens, and no `text-white` is left in `app/` | `text-fg` (done) |
 | **"Back to home" footer link** | preferences, profile, admin, extract all link to `/` (the public landing page), not `/dashboard`, even when the sidebar is visible | remove inside `(app)`, or point at `/dashboard` |
 
 ### Suggested order of work
 
-1. Fix the Tailwind `content` glob (one line) so the `lib/` class names are generated.
+1. Done: fix the Tailwind `content` glob (one line) so the `lib/` class names are generated.
 2. Build the shared primitives (`Button`, `Card`, `Alert`, `TextField`, `Badge`, `PageShell`, `SignedOutNotice`) and restyle the safe files with them.
 3. Split the "Yes" files using the `useDocuments` / `useDocument` pattern (a `useX.ts` hook that returns a status union, plus a thin view), starting with `TownPreferences` / `TopicPreferences` (they share one hook) and `login` / `register`.
-4. Leave `extract`, `extractions/[id]` and `profile` for last, ideally with a few component tests in place first, since none exist today.
+4. Leave `extract`, `extractions/[id]` and `profile` for last, ideally with a few component tests in place first; today only the Documents list and detail pages are rendered by tests.
