@@ -1,5 +1,7 @@
 import Link from "next/link";
 import { BellRing, CalendarDays, FileText, Landmark } from "lucide-react";
+import { buttonClasses } from "./components/ui/Button";
+import Card from "./components/ui/Card";
 
 const features = [
   {
@@ -41,16 +43,10 @@ export default function Home() {
           yourself. Now available for Salem, MA.
         </p>
         <div className="mt-8 flex flex-wrap gap-3">
-          <Link
-            href="/register"
-            className="rounded-lg bg-sidebar-active px-6 py-3 font-semibold text-on-dark transition hover:bg-sidebar-icon hover:text-surface"
-          >
+          <Link href="/register" className={buttonClasses({ variant: "primary", className: "px-6" })}>
             Create an account
           </Link>
-          <Link
-            href="/login"
-            className="rounded-lg border border-line px-6 py-3 font-semibold text-fg transition hover:bg-raised"
-          >
+          <Link href="/login" className={buttonClasses({ variant: "secondary", className: "px-6" })}>
             Sign in
           </Link>
         </div>
@@ -61,11 +57,11 @@ export default function Home() {
           {features.map((feature) => {
             const Icon = feature.icon;
             return (
-              <div key={feature.title} className="rounded-xl border border-line bg-card p-6">
+              <Card key={feature.title}>
                 <Icon className="h-6 w-6 text-sidebar-icon" aria-hidden="true" />
                 <h2 className="mt-4 text-lg font-semibold">{feature.title}</h2>
                 <p className="mt-2 text-fg-muted">{feature.body}</p>
-              </div>
+              </Card>
             );
           })}
         </div>

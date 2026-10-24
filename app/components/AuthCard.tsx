@@ -1,5 +1,8 @@
 import Link from "next/link";
 import { Landmark } from "lucide-react";
+import { buttonClasses } from "./ui/Button";
+import Card from "./ui/Card";
+import { inputClasses } from "./ui/TextField";
 
 type AuthCardProps = {
   title: string;
@@ -8,8 +11,8 @@ type AuthCardProps = {
 };
 
 /**
- * Shared frame for the sign-in and sign-up pages, styled to match the
- * sidebar and dashboard (Civic Radar logo, slate cards, teal accents).
+ * Shared frame for the sign-in and sign-up pages, built from the shared
+ * Card, Button and TextField styles.
  */
 export default function AuthCard({ title, subtitle, children }: AuthCardProps) {
   return (
@@ -20,18 +23,16 @@ export default function AuthCard({ title, subtitle, children }: AuthCardProps) {
           <span className="text-2xl font-bold">Civic Radar</span>
         </Link>
 
-        <section className="rounded-xl border border-line bg-card p-6 sm:p-8">
-          <h1 className="text-2xl font-bold">{title}</h1>
+        <Card as="section" className="sm:p-8">
+          <h1 className="font-display text-3xl font-normal leading-tight">{title}</h1>
           <p className="mt-2 text-fg-muted">{subtitle}</p>
           {children}
-        </section>
+        </Card>
       </div>
     </main>
   );
 }
 
-export const inputClass =
-  "mt-1 w-full rounded-lg border border-line bg-surface px-4 py-3 text-fg outline-none transition placeholder:text-fg-faint focus:border-sidebar-icon";
+export const inputClass = inputClasses("mt-1");
 
-export const primaryButtonClass =
-  "w-full rounded-lg bg-sidebar-active px-4 py-3 font-semibold text-on-dark transition hover:bg-sidebar-icon hover:text-surface disabled:cursor-not-allowed disabled:opacity-70";
+export const primaryButtonClass = buttonClasses({ variant: "primary", fullWidth: true });
