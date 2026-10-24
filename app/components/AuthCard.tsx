@@ -1,5 +1,7 @@
 import Link from "next/link";
 import { Landmark } from "lucide-react";
+import { buttonClasses } from "./ui/Button";
+import { inputClasses } from "./ui/TextField";
 
 type AuthCardProps = {
   title: string;
@@ -8,21 +10,26 @@ type AuthCardProps = {
 };
 
 /**
- * Shared frame for the sign-in and sign-up pages, styled to match the
- * sidebar and dashboard (Civic Radar logo, slate cards, teal accents).
+ * Shared frame for the sign-in and sign-up pages, built from the shared
+ * Button and TextField styles.
  */
 export default function AuthCard({ title, subtitle, children }: AuthCardProps) {
   return (
-    <main className="flex min-h-screen items-center justify-center bg-surface px-4 py-12 text-fg">
-      <div className="w-full max-w-md">
-        <Link href="/" className="mb-8 flex items-center justify-center gap-3">
-          <Landmark className="h-8 w-8 text-sidebar-icon" aria-hidden="true" />
-          <span className="text-2xl font-bold">Civic Radar</span>
+    <main className="flex min-h-screen bg-card text-fg">
+      <div className="m-auto w-full max-w-[540px] px-6 pb-[110px] pt-8 md:px-10 md:pb-[120px] md:pt-14">
+        <Link
+          href="/"
+          className="mb-7 flex min-h-12 w-fit items-center gap-3 rounded-lg focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent md:mb-12"
+        >
+          <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full border border-lime/60 bg-accent-strong text-lime">
+            <Landmark className="h-5 w-5" strokeWidth={1.5} aria-hidden="true" />
+          </span>
+          <span className="font-display text-2xl leading-tight tracking-[-0.04em]">Civic Radar</span>
         </Link>
 
-        <section className="rounded-xl border border-line bg-card p-6 sm:p-8">
-          <h1 className="text-2xl font-bold">{title}</h1>
-          <p className="mt-2 text-fg-muted">{subtitle}</p>
+        <section>
+          <h1 className="font-display text-3xl font-normal leading-tight tracking-tight sm:text-4xl">{title}</h1>
+          <p className="mt-3 text-sm leading-[1.9] text-fg-muted">{subtitle}</p>
           {children}
         </section>
       </div>
@@ -30,8 +37,6 @@ export default function AuthCard({ title, subtitle, children }: AuthCardProps) {
   );
 }
 
-export const inputClass =
-  "mt-1 w-full rounded-lg border border-line bg-surface px-4 py-3 text-fg outline-none transition placeholder:text-fg-faint focus:border-sidebar-icon";
+export const inputClass = inputClasses();
 
-export const primaryButtonClass =
-  "w-full rounded-lg bg-sidebar-active px-4 py-3 font-semibold text-on-dark transition hover:bg-sidebar-icon hover:text-surface disabled:cursor-not-allowed disabled:opacity-70";
+export const primaryButtonClass = buttonClasses({ variant: "primary", fullWidth: true });

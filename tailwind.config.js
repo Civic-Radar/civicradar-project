@@ -35,6 +35,7 @@ module.exports = {
           line: token('accent-line'),
           wash: token('accent-wash'),
         },
+        lime: token('lime'),
         sidebar: {
           DEFAULT: token('sidebar'),
           muted: token('sidebar-muted'),

@@ -123,55 +123,59 @@ export default function MeetingsPage() {
         <p className={styles.eyebrow}>Retrieval</p>
         <h1 className={styles.heading}>{town ? `Meeting retrieval (${town.name})` : 'Meeting retrieval'}</h1>
 
-        <button type="button" onClick={handleRun} disabled={running || !town} className={styles.button}>
-          {running ? 'Running...' : 'Run retrieval'}
-        </button>
+        <div className={styles.panel}>
+          <div className={styles.toolbar}>
+            <button type="button" onClick={handleRun} disabled={running || !town} className={styles.button}>
+              {running ? 'Running...' : 'Run retrieval'}
+            </button>
+          </div>
 
-        {result ? <p className={resultIsError ? styles.error : styles.message}>{result}</p> : null}
+          {result ? <p className={resultIsError ? styles.error : styles.message}>{result}</p> : null}
 
-        {loadError ? <p className={styles.error}>{loadError}</p> : null}
+          {loadError ? <p className={styles.error}>{loadError}</p> : null}
 
-        {loadingList ? (
-          <p className={styles.muted}>Loading stored meetings...</p>
-        ) : town && !loadError ? (
-          meetings.length === 0 ? (
-            <p className={styles.muted}>No meetings are stored for this town yet.</p>
-          ) : (
-            <div className={styles.tableWrap}>
-              <table className={styles.table}>
-                <thead>
-                  <tr>
-                    <th>Title</th>
-                    <th>Governing body</th>
-                    <th>Start time</th>
-                    <th>Location</th>
-                    <th>Online participation link</th>
-                    <th>Recording link</th>
-                    <th>Official source link</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {meetings.map((meeting) => (
-                    <tr key={meeting.meeting_id}>
-                      <td>
-                        <Link href={`/meetings/${meeting.meeting_id}`} className={styles.link}>
-                          <TextOrNotProvided value={meeting.title} />
-                        </Link>
-                      </td>
-                      <td><TextOrNotProvided value={meeting.source_body_name} /></td>
-                      <td><TextOrNotProvided value={formatStartTime(meeting, town.meeting_time_zone)} /></td>
-                      <td><TextOrNotProvided value={meeting.location} /></td>
-                      <td><LinkOrNotProvided href={meeting.online_link} /></td>
-                      {/* Recording links are not stored yet (SRS-220.10). */}
-                      <td><span className={styles.missing}>{NOT_PROVIDED}</span></td>
-                      <td><LinkOrNotProvided href={meeting.source_url} /></td>
+          {loadingList ? (
+            <p className={styles.muted}>Loading stored meetings...</p>
+          ) : town && !loadError ? (
+            meetings.length === 0 ? (
+              <p className={styles.empty}>No meetings are stored for this town yet.</p>
+            ) : (
+              <div className={styles.tableWrap}>
+                <table className={styles.table}>
+                  <thead>
+                    <tr>
+                      <th>Title</th>
+                      <th>Governing body</th>
+                      <th>Start time</th>
+                      <th>Location</th>
+                      <th>Online participation link</th>
+                      <th>Recording link</th>
+                      <th>Official source link</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )
-        ) : null}
+                  </thead>
+                  <tbody>
+                    {meetings.map((meeting) => (
+                      <tr key={meeting.meeting_id}>
+                        <td>
+                          <Link href={`/meetings/${meeting.meeting_id}`} className={styles.tableLink}>
+                            <TextOrNotProvided value={meeting.title} />
+                          </Link>
+                        </td>
+                        <td><TextOrNotProvided value={meeting.source_body_name} /></td>
+                        <td><TextOrNotProvided value={formatStartTime(meeting, town.meeting_time_zone)} /></td>
+                        <td><TextOrNotProvided value={meeting.location} /></td>
+                        <td><LinkOrNotProvided href={meeting.online_link} /></td>
+                        {/* Recording links are not stored yet (SRS-220.10). */}
+                        <td><span className={styles.missing}>{NOT_PROVIDED}</span></td>
+                        <td><LinkOrNotProvided href={meeting.source_url} /></td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )
+          ) : null}
+        </div>
       </section>
     </main>
   );

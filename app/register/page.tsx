@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { useState } from 'react';
 import AuthCard, { inputClass, primaryButtonClass } from '../components/AuthCard';
+import { alertClasses } from '../components/ui/Alert';
 
 export default function RegisterPage() {
   const [email, setEmail] = useState('');
@@ -38,8 +39,8 @@ export default function RegisterPage() {
       title="Create your account"
       subtitle="Follow the towns and topics you care about and get alerts about upcoming meetings."
     >
-      <form onSubmit={handleSubmit} className="mt-6 space-y-4">
-        <label className="block text-sm text-fg-soft">
+      <form onSubmit={handleSubmit} className="mt-7 space-y-5">
+        <label className="flex flex-col gap-2 text-sm font-semibold text-fg-soft">
           Email
           <input
             type="email"
@@ -52,7 +53,7 @@ export default function RegisterPage() {
           />
         </label>
 
-        <label className="block text-sm text-fg-soft">
+        <label className="flex flex-col gap-2 text-sm font-semibold text-fg-soft">
           Password
           <input
             type="password"
@@ -73,22 +74,20 @@ export default function RegisterPage() {
       {message ? (
         <p
           role="status"
-          className={`mt-4 rounded-lg border p-3 text-sm ${
-            success ? 'border-sidebar-active bg-raised text-fg' : 'border-danger-line bg-danger-wash/40 text-danger-soft'
-          }`}
+          className={alertClasses(success ? 'success' : 'error', 'mt-4')}
         >
           {message}{' '}
           {success ? (
-            <Link href="/login" className="font-semibold text-sidebar-icon hover:underline">
+            <Link href="/login" className="font-semibold text-accent hover:underline">
               Sign in
             </Link>
           ) : null}
         </p>
       ) : null}
 
-      <p className="mt-6 text-sm text-fg-muted">
+      <p className="mt-6 flex flex-wrap items-center gap-1 text-sm text-fg-muted">
         Already have an account?{' '}
-        <Link href="/login" className="font-semibold text-sidebar-icon hover:underline">
+        <Link href="/login" className="font-semibold text-accent hover:underline">
           Sign in
         </Link>
       </p>
