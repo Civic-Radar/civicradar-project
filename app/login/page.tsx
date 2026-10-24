@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 import AuthCard, { inputClass, primaryButtonClass } from '../components/AuthCard';
+import { alertClasses } from '../components/ui/Alert';
 
 export default function LoginPage() {
   const router = useRouter();
@@ -36,8 +37,8 @@ export default function LoginPage() {
 
   return (
     <AuthCard title="Welcome back" subtitle="Sign in to see your dashboard and meeting alerts.">
-      <form onSubmit={handleSubmit} className="mt-6 space-y-4">
-        <label className="block text-sm text-fg-soft">
+      <form onSubmit={handleSubmit} className="mt-7 space-y-5">
+        <label className="flex flex-col gap-2 text-sm font-semibold text-fg-soft">
           Email
           <input
             type="email"
@@ -50,7 +51,7 @@ export default function LoginPage() {
           />
         </label>
 
-        <label className="block text-sm text-fg-soft">
+        <label className="flex flex-col gap-2 text-sm font-semibold text-fg-soft">
           Password
           <input
             type="password"
@@ -69,14 +70,14 @@ export default function LoginPage() {
       </form>
 
       {message ? (
-        <p role="alert" className="mt-4 rounded-lg border border-danger-line bg-danger-wash/40 p-3 text-sm text-danger-soft">
+        <p role="alert" className={alertClasses('error', 'mt-4')}>
           {message}
         </p>
       ) : null}
 
-      <p className="mt-6 text-sm text-fg-muted">
+      <p className="mt-6 flex flex-wrap items-center gap-1 text-sm text-fg-muted">
         New to Civic Radar?{' '}
-        <Link href="/register" className="font-semibold text-sidebar-icon hover:underline">
+        <Link href="/register" className="font-semibold text-accent hover:underline">
           Create an account
         </Link>
       </p>
