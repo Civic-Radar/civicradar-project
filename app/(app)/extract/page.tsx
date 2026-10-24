@@ -11,8 +11,13 @@
 // Documents are grouped by meeting, newest meeting first, with a search box.
 // Only the most recent meetings are shown until the user asks for more.
 
+import { BookOpen, Search } from 'lucide-react';
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
+import { alertClasses } from '../../components/ui/Alert';
+import { badgeClasses } from '../../components/ui/Badge';
+import { buttonClasses } from '../../components/ui/Button';
+import { cardClasses } from '../../components/ui/Card';
 import { STATUS_STYLES, formatDateTime, formatMeetingDate } from '../../../lib/extractions';
 import type { ExtractableDocument, Extraction } from '../../../lib/extractions';
 
@@ -154,7 +159,7 @@ export default function ExtractPage() {
 
   if (loading) {
     return (
-      <main className="min-h-screen bg-surface text-fg flex items-center justify-center">
+      <main className="min-w-0 flex-1 p-4 text-fg sm:p-8">
         <p className="text-fg-subtle">Loading…</p>
       </main>
     );
@@ -162,10 +167,10 @@ export default function ExtractPage() {
 
   if (!token) {
     return (
-      <main className="min-h-screen bg-surface text-fg flex items-center justify-center px-6">
-        <section className="text-center space-y-4">
+      <main className="min-w-0 flex-1 p-4 text-fg sm:p-8">
+        <section className="space-y-4">
           <p className="text-fg-muted">You must be logged in to request an extraction.</p>
-          <Link href="/login" className="inline-block rounded-full border border-line bg-raised px-4 py-2 text-sm hover:border-accent-strong hover:text-accent-soft">
+          <Link href="/login" className={buttonClasses({ variant: 'primary' })}>
             Go to login
           </Link>
         </section>
@@ -174,58 +179,67 @@ export default function ExtractPage() {
   }
 
   return (
-    <main className="min-h-screen bg-surface text-fg px-4 py-10 sm:px-6">
-      <div className="mx-auto w-full max-w-3xl space-y-6">
+    <main className="min-w-0 flex-1 p-4 text-fg sm:p-8">
+      <div className="mx-auto w-full max-w-[900px] space-y-6">
         <header>
-          <p className="text-sm uppercase tracking-[0.25em] text-accent">Officials &amp; Contacts</p>
-          <h1 className="mt-2 text-3xl font-semibold">Request contact extraction</h1>
-          <p className="mt-2 text-fg-subtle">
+          <p className="mb-3 text-xs font-semibold uppercase tracking-[0.17em] text-accent">Officials &amp; Contacts</p>
+          <h1 className="font-display text-3xl font-normal leading-tight tracking-tight sm:text-4xl">Request contact extraction</h1>
+          <p className="mt-3 text-sm leading-relaxed text-fg-muted">
             Pick a government document and Civic Radar will pull out the officials and their contact information.
           </p>
         </header>
 
         {error ? (
-          <p role="alert" className="rounded-xl border border-danger-line bg-danger-wash/30 p-3 text-sm text-danger">{error}</p>
+          <p role="alert" className={alertClasses('error')}>{error}</p>
         ) : null}
         {success ? (
-          <p role="status" className="rounded-xl border border-accent-line bg-accent-wash/30 p-3 text-sm text-accent-soft">{success}</p>
+          <p role="status" className={alertClasses('success')}>{success}</p>
         ) : null}
 
         {/* Step 1 — choose a document (SRS-301.1) */}
-        <section className="rounded-3xl border border-raised bg-card/90 p-6">
-          <h2 className="text-lg font-medium">1. Choose a document</h2>
+        <section className={cardClasses('sm:p-7')}>
+          <h2 className="text-lg font-semibold">1. Choose a document</h2>
 
           {documents.length === 0 ? (
-            <p className="mt-4 text-sm text-fg-subtle">
-              No documents have been retrieved yet. (Run <code className="text-fg-muted">supabase/seed_extraction_salem_documents.sql</code> to load Salem documents.)
-            </p>
+            <div className="flex min-h-[260px] flex-col items-center justify-center gap-4 px-6 py-16 text-center text-fg-muted">
+              <BookOpen aria-hidden="true" className="h-[30px] w-[30px] text-accent" />
+              <p className="max-w-[450px] text-sm leading-relaxed">
+                No documents have been retrieved yet. (Run <code className="break-all text-fg">supabase/seed_extraction_salem_documents.sql</code> to load Salem documents.)
+              </p>
+            </div>
           ) : (
             <>
               <label htmlFor="document-search" className="sr-only">Search documents</label>
-              <input
-                id="document-search"
-                type="search"
-                value={query}
-                onChange={(e) => setQuery(e.target.value)}
-                placeholder="Search by meeting or document title"
-                className="mt-4 w-full rounded-xl border border-line bg-surface px-4 py-3 text-fg outline-none transition focus:border-accent-strong"
-              />
-              <p className="mt-2 text-xs text-fg-subtle">
+              <div className="mt-4 flex items-center gap-2 rounded-md border border-line bg-card pl-4 transition focus-within:border-accent focus-within:outline focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-accent">
+                <Search aria-hidden="true" className="h-[17px] w-[17px] shrink-0 text-fg-subtle" />
+                <input
+                  id="document-search"
+                  type="search"
+                  value={query}
+                  onChange={(e) => setQuery(e.target.value)}
+                  placeholder="Search by meeting or document title"
+                  className="min-h-12 w-full min-w-0 border-0 bg-transparent py-3 pr-3 text-sm text-fg outline-none placeholder:text-fg-subtle"
+                />
+              </div>
+              <p className="mt-4 text-xs leading-relaxed text-fg-muted">
                 {matching.length} {matching.length === 1 ? 'document' : 'documents'} from {groups.length}{' '}
                 {groups.length === 1 ? 'meeting' : 'meetings'}, newest first
               </p>
 
               {matching.length === 0 ? (
-                <p className="mt-4 text-sm text-fg-subtle">No documents match &ldquo;{query.trim()}&rdquo;.</p>
+                <div className="flex min-h-[260px] flex-col items-center justify-center gap-4 px-6 py-16 text-center text-fg-muted">
+                  <BookOpen aria-hidden="true" className="h-[30px] w-[30px] text-accent" />
+                  <p className="max-w-[450px] text-sm font-semibold leading-relaxed">No documents match &ldquo;{query.trim()}&rdquo;.</p>
+                </div>
               ) : (
-                <div className="mt-4 space-y-5" role="radiogroup" aria-label="Documents">
+                <div className="mt-4 space-y-6" role="radiogroup" aria-label="Documents">
                   {shownGroups.map((group) => (
                     <section key={group.key} aria-label={group.title}>
-                      <h3 className="text-sm font-medium text-fg-muted">
+                      <h3 className="text-sm font-semibold text-fg">
                         {group.title}
-                        {group.startAt ? <span className="font-normal text-fg-subtle"> · {formatMeetingDate(group.startAt)}</span> : null}
+                        {group.startAt ? <span className="font-normal text-fg-muted"> · {formatMeetingDate(group.startAt)}</span> : null}
                       </h3>
-                      <ul className="mt-2 space-y-2">
+                      <ul className="mt-3 space-y-3">
                         {group.documents.map((doc) => {
                           const isSelected = doc.document_id === selectedId;
                           const isPdf = doc.mime_type === 'application/pdf';
@@ -236,20 +250,25 @@ export default function ExtractPage() {
                                 role="radio"
                                 aria-checked={isSelected}
                                 onClick={() => selectDocument(doc.document_id)}
-                                className={`w-full rounded-2xl border px-4 py-3 text-left transition ${
+                                className={`flex w-full items-start gap-3 rounded-md border p-4 text-left transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent ${
                                   isSelected
-                                    ? 'border-accent-strong bg-accent-vivid/10'
-                                    : 'border-raised bg-surface/50 hover:border-line-strong'
+                                    ? 'border-accent bg-accent-wash'
+                                    : 'border-line bg-card hover:border-line-strong hover:bg-raised'
                                 }`}
                               >
-                                <span className="flex items-start justify-between gap-3">
-                                  <span className="font-medium">{doc.title}</span>
-                                  {isSelected ? (
-                                    <span className="shrink-0 rounded-full bg-accent-strong px-2 py-0.5 text-xs font-semibold text-surface">Selected</span>
-                                  ) : null}
+                                <span aria-hidden="true" className="mt-0.5 grid h-4 w-4 shrink-0 place-items-center rounded-full border border-line-strong bg-card">
+                                  <span className={`h-2 w-2 rounded-full ${isSelected ? 'bg-accent' : 'bg-transparent'}`} />
                                 </span>
-                                <span className="mt-1 block text-xs text-fg-subtle">
-                                  {doc.document_type} · {isPdf ? 'PDF' : 'Not a PDF'}
+                                <span className="min-w-0 flex-1">
+                                  <span className="flex items-start justify-between gap-3">
+                                    <span className="break-words text-sm font-medium">{doc.title}</span>
+                                    {isSelected ? (
+                                      <span className={badgeClasses('success', 'shrink-0')}>Selected</span>
+                                    ) : null}
+                                  </span>
+                                  <span className="mt-2 block text-xs leading-relaxed text-fg-muted">
+                                    {doc.document_type} · {isPdf ? 'PDF' : 'Not a PDF'}
+                                  </span>
                                 </span>
                               </button>
                             </li>
@@ -265,7 +284,7 @@ export default function ExtractPage() {
                 <button
                   type="button"
                   onClick={() => setMeetingsShown((n) => n + MEETINGS_PER_PAGE)}
-                  className="mt-5 rounded-full border border-line px-5 py-2 text-sm hover:border-fg-faint"
+                  className={buttonClasses({ variant: 'secondary', className: 'mt-5' })}
                 >
                   Show older meetings ({hiddenMeetings} more)
                 </button>
@@ -275,27 +294,27 @@ export default function ExtractPage() {
         </section>
 
         {/* Step 2 — confirm (SRS-301.2, 301.3, 301.4) */}
-        <section className="rounded-3xl border border-raised bg-card/90 p-6">
-          <h2 className="text-lg font-medium">2. Confirm extraction</h2>
+        <section className={cardClasses('sm:p-7')}>
+          <h2 className="text-lg font-semibold">2. Confirm extraction</h2>
 
-          <p className="mt-3 text-sm text-fg-subtle">Selected document:</p>
-          <p className="mt-1 font-medium" data-testid="selected-title">
-            {selected ? selected.title : <span className="text-fg-faint">None selected</span>}
+          <p className="mt-4 text-xs font-semibold uppercase tracking-[0.1em] text-fg-muted">Selected document:</p>
+          <p className="mt-3 break-words text-sm font-medium" data-testid="selected-title">
+            {selected ? selected.title : <span className="font-normal text-fg-subtle">None selected</span>}
           </p>
 
           {selectedInFlight ? (
-            <p className="mt-3 text-sm text-warning-soft">An extraction for this document is already in progress.</p>
+            <p className="mt-3 text-sm text-warning">An extraction for this document is already in progress.</p>
           ) : null}
 
           {confirming && selected ? (
-            <div className="mt-5 rounded-2xl border border-line bg-surface/60 p-4">
-              <p className="text-sm">Extract officials and contact information from <strong>{selected.title}</strong>?</p>
-              <div className="mt-4 flex flex-wrap gap-3">
+            <div className="mt-5 rounded-md border border-line bg-raised p-5">
+              <p className="break-words text-sm leading-relaxed text-fg-muted">Extract officials and contact information from <strong className="font-semibold text-fg">{selected.title}</strong>?</p>
+              <div className="mt-5 flex flex-wrap gap-3">
                 <button
                   type="button"
                   onClick={confirmExtraction}
                   disabled={submitting}
-                  className="rounded-full bg-accent-strong px-5 py-2 text-sm font-semibold text-surface hover:bg-accent disabled:opacity-50"
+                  className={buttonClasses()}
                 >
                   {submitting ? 'Requesting…' : 'Confirm extraction'}
                 </button>
@@ -303,7 +322,7 @@ export default function ExtractPage() {
                   type="button"
                   onClick={() => setConfirming(false)}
                   disabled={submitting}
-                  className="rounded-full border border-line px-5 py-2 text-sm hover:border-fg-faint"
+                  className={buttonClasses({ variant: 'secondary', className: 'disabled:hover:border-line disabled:hover:bg-card' })}
                 >
                   Cancel
                 </button>
@@ -314,7 +333,7 @@ export default function ExtractPage() {
               type="button"
               onClick={() => setConfirming(true)}
               disabled={requestDisabled}
-              className="mt-5 rounded-full bg-accent-strong px-5 py-2 text-sm font-semibold text-surface hover:bg-accent disabled:cursor-not-allowed disabled:bg-line disabled:text-fg-subtle"
+              className={buttonClasses({ fullWidth: true, className: 'mt-5' })}
             >
               Request extraction
             </button>
@@ -322,26 +341,26 @@ export default function ExtractPage() {
         </section>
 
         {/* The user's requests — shows the one just created */}
-        <section className="rounded-3xl border border-raised bg-card/90 p-6">
-          <h2 className="text-lg font-medium">My extraction requests</h2>
+        <section className={cardClasses('sm:p-7')}>
+          <h2 className="text-lg font-semibold">My extraction requests</h2>
           {extractions.length === 0 ? (
-            <p className="mt-4 text-sm text-fg-subtle">You haven&apos;t requested any extractions yet.</p>
+            <p className="mt-4 text-xs leading-relaxed text-fg-muted">You haven&apos;t requested any extractions yet.</p>
           ) : (
-            <ul className="mt-4 divide-y divide-raised">
+            <ul className="mt-4 divide-y divide-line">
               {extractions.map((e) => (
                 <li key={e.extraction_id}>
                   {/* SRS-306.1: open the request to see its current status */}
                   <Link
                     href={`/extractions/${e.extraction_id}`}
-                    className="-mx-3 flex flex-wrap items-center justify-between gap-2 rounded-xl px-3 py-3 hover:bg-raised/60"
+                    className="-mx-3 flex flex-wrap items-center justify-between gap-3 rounded-md px-3 py-4 transition hover:bg-raised focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
                   >
-                    <div>
-                      <p className="font-medium">{e.source_document_title}</p>
-                      <p className="text-xs text-fg-subtle">
+                    <div className="min-w-0 flex-1">
+                      <p className="break-words text-sm font-medium">{e.source_document_title}</p>
+                      <p className="mt-2 text-xs leading-relaxed text-fg-muted">
                         Request #{e.extraction_id} · Requested {formatDateTime(e.requested_at)}
                       </p>
                     </div>
-                    <span className={`rounded-full border px-3 py-1 text-xs ${STATUS_STYLES[e.status] ?? ''}`}>{e.status}</span>
+                    <span className={`inline-flex w-fit items-center whitespace-nowrap rounded-md border px-2 py-1 text-xs font-medium leading-tight ${STATUS_STYLES[e.status] ?? ''}`}>{e.status}</span>
                   </Link>
                 </li>
               ))}
@@ -349,7 +368,7 @@ export default function ExtractPage() {
           )}
         </section>
 
-        <p className="text-sm text-fg-subtle">
+        <p className="text-sm text-fg-muted">
           Back to <Link href="/" className="text-accent hover:underline">home</Link>
         </p>
       </div>

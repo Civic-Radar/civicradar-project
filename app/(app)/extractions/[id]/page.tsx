@@ -17,8 +17,12 @@
 // SRS-303.2, AO, Source document link: the document title is a link to the
 // source document's detail page (SRS-203.1, /documents/<id>).
 
+import { BookOpen } from 'lucide-react';
 import Link from 'next/link';
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { alertClasses } from '../../../components/ui/Alert';
+import { buttonClasses } from '../../../components/ui/Button';
+import { cardClasses } from '../../../components/ui/Card';
 import {
   ACCESS_DENIED_MESSAGE,
   NOT_FOUND_LABEL,
@@ -105,7 +109,7 @@ export default function ExtractionPage({ params }: { params: { id: string } }) {
 
   if (loading) {
     return (
-      <main className="min-h-screen bg-surface text-fg flex items-center justify-center">
+      <main className="min-w-0 flex-1 p-4 text-fg sm:p-8">
         <p className="text-fg-subtle">Loading…</p>
       </main>
     );
@@ -113,10 +117,10 @@ export default function ExtractionPage({ params }: { params: { id: string } }) {
 
   if (!token) {
     return (
-      <main className="min-h-screen bg-surface text-fg flex items-center justify-center px-6">
-        <section className="text-center space-y-4">
+      <main className="min-w-0 flex-1 p-4 text-fg sm:p-8">
+        <section className="space-y-4">
           <p className="text-fg-muted">You must be logged in to view an extraction.</p>
-          <Link href="/login" className="inline-block rounded-full border border-line bg-raised px-4 py-2 text-sm hover:border-accent-strong hover:text-accent-soft">
+          <Link href="/login" className={buttonClasses({ variant: 'primary' })}>
             Go to login
           </Link>
         </section>
@@ -127,7 +131,7 @@ export default function ExtractionPage({ params }: { params: { id: string } }) {
   // SRS-310.2: another user's extraction — nothing about it is shown.
   if (denied) {
     return (
-      <main className="min-h-screen bg-surface text-fg flex items-center justify-center px-6">
+      <main className="min-w-0 flex-1 p-4 text-fg sm:p-8">
         <section className="max-w-md text-center space-y-4" data-testid="access-denied">
           <p className="text-sm uppercase tracking-[0.25em] text-danger">Access denied</p>
           <p className="text-fg-muted">{ACCESS_DENIED_MESSAGE}</p>
@@ -142,53 +146,53 @@ export default function ExtractionPage({ params }: { params: { id: string } }) {
   const sourceHref = extraction ? sourceDocumentHref(extraction) : null;
 
   return (
-    <main className="min-h-screen bg-surface text-fg px-4 py-10 sm:px-6">
-      <div className="mx-auto w-full max-w-3xl space-y-6">
+    <main className="min-w-0 flex-1 p-4 text-fg sm:p-8">
+      <div className="mx-auto w-full max-w-[900px] space-y-6">
         <header>
-          <p className="text-sm uppercase tracking-[0.25em] text-accent">Officials &amp; Contacts</p>
-          <h1 className="mt-2 text-3xl font-semibold">Extraction request</h1>
+          <p className="mb-3 text-xs font-semibold uppercase tracking-[0.17em] text-accent">Officials &amp; Contacts</p>
+          <h1 className="font-display text-3xl font-normal leading-tight tracking-tight sm:text-4xl">Extraction request</h1>
         </header>
 
         {error ? (
-          <p role="alert" className="rounded-xl border border-danger-line bg-danger-wash/30 p-3 text-sm text-danger">{error}</p>
+          <p role="alert" className={alertClasses('error')}>{error}</p>
         ) : null}
 
         {extraction ? (
-          <section className="rounded-3xl border border-raised bg-card/90 p-6">
-            <p className="text-sm text-fg-subtle">Document</p>
+          <section className={cardClasses('sm:p-7')}>
+            <p className="mb-4 text-lg font-semibold text-fg">Document</p>
             {/* SRS-303.2: the source link opens the document's detail page */}
             {sourceHref ? (
-              <Link href={sourceHref} data-testid="source-document-link" className="mt-1 inline-block text-lg font-medium text-accent hover:underline">
+              <Link href={sourceHref} data-testid="source-document-link" className="inline-block break-words text-base font-medium text-accent hover:underline">
                 {extraction.source_document_title}
               </Link>
             ) : (
-              <p className="mt-1 text-lg font-medium">{extraction.source_document_title}</p>
+              <p className="break-words text-base font-medium">{extraction.source_document_title}</p>
             )}
 
             {/* SRS-306.1: the current status */}
-            <div className="mt-6 flex items-center gap-3">
-              <p className="text-sm text-fg-subtle">Status</p>
+            <div className="mt-5 flex items-center gap-3">
+              <p className="text-xs font-semibold uppercase tracking-[0.1em] text-fg-muted">Status</p>
               <span
                 data-testid="extraction-status"
-                className={`rounded-full border px-3 py-1 text-sm font-medium ${STATUS_STYLES[extraction.status] ?? ''}`}
+                className={`inline-flex w-fit items-center whitespace-nowrap rounded-md border px-2 py-1 text-xs font-medium leading-tight ${STATUS_STYLES[extraction.status] ?? ''}`}
               >
                 {extraction.status}
               </span>
             </div>
 
-            <dl className="mt-6 grid gap-3 text-sm sm:grid-cols-2">
+            <dl className="mt-5 grid gap-3 border-t border-line pt-5 text-xs leading-relaxed text-fg-muted sm:grid-cols-3">
               <div>
-                <dt className="text-fg-subtle">Request</dt>
-                <dd>#{extraction.extraction_id}</dd>
+                <dt className="font-semibold uppercase tracking-[0.1em]">Request</dt>
+                <dd className="mt-1 text-sm text-fg">#{extraction.extraction_id}</dd>
               </div>
               <div>
-                <dt className="text-fg-subtle">Requested</dt>
-                <dd>{formatDateTime(extraction.requested_at)}</dd>
+                <dt className="font-semibold uppercase tracking-[0.1em]">Requested</dt>
+                <dd className="mt-1 text-sm text-fg">{formatDateTime(extraction.requested_at)}</dd>
               </div>
               {extraction.completed_at ? (
                 <div>
-                  <dt className="text-fg-subtle">Finished</dt>
-                  <dd>{formatDateTime(extraction.completed_at)}</dd>
+                  <dt className="font-semibold uppercase tracking-[0.1em]">Finished</dt>
+                  <dd className="mt-1 text-sm text-fg">{formatDateTime(extraction.completed_at)}</dd>
                 </div>
               ) : null}
             </dl>
@@ -197,30 +201,33 @@ export default function ExtractionPage({ params }: { params: { id: string } }) {
 
         {/* SRS-302.1: the officials found, one entry each */}
         {extraction?.status === 'Completed' ? (
-          <section className="rounded-3xl border border-raised bg-card/90 p-6">
-            <h2 className="text-lg font-medium">Officials found</h2>
+          <section className={cardClasses('sm:p-7')}>
+            <h2 className="text-lg font-semibold">Officials found</h2>
             {officials.length === 0 ? (
-              <p className="mt-4 text-sm text-fg-subtle">{NO_OFFICIALS_MESSAGE}</p>
+              <div className="flex min-h-[260px] flex-col items-center justify-center gap-4 px-6 py-16 text-center text-fg-muted">
+                <BookOpen aria-hidden="true" className="h-[30px] w-[30px] text-accent" />
+                <p className="max-w-[450px] text-base font-semibold">{NO_OFFICIALS_MESSAGE}</p>
+              </div>
             ) : (
               <ul className="mt-4 space-y-3" aria-label="Extracted officials">
                 {officials.map((official) => (
                   <li
                     key={official.extracted_official_id}
                     data-testid="official-entry"
-                    className="rounded-2xl border border-raised bg-surface/50 p-4"
+                    className="rounded-md border border-line p-4 sm:p-5"
                   >
                     {/* Name and title on top, then role, then the contact details.
                         Every field keeps its label; a missing one shows "Not found". */}
-                    <dl className="grid gap-x-6 gap-y-3 text-sm sm:grid-cols-2">
+                    <dl className="grid gap-x-6 gap-y-4 text-sm sm:grid-cols-2">
                       {OFFICIAL_FIELDS.map(({ key, label }) => {
                         const value = official[key];
                         const href = value && key === 'email' ? `mailto:${value}` : value && key === 'phone' ? `tel:${value.replace(/[^\d+]/g, '')}` : null;
                         return (
                           <div key={key} className={key === 'role' ? 'sm:col-span-2' : undefined}>
-                            <dt className="text-xs uppercase tracking-wide text-fg-subtle">{label}</dt>
+                            <dt className="text-xs font-semibold uppercase tracking-[0.1em] text-fg-muted">{label}</dt>
                             <dd
-                              className={`mt-0.5 break-words ${
-                                !value ? 'text-fg-faint italic' : key === 'full_name' ? 'text-base font-medium' : ''
+                              className={`mt-1 break-words leading-relaxed ${
+                                !value ? 'text-fg-subtle italic' : key === 'full_name' ? 'text-base font-medium' : ''
                               }`}
                             >
                               {href ? (
@@ -241,12 +248,12 @@ export default function ExtractionPage({ params }: { params: { id: string } }) {
         ) : null}
 
         {extraction?.status === 'Failed' ? (
-          <p role="alert" className="rounded-xl border border-danger-line bg-danger-wash/30 p-3 text-sm text-danger">
+          <p role="alert" className={alertClasses('error')}>
             Extraction was not completed.
           </p>
         ) : null}
 
-        <p className="text-sm text-fg-subtle">
+        <p className="text-sm text-fg-muted">
           Back to <Link href="/extract" className="text-accent hover:underline">my extraction requests</Link>
         </p>
       </div>
