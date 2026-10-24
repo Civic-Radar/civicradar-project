@@ -13,7 +13,7 @@ type AuthCardProps = {
  */
 export default function AuthCard({ title, subtitle, children }: AuthCardProps) {
   return (
-    <main className="flex min-h-screen items-center justify-center bg-surface px-4 py-12 text-white">
+    <main className="flex min-h-screen items-center justify-center bg-surface px-4 py-12 text-fg">
       <div className="w-full max-w-md">
         <Link href="/" className="mb-8 flex items-center justify-center gap-3">
           <Landmark className="h-8 w-8 text-sidebar-icon" aria-hidden="true" />
@@ -31,7 +31,7 @@ export default function AuthCard({ title, subtitle, children }: AuthCardProps) {
 }
 
 export const inputClass =
-  "mt-1 w-full rounded-lg border border-line bg-surface px-4 py-3 text-white outline-none transition placeholder:text-fg-faint focus:border-sidebar-icon";
+  "mt-1 w-full rounded-lg border border-line bg-surface px-4 py-3 text-fg outline-none transition placeholder:text-fg-faint focus:border-sidebar-icon";
 
 export const primaryButtonClass =
-  "w-full rounded-lg bg-sidebar-active px-4 py-3 font-semibold text-white transition hover:bg-sidebar-icon hover:text-surface disabled:cursor-not-allowed disabled:opacity-70";
+  "w-full rounded-lg bg-sidebar-active px-4 py-3 font-semibold text-on-dark transition hover:bg-sidebar-icon hover:text-surface disabled:cursor-not-allowed disabled:opacity-70";

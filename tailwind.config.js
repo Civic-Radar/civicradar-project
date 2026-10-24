@@ -2,9 +2,13 @@
 const token = (name) => `rgb(var(--color-${name}) / <alpha-value>)`;
 
 module.exports = {
-  content: ['./app/**/*.{ts,tsx}', './components/**/*.{ts,tsx}'],
+  content: ['./app/**/*.{ts,tsx}', './components/**/*.{ts,tsx}', './lib/**/*.{ts,tsx}'],
   theme: {
     extend: {
+      // The font variable is set by next/font in app/layout.tsx.
+      fontFamily: {
+        display: ['var(--font-dm-serif-display)', 'Georgia', '"Times New Roman"', 'serif'],
+      },
       // Theme colors; the values live as CSS variables in app/globals.css.
       colors: {
         surface: token('surface'),
@@ -22,6 +26,7 @@ module.exports = {
           faint: token('fg-faint'),
         },
         backdrop: token('backdrop'),
+        'on-dark': token('on-dark'),
         accent: {
           DEFAULT: token('accent'),
           soft: token('accent-soft'),
@@ -31,6 +36,8 @@ module.exports = {
           wash: token('accent-wash'),
         },
         sidebar: {
+          DEFAULT: token('sidebar'),
+          muted: token('sidebar-muted'),
           icon: token('sidebar-icon'),
           active: token('sidebar-active'),
         },

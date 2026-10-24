@@ -40,7 +40,7 @@ function NavLinks({ pathname, onNavigate }: { pathname: string; onNavigate?: () 
               onClick={onNavigate}
               aria-current={isActive ? "page" : undefined}
               className={`flex min-h-11 items-center gap-3 rounded-lg px-4 py-3 transition-colors ${
-                isActive ? "bg-sidebar-active font-semibold text-white" : "text-fg-muted hover:bg-raised hover:text-white"
+                isActive ? "bg-sidebar-active font-semibold text-on-dark" : "text-sidebar-muted hover:bg-sidebar-active hover:text-on-dark"
               }`}
             >
               <Icon className="h-5 w-5 shrink-0" aria-hidden="true" />
@@ -60,9 +60,9 @@ function Brand({ onNavigate }: { onNavigate?: () => void }) {
       href="/dashboard"
       onClick={onNavigate}
       aria-label="Civic Radar dashboard"
-      className="flex min-h-11 items-center gap-3 rounded-lg text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-icon"
+      className="flex min-h-11 items-center gap-3 rounded-lg text-on-dark focus:outline-none focus-visible:ring-2 focus-visible:ring-on-dark"
     >
-      <Landmark className="h-7 w-7 text-sidebar-icon" aria-hidden="true" />
+      <Landmark className="h-7 w-7 text-sidebar-muted" aria-hidden="true" />
       <span className="text-2xl font-bold">Civic Radar</span>
     </Link>
   );
@@ -116,7 +116,7 @@ export default function Sidebar() {
   return (
     <>
       {/* Small screens: top bar with a menu button. */}
-      <header className="sticky top-0 z-30 flex items-center justify-between border-b border-line bg-card px-4 py-3 text-white md:hidden">
+      <header className="sticky top-0 z-30 flex items-center justify-between border-b border-line bg-sidebar px-4 py-3 text-on-dark md:hidden">
         <Brand />
         <button
           ref={menuButtonRef}
@@ -125,7 +125,7 @@ export default function Sidebar() {
           aria-expanded={open}
           aria-controls="mobile-navigation"
           aria-label="Open navigation menu"
-          className="flex h-11 w-11 items-center justify-center rounded-lg text-fg-muted transition-colors hover:bg-raised hover:text-white"
+          className="flex h-11 w-11 items-center justify-center rounded-lg text-sidebar-muted transition-colors hover:bg-sidebar-active hover:text-on-dark"
         >
           <Menu className="h-6 w-6" aria-hidden="true" />
         </button>
@@ -146,7 +146,7 @@ export default function Sidebar() {
             role="dialog"
             aria-modal="true"
             aria-label="Navigation menu"
-            className="absolute inset-y-0 left-0 flex w-72 max-w-[85vw] flex-col overflow-y-auto bg-card p-6 text-white shadow-2xl"
+            className="absolute inset-y-0 left-0 flex w-72 max-w-[85vw] flex-col overflow-y-auto bg-sidebar p-6 text-on-dark shadow-2xl"
           >
             <div className="mb-8 flex items-center justify-between">
               <Brand onNavigate={() => setOpen(false)} />
@@ -155,7 +155,7 @@ export default function Sidebar() {
                 type="button"
                 onClick={closeMenu}
                 aria-label="Close navigation menu"
-                className="flex h-11 w-11 items-center justify-center rounded-lg text-fg-muted transition-colors hover:bg-raised hover:text-white"
+                className="flex h-11 w-11 items-center justify-center rounded-lg text-sidebar-muted transition-colors hover:bg-sidebar-active hover:text-on-dark"
               >
                 <X className="h-6 w-6" aria-hidden="true" />
               </button>
@@ -168,7 +168,7 @@ export default function Sidebar() {
       ) : null}
 
       {/* 768px and wider: the fixed sidebar. */}
-      <aside className="hidden w-64 shrink-0 bg-card p-6 text-white md:block">
+      <aside className="hidden w-64 shrink-0 bg-sidebar p-6 text-on-dark md:block">
         <div className="mb-8">
           <Brand />
         </div>

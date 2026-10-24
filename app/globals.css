@@ -4,46 +4,51 @@
 
 /* Theme colors, defined once. Values are space-separated RGB channels so
    Tailwind opacity modifiers (e.g. bg-card/90) keep working; each token is
-   wired up in tailwind.config.js. The comment names the Tailwind color it equals. */
+   wired up in tailwind.config.js. The comment names the prototype token
+   (Local Lookout palette) the value comes from. */
 :root {
-  color-scheme: dark;
+  color-scheme: light;
 
-  /* Neutrals (Halloween: haunted purple-black darks, bone-white text) */
-  --color-surface: 8 6 12; /* black cat */
-  --color-card: 20 14 28; /* haunted purple-black */
-  --color-raised: 34 24 46; /* deep witch purple */
-  --color-line: 64 44 78; /* dusty purple */
-  --color-line-strong: 96 66 112; /* faded violet */
-  --color-fg-faint: 134 122 118; /* ash gray */
-  --color-fg-subtle: 176 164 152; /* tombstone gray */
-  --color-fg-muted: 214 204 190; /* pale bone */
-  --color-fg-soft: 236 227 211; /* bone white */
-  --color-fg: 248 241 227; /* candlelit bone */
-  --color-backdrop: 14 8 22; /* midnight */
+  /* Neutrals */
+  --color-surface: 247 248 244; /* surface #f7f8f4 */
+  --color-card: 255 255 255; /* card #ffffff */
+  --color-raised: 239 242 235; /* raised #eff2eb */
+  --color-line: 227 231 222; /* line #e3e7de */
+  --color-line-strong: 205 213 201; /* line-strong #cdd5c9 */
+  --color-fg-faint: 124 132 124; /* fg-subtle #7c847c */
+  --color-fg-subtle: 124 132 124; /* fg-subtle #7c847c */
+  --color-fg-muted: 105 114 105; /* fg-muted #697269 */
+  --color-fg-soft: 37 60 48; /* fg #253c30 */
+  --color-fg: 37 60 48; /* fg #253c30 */
+  --color-backdrop: 21 39 29; /* backdrop #15271d */
+  --color-on-dark: 244 246 234; /* on-dark #f4f6ea */
 
-  /* Accent (Halloween: pumpkin orange) */
-  --color-accent-soft: 254 215 170; /* orange-200 */
-  --color-accent: 251 146 60; /* orange-400 */
-  --color-accent-strong: 249 115 22; /* orange-500 */
-  --color-accent-vivid: 234 88 12; /* orange-600 */
-  --color-accent-line: 154 52 18; /* orange-800 */
-  --color-accent-wash: 124 45 18; /* orange-900 */
+  /* Accent. -soft is used for text in this repo, so it takes the strong accent;
+     -wash is the pale tint. */
+  --color-accent-soft: 46 83 59; /* accent-strong #2e533b */
+  --color-accent: 69 107 72; /* accent #456b48 */
+  --color-accent-strong: 46 83 59; /* accent-strong #2e533b */
+  --color-accent-vivid: 69 107 72; /* accent #456b48 */
+  --color-accent-line: 69 107 72; /* accent #456b48 */
+  --color-accent-wash: 232 237 218; /* accent-soft #e8edda */
 
   /* Sidebar */
-  --color-sidebar-icon: 251 146 60; /* orange-400, pumpkin */
-  --color-sidebar-active: 107 33 168; /* purple-700, witch purple */
+  --color-sidebar: 33 60 48; /* sidebar #213c30 */
+  --color-sidebar-muted: 172 191 176; /* sidebar-muted #acbfb0 */
+  --color-sidebar-icon: 69 107 72; /* accent #456b48 */
+  --color-sidebar-active: 61 85 69; /* sidebar-active #3d5545 */
 
-  /* Status */
-  --color-danger-soft: 254 202 202; /* red-200 */
-  --color-danger: 248 113 113; /* red-400 */
-  --color-danger-vivid: 220 38 38; /* red-600, blood red */
-  --color-danger-line: 153 27 27; /* red-800 */
-  --color-danger-wash: 127 29 29; /* red-900 */
-  --color-warning-soft: 254 240 138; /* yellow-200 */
-  --color-warning: 253 224 71; /* yellow-300, candy corn */
-  --color-warning-vivid: 234 179 8; /* yellow-500 */
-  --color-info-soft: 233 213 255; /* purple-200 */
-  --color-info-vivid: 168 85 247; /* purple-500, witch purple */
+  /* Status. -soft is used for text, so it takes the readable status color. */
+  --color-danger-soft: 164 75 69; /* danger #a44b45 */
+  --color-danger: 164 75 69; /* danger #a44b45 */
+  --color-danger-vivid: 164 75 69; /* danger #a44b45 */
+  --color-danger-line: 164 75 69; /* danger #a44b45 */
+  --color-danger-wash: 249 234 230; /* danger-soft #f9eae6 */
+  --color-warning-soft: 134 99 45; /* warning #86632d */
+  --color-warning: 134 99 45; /* warning #86632d */
+  --color-warning-vivid: 134 99 45; /* warning #86632d */
+  --color-info-soft: 102 123 145; /* info #667b91 */
+  --color-info-vivid: 102 123 145; /* info #667b91 */
 }
 
 html, body {
@@ -52,6 +57,6 @@ html, body {
 
 body {
   margin: 0;
-  font-family: Arial, Helvetica, sans-serif;
-  background: linear-gradient(135deg, rgb(var(--color-surface)) 0%, rgb(var(--color-backdrop)) 45%, rgb(var(--color-backdrop)) 100%);
+  font-family: var(--font-dm-sans), ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  background: rgb(var(--color-surface));
 }
