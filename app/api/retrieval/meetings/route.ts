@@ -1,4 +1,4 @@
-import { getSupabaseClient } from '../../../../lib/supabase';
+import { getAuthenticatedUser, getToken, type SupabaseClient } from '../../../../lib/residentAuth';
 import { downloadFile, fetchMeetingFiles, fetchMeetings } from '../../../../lib/sources/civicclerk';
 import { saveMeetings } from '../../../../lib/retrieval/saveMeetings';
 import { retrieveDocuments } from '../../../../lib/retrieval/retrieveDocuments';
@@ -8,6 +8,8 @@ import type { MeetingFilesListing, MeetingListing } from '../../../../lib/source
 // never mean unlimited (SRS-220.1).
 const DEFAULT_MAX_PAGES = 2;
 const RETRIEVAL_MAX_PAGES_CEILING = 5;
+
+const ADMIN_ROLE = 'System administrator';
 
 function errorMessage(error: unknown): string {
   return error instanceof Error ? error.message : 'Unexpected error';
@@ -22,14 +24,40 @@ function retrievalMaxPages(): number {
   return value < 1 ? DEFAULT_MAX_PAGES : Math.min(value, RETRIEVAL_MAX_PAGES_CEILING);
 }
 
+// Only the exact administrator role passes. A missing row or any other value
+// is not an administrator; null means the role could not be read.
+async function isSystemAdministrator(supabase: SupabaseClient, userId: string): Promise<boolean | null> {
+  const { data, error } = await supabase
+    .from('user_accounts')
+    .select('account_role')
+    .eq('user_id', userId)
+    .maybeSingle();
+
+  if (error) return null;
+  return (data as { account_role?: unknown } | null)?.account_role === ADMIN_ROLE;
+}
+
 // Retrieves a town's meetings from its source and saves them (SRS-220.3),
 // then stores each file listed under them as a document (SRS-208.2). Both
 // passes read at most the page bound. The meetings and files from every page
 // read are kept, even when a later page fails, and complete is true only when
 // both passes read the whole list (SRS-220.1). Nothing is written for the
-// flag yet (SRS-222.2). No access control yet: any caller can trigger a
-// retrieval run.
+// flag yet (SRS-222.2). Only a signed-in system administrator can trigger a
+// retrieval run, and that is checked before anything else.
 export async function POST(request: Request) {
+  const token = getToken(request);
+  if (!token) return Response.json({ error: 'Unauthorized' }, { status: 401 });
+
+  // Also checks the service role key, which retrieval writes need (RLS is
+  // deny-by-default).
+  const { user, supabase, configError } = await getAuthenticatedUser(token);
+  if (configError) return Response.json({ error: 'Supabase credentials are not configured.' }, { status: 500 });
+  if (!user) return Response.json({ error: 'Invalid or expired token.' }, { status: 401 });
+
+  const isAdmin = await isSystemAdministrator(supabase!, user.id);
+  if (isAdmin === null) return Response.json({ error: 'Your access could not be checked.' }, { status: 500 });
+  if (!isAdmin) return Response.json({ error: 'Only a system administrator can run retrieval.' }, { status: 403 });
+
   let townId: unknown;
   try {
     ({ townId } = (await request.json()) as { townId?: unknown });
@@ -41,18 +69,7 @@ export async function POST(request: Request) {
     return Response.json({ error: 'townId must be a whole number.' }, { status: 400 });
   }
 
-  // Retrieval writes need the service role key (RLS is deny-by-default).
-  if (!process.env.SUPABASE_SERVICE_ROLE_KEY) {
-    return Response.json({ error: 'The Supabase service role key is not configured.' }, { status: 500 });
-  }
-
-  const supabase = getSupabaseClient();
-
-  if (!supabase) {
-    return Response.json({ error: 'Supabase credentials are not configured.' }, { status: 500 });
-  }
-
-  const { data: town, error: townError } = await supabase
+  const { data: town, error: townError } = await supabase!
     .from('towns')
     .select('town_id, source_account_id, meeting_time_zone')
     .eq('town_id', townId)
@@ -79,7 +96,7 @@ export async function POST(request: Request) {
 
   let saved: number;
   try {
-    saved = await saveMeetings(supabase, town, meetingListing.meetings);
+    saved = await saveMeetings(supabase!, town, meetingListing.meetings);
   } catch (error: unknown) {
     return Response.json({ error: errorMessage(error) }, { status: 500 });
   }
@@ -103,7 +120,7 @@ export async function POST(request: Request) {
 
   // Per-file failures are logged inside and never stop the run (SRS-208.2).
   try {
-    await retrieveDocuments(supabase, town.town_id, fileListing.filesByMeeting, downloadFile);
+    await retrieveDocuments(supabase!, town.town_id, fileListing.filesByMeeting, downloadFile);
   } catch (error: unknown) {
     console.error(`Document retrieval: town ${town.town_id} failed: ${errorMessage(error)}`);
     return Response.json(
