@@ -96,9 +96,10 @@ export default function MeetingsPage() {
     setResult('');
     setResultIsError(false);
     try {
+      const token = localStorage.getItem('access_token');
       const response = await fetch('/api/retrieval/meetings', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
         body: JSON.stringify({ townId: town.town_id }),
       });
       const data = await response.json();

@@ -129,7 +129,17 @@ function createFakeSupabase() {
   let nextAttemptId = 1;
 
   const client = {
+    // The caller is a signed-in system administrator.
+    auth: { getUser: async () => ({ data: { user: { id: 'admin-user' } }, error: null }) },
     from(table: string) {
+      if (table === 'user_accounts') {
+        return {
+          select: () => ({
+            eq: () => ({ maybeSingle: async () => ({ data: { account_role: 'System administrator' }, error: null }) }),
+          }),
+        };
+      }
+
       if (table === 'towns') {
         return { select: (columns: string) => query(towns, columns) };
       }
@@ -203,7 +213,7 @@ function runRetrieval() {
   return POST(
     new Request('http://localhost/api/retrieval/meetings', {
       method: 'POST',
-      headers: { 'content-type': 'application/json' },
+      headers: { 'content-type': 'application/json', authorization: 'Bearer admin-token' },
       body: JSON.stringify({ townId: SALEM_TOWN_ID }),
     }),
   );
