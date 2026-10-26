@@ -1,8 +1,6 @@
 import { getAuthenticatedUser, getToken, type SupabaseClient } from '../../../../lib/residentAuth';
 import { downloadFile, fetchMeetingFiles, fetchMeetings } from '../../../../lib/sources/civicclerk';
-import { saveMeetings } from '../../../../lib/retrieval/saveMeetings';
-import { retrieveDocuments } from '../../../../lib/retrieval/retrieveDocuments';
-import type { MeetingFilesListing, MeetingListing } from '../../../../lib/sources/types';
+import { runTownRetrieval } from '../../../../lib/retrieval/runTownRetrieval';
 
 // Used when RETRIEVAL_MAX_PAGES is unset or invalid, so a missing setting can
 // never mean unlimited (SRS-220.1).
@@ -10,10 +8,6 @@ const DEFAULT_MAX_PAGES = 2;
 const RETRIEVAL_MAX_PAGES_CEILING = 5;
 
 const ADMIN_ROLE = 'System administrator';
-
-function errorMessage(error: unknown): string {
-  return error instanceof Error ? error.message : 'Unexpected error';
-}
 
 // The page bound for both source passes, read from the server setting only,
 // never from the request.
@@ -37,13 +31,11 @@ async function isSystemAdministrator(supabase: SupabaseClient, userId: string): 
   return (data as { account_role?: unknown } | null)?.account_role === ADMIN_ROLE;
 }
 
-// Retrieves a town's meetings from its source and saves them (SRS-220.3),
-// then stores each file listed under them as a document (SRS-208.2). Both
-// passes read at most the page bound. The meetings and files from every page
-// read are kept, even when a later page fails, and complete is true only when
-// both passes read the whole list (SRS-220.1). Nothing is written for the
-// flag yet (SRS-222.2). Only a signed-in system administrator can trigger a
-// retrieval run, and that is checked before anything else.
+// Runs one retrieval run for the requested town through runTownRetrieval,
+// which records the town's check (SRS-222.1), saves its meetings (SRS-220.3)
+// and stores their files as documents (SRS-208.2). Only a signed-in system
+// administrator can trigger a retrieval run, and that is checked before
+// anything else.
 export async function POST(request: Request) {
   const token = getToken(request);
   if (!token) return Response.json({ error: 'Unauthorized' }, { status: 401 });
@@ -84,50 +76,16 @@ export async function POST(request: Request) {
     return Response.json({ error: `Town ${townId} was not found.` }, { status: 404 });
   }
 
-  const maxPages = retrievalMaxPages();
-
-  // A failed fetch is never "no meetings": any client error stops the run.
-  let meetingListing: MeetingListing;
-  try {
-    meetingListing = await fetchMeetings(town.source_account_id, maxPages);
-  } catch (error: unknown) {
-    return Response.json({ error: errorMessage(error) }, { status: 502 });
-  }
-
-  let saved: number;
-  try {
-    saved = await saveMeetings(supabase!, town, meetingListing.meetings);
-  } catch (error: unknown) {
-    return Response.json({ error: errorMessage(error) }, { status: 500 });
-  }
-
-  // A failed listing is never "no files". Details stay in the server log.
-  let fileListing: MeetingFilesListing;
-  try {
-    fileListing = await fetchMeetingFiles(town.source_account_id, maxPages);
-  } catch (error: unknown) {
-    console.error(`Document retrieval: town ${town.town_id} file listing failed: ${errorMessage(error)}`);
-    return Response.json(
-      { error: `Saved ${saved} meetings, but listing their documents failed.` },
-      { status: 502 },
-    );
-  }
-
-  const complete = meetingListing.complete && fileListing.complete;
-  console.log(
-    `Meeting retrieval: town ${town.town_id} read ${meetingListing.pagesRead} meeting pages and ${fileListing.pagesRead} file pages, bound ${maxPages}, complete ${complete}`,
+  const result = await runTownRetrieval(
+    supabase!,
+    town,
+    { fetchMeetings, fetchMeetingFiles, downloadFile },
+    { maxPages: retrievalMaxPages() },
   );
 
-  // Per-file failures are logged inside and never stop the run (SRS-208.2).
-  try {
-    await retrieveDocuments(supabase!, town.town_id, fileListing.filesByMeeting, downloadFile);
-  } catch (error: unknown) {
-    console.error(`Document retrieval: town ${town.town_id} failed: ${errorMessage(error)}`);
-    return Response.json(
-      { error: `Saved ${saved} meetings, but retrieving their documents failed.` },
-      { status: 500 },
-    );
+  if (!result.ok) {
+    return Response.json({ error: result.error }, { status: result.status });
   }
 
-  return Response.json({ saved, complete }, { status: 200 });
+  return Response.json({ saved: result.saved, complete: result.complete }, { status: 200 });
 }

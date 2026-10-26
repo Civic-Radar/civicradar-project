@@ -197,6 +197,18 @@ function createFakeSupabase() {
         };
       }
 
+      // The run's check row (SRS-222.1), opened and closed without assertions here.
+      if (table === 'source_checks') {
+        return {
+          insert: () => ({
+            select: () => ({
+              single: async () => ({ data: { check_id: 1, started_at: new Date().toISOString() }, error: null }),
+            }),
+          }),
+          update: () => ({ eq: async () => ({ data: null, error: null }) }),
+        };
+      }
+
       throw new Error(`Unexpected table: ${table}`);
     },
     storage: {
