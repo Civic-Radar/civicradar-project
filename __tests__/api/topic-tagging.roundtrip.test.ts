@@ -131,7 +131,7 @@ function tag(meetingId: number) {
   return POST(
     new Request('http://localhost/api/topic-tagging', {
       method: 'POST',
-      headers: { 'content-type': 'application/json' },
+      headers: { 'content-type': 'application/json', 'x-topic-tagging-secret': 'test-topic-tagging-secret' },
       body: JSON.stringify({ meetingId }),
     }),
   );
@@ -147,6 +147,7 @@ function tagsFor(meetingId: number) {
 
 beforeEach(() => {
   vi.stubEnv('SUPABASE_SERVICE_ROLE_KEY', 'test-service-role-key');
+  vi.stubEnv('TOPIC_TAGGING_SECRET', 'test-topic-tagging-secret');
   // The eight starter topics from supabase/seed_topics.sql.
   store.topics = [
     'Housing',

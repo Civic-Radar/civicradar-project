@@ -18,11 +18,15 @@ import { getSupabaseClient } from '../../lib/supabase';
 const HOUSING_SENTENCE =
   'Order to appropriate $250,000 from the Affordable Housing Trust Fund to create 12 affordable housing units at 40 Lafayette Street.';
 
-function run(body: unknown) {
+const TAGGING_SECRET = 'test-topic-tagging-secret';
+
+function run(body: unknown, secret: string | null = TAGGING_SECRET) {
+  const headers: Record<string, string> = { 'content-type': 'application/json' };
+  if (secret !== null) headers['x-topic-tagging-secret'] = secret;
   return POST(
     new Request('http://localhost/api/topic-tagging', {
       method: 'POST',
-      headers: { 'content-type': 'application/json' },
+      headers,
       body: typeof body === 'string' ? body : JSON.stringify(body),
     }),
   );
@@ -34,12 +38,50 @@ function classifyReturns(result: ClassifyResult) {
 
 beforeEach(() => {
   vi.stubEnv('SUPABASE_SERVICE_ROLE_KEY', 'test-service-role-key');
+  vi.stubEnv('TOPIC_TAGGING_SECRET', TAGGING_SECRET);
   vi.mocked(getSupabaseClient).mockClear();
   vi.mocked(classifyMeetingTopics).mockReset();
 });
 
 afterEach(() => {
   vi.unstubAllEnvs();
+});
+
+describe('POST /api/topic-tagging access (Task 401.4-6)', () => {
+  it.each([
+    ['is not set', ''],
+    ['is only spaces', '   '],
+  ])('returns 500 when the tagging secret %s, before tagging', async (_label, value) => {
+    vi.stubEnv('TOPIC_TAGGING_SECRET', value);
+
+    const response = await run({ meetingId: 1 });
+
+    expect(response.status).toBe(500);
+    expect(await response.json()).toEqual({ error: 'Topic tagging is not configured.' });
+    expect(getSupabaseClient).not.toHaveBeenCalled();
+    expect(classifyMeetingTopics).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    ['no secret header', null],
+    ['a wrong secret', 'not-the-secret'],
+    ['an empty secret', ''],
+    ['the secret with extra characters', `${TAGGING_SECRET}x`],
+  ])('returns 401 for %s, before tagging', async (_label, secret) => {
+    const response = await run({ meetingId: 1 }, secret);
+
+    expect(response.status).toBe(401);
+    expect(await response.json()).toEqual({ error: 'Unauthorized.' });
+    expect(getSupabaseClient).not.toHaveBeenCalled();
+    expect(classifyMeetingTopics).not.toHaveBeenCalled();
+  });
+
+  it('checks the secret before the body, so an invalid body without it still gets 401', async () => {
+    const response = await run('not json', null);
+
+    expect(response.status).toBe(401);
+    expect(await response.json()).toEqual({ error: 'Unauthorized.' });
+  });
 });
 
 describe('POST /api/topic-tagging (SRS-401.4)', () => {
