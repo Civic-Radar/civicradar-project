@@ -1,5 +1,10 @@
 import { classifyMeetingTopics } from '../../../lib/meetingTagging';
 import { getSupabaseClient } from '../../../lib/supabase';
+import {
+  getTopicTaggingSecret,
+  isValidTopicTaggingSecret,
+  TOPIC_TAGGING_SECRET_HEADER,
+} from '../../../lib/topicTaggingSecret';
 
 // Always run against the current rows; never serve a build-time snapshot.
 export const dynamic = 'force-dynamic';
@@ -10,8 +15,17 @@ const TAGGING_ERROR = 'Topic tagging could not be completed. Please try again.';
 // Tags one meeting from its current agenda text and saves the tags (SRS-401.4).
 // Call it whenever a meeting's agenda text is new or changed; running it again
 // on the same text leaves the same tags.
-// No access control yet: any caller can trigger a tagging run.
+// Run by a background job, protected by the x-topic-tagging-secret header,
+// which is checked before the body is read.
 export async function POST(request: Request) {
+  if (!getTopicTaggingSecret()) {
+    return Response.json({ error: 'Topic tagging is not configured.' }, { status: 500 });
+  }
+
+  if (!isValidTopicTaggingSecret(request.headers.get(TOPIC_TAGGING_SECRET_HEADER))) {
+    return Response.json({ error: 'Unauthorized.' }, { status: 401 });
+  }
+
   let meetingId: unknown;
   try {
     ({ meetingId } = (await request.json()) as { meetingId?: unknown });
