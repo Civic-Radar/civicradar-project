@@ -1,5 +1,6 @@
 -- =============================================================================
 -- Test: match_meetings_for_user (SRS-401.1, Task 401.1-3; SRS-401.2, Task 401.2-2)
+--       match_meetings_with_reasons (SRS-401.5, Task 401.5-2)
 -- Reviewed by: EG (Erick Gonzalez)
 --
 -- How to run: in the Supabase SQL editor, replace PASTE-YOUR-USER-ID below with
@@ -8,7 +9,7 @@
 --
 -- Result: the script always ends with an error, which makes Postgres undo every
 -- row it inserted.
---   "ALL CHECKS PASSED ..." means the function matched every case.
+--   "ALL CHECKS PASSED ..." means the functions matched every case.
 --   "CHECK FAILED: ..."     names the case that went wrong.
 -- Afterwards, select count(*) from towns where name like 'Test Town%' returns 0.
 --
@@ -24,6 +25,7 @@ DECLARE
   m1 BIGINT; m2 BIGINT; m3 BIGINT; m4 BIGINT; m5 BIGINT;
   m6 BIGINT; m7 BIGINT; m8 BIGINT; m9 BIGINT;
   m10 BIGINT; m11 BIGINT; m12 BIGINT;
+  m13 BIGINT; m14 BIGINT; m15 BIGINT; m16 BIGINT; m17 BIGINT; m18 BIGINT;
 
   test_towns INTEGER[];
   matched BIGINT[];
@@ -168,6 +170,83 @@ BEGIN
     END IF;
   END LOOP;
 
-  RAISE EXCEPTION 'ALL CHECKS PASSED (17 checks). This error rolls back the test data.';
+  -- Matching reasons (SRS-401.5). Test Town A stands in for Salem and is followed
+  -- again; each case gets its own meeting, and each tag its own agenda passage.
+  --   m13: Town A, Housing                          -> Housing, not followed directly
+  --   m14: Town A, Housing + Parks (not followed)   -> Housing only
+  --   m15: Town A, Housing + Transit (removed)      -> Housing only
+  --   m16: Town A, Zoning + Housing                 -> both, sorted by name
+  --   m17: Town C (not followed), Housing, followed -> no tags, followed directly
+  --   m18: Town A, Housing, followed directly       -> Housing and followed directly
+  INSERT INTO user_followed_towns (user_id, town_id) VALUES (v_user, town_a);
+
+  INSERT INTO meetings (town_id, source_meeting_id) VALUES (town_a, 'test-13') RETURNING meeting_id INTO m13;
+  INSERT INTO meetings (town_id, source_meeting_id) VALUES (town_a, 'test-14') RETURNING meeting_id INTO m14;
+  INSERT INTO meetings (town_id, source_meeting_id) VALUES (town_a, 'test-15') RETURNING meeting_id INTO m15;
+  INSERT INTO meetings (town_id, source_meeting_id) VALUES (town_a, 'test-16') RETURNING meeting_id INTO m16;
+  INSERT INTO meetings (town_id, source_meeting_id) VALUES (town_c, 'test-17') RETURNING meeting_id INTO m17;
+  INSERT INTO meetings (town_id, source_meeting_id) VALUES (town_a, 'test-18') RETURNING meeting_id INTO m18;
+
+  INSERT INTO meeting_topics (meeting_id, topic_id, evidence_text) VALUES
+    (m13, housing, 'Item 4: affordable housing ordinance'),
+    (m14, housing, 'Item 2: housing trust fund'),
+    (m14, parks, 'Item 3: playground repair'),
+    (m15, housing, 'Item 5: housing production plan'),
+    (m15, transit, 'Item 6: bus route changes'),
+    (m16, zoning, 'Item 7: rezoning Main Street'),
+    (m16, housing, 'Item 8: accessory dwelling units'),
+    (m17, housing, 'Item 1: senior housing'),
+    (m18, housing, 'Item 9: housing authority budget');
+  INSERT INTO user_followed_meetings (user_id, meeting_id) VALUES (v_user, m17), (v_user, m18);
+
+  FOR c IN
+    SELECT * FROM (VALUES
+      ('Reason: Town A Housing meeting includes the town, Housing and its passage', m13, 'Test Town A',
+        '[{"topic": "Test Housing", "evidence_text": "Item 4: affordable housing ordinance"}]'::jsonb, false),
+      ('Reason: an unfollowed tag is not listed', m14, 'Test Town A',
+        '[{"topic": "Test Housing", "evidence_text": "Item 2: housing trust fund"}]'::jsonb, false),
+      ('Reason: a removed tag is not listed', m15, 'Test Town A',
+        '[{"topic": "Test Housing", "evidence_text": "Item 5: housing production plan"}]'::jsonb, false),
+      ('Reason: two followed tags each have their own passage, sorted by name', m16, 'Test Town A',
+        '[{"topic": "Test Housing", "evidence_text": "Item 8: accessory dwelling units"},
+          {"topic": "Test Zoning", "evidence_text": "Item 7: rezoning Main Street"}]'::jsonb, false),
+      ('Reason: followed directly in an unfollowed town lists no tags', m17, 'Test Town C',
+        '[]'::jsonb, true),
+      ('Reason: matched both ways shows the tag and the direct follow', m18, 'Test Town A',
+        '[{"topic": "Test Housing", "evidence_text": "Item 9: housing authority budget"}]'::jsonb, true)
+    ) AS t (label, meeting, town, topics, direct)
+  LOOP
+    SELECT count(*) INTO n
+    FROM match_meetings_with_reasons(v_user) r
+    WHERE (r->>'meeting_id')::BIGINT = c.meeting
+      AND r->>'town' = c.town
+      AND r->'matched_topics' = c.topics
+      AND (r->>'followed_directly')::BOOLEAN = c.direct;
+    IF n <> 1 THEN
+      RAISE EXCEPTION 'CHECK FAILED: % (expected 1 matching row, got %; returned: %)', c.label, n,
+        (SELECT coalesce(jsonb_agg(jsonb_build_object('town', r->'town',
+           'matched_topics', r->'matched_topics', 'followed_directly', r->'followed_directly')), '[]')
+         FROM match_meetings_with_reasons(v_user) r
+         WHERE (r->>'meeting_id')::BIGINT = c.meeting);
+    END IF;
+  END LOOP;
+
+  -- The reasons describe exactly the meetings match_meetings_for_user returns.
+  SELECT count(*) INTO n FROM (
+    (SELECT (r->>'meeting_id')::BIGINT FROM match_meetings_with_reasons(v_user) r
+     WHERE (r->>'town_id')::INTEGER = ANY (test_towns)
+     EXCEPT
+     SELECT meeting_id FROM match_meetings_for_user(v_user) WHERE town_id = ANY (test_towns))
+    UNION ALL
+    (SELECT meeting_id FROM match_meetings_for_user(v_user) WHERE town_id = ANY (test_towns)
+     EXCEPT
+     SELECT (r->>'meeting_id')::BIGINT FROM match_meetings_with_reasons(v_user) r
+     WHERE (r->>'town_id')::INTEGER = ANY (test_towns))
+  ) AS differences;
+  IF n <> 0 THEN
+    RAISE EXCEPTION 'CHECK FAILED: Reasons cover the same meetings as match_meetings_for_user (% meeting(s) differ)', n;
+  END IF;
+
+  RAISE EXCEPTION 'ALL CHECKS PASSED (24 checks). This error rolls back the test data.';
 END;
 $$;
