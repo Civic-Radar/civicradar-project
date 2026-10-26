@@ -4,6 +4,7 @@ import { ArrowUpRight, BookOpen, Clock3, MapPin } from "lucide-react";
 import { cardClasses } from "../../components/ui/Card";
 import PageShell from "../../components/ui/PageShell";
 import { getSupabaseClient } from "../../../lib/supabase";
+import SetupMessage from "./SetupMessage";
 
 export const dynamic = "force-dynamic";
 
@@ -99,6 +100,8 @@ export default async function DashboardPage() {
         Stay informed about your local government
         meetings and community updates.
       </p>
+
+      <SetupMessage />
 
       <section className="mt-7 md:mt-9">
         <h2 className="mb-4 font-display text-2xl font-normal tracking-tight">
