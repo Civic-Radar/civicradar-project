@@ -8,7 +8,7 @@
 --   Part 4  avatars bucket     - public storage bucket for profile pictures
 --
 -- Part 2 is generated from database/schema.sql (the portable PostgreSQL script,
--- which is the source of truth). Only six things differ, and each is marked
+-- which is the source of truth). Only seven things differ, and each is marked
 -- "Supabase:" inline:
 --
 --   1. is_valid_time_zone() is created as public.is_valid_time_zone() with a
@@ -29,6 +29,10 @@
 --      followed towns that have one of the user's followed topic tags, plus
 --      the meetings the user follows directly (SRS-401.1, SRS-401.2). Only the
 --      service role may run it.
+--   7. public.match_meetings_with_reasons() returns those same meetings with
+--      why each one matched: its town, the followed topic tags with their
+--      agenda text, and whether the user follows it directly (SRS-401.5).
+--      Only the service role may run it.
 -- =============================================================================
 -- =============================================================================
 -- PART 1. Profile table (used by app/api/profile)
@@ -723,6 +727,61 @@ $$;
 revoke all on function public.match_meetings_for_user (UUID) from public, anon, authenticated;
 
 grant execute on function public.match_meetings_for_user (UUID) to service_role;
+
+-- Function: match_meetings_with_reasons
+-- Reviewed by: EG (Erick Gonzalez)
+-- Supports: SRS-401.5
+-- Purpose: Returns the same meetings as match_meetings_for_user, each as a
+--          JSON object holding the meeting's columns plus why it matched:
+--          town (the meeting's town name), matched_topics (the user's followed,
+--          non-removed topic tags on the meeting, each with the agenda text that
+--          produced it, sorted by topic name) and followed_directly. Tags are
+--          listed only when the meeting is in a followed, non-removed town, so a
+--          meeting returned only because it is followed directly has an empty
+--          list. Which meetings match is decided only by match_meetings_for_user.
+-- Supabase: not in database/schema.sql; called by the matching API route.
+create function public.match_meetings_with_reasons (p_user_id UUID) RETURNS SETOF JSONB LANGUAGE sql STABLE SECURITY INVOKER
+set
+  search_path = pg_catalog,
+  public -- Supabase: pin the search path (linter 0011)
+  as $$
+  SELECT to_jsonb(m) || jsonb_build_object(
+    'town', t.name,
+    'matched_topics', CASE
+      WHEN t.removed_at IS NULL AND EXISTS (
+        SELECT 1
+        FROM user_followed_towns uft
+        WHERE uft.user_id = p_user_id AND uft.town_id = m.town_id
+      )
+      THEN COALESCE((
+        SELECT jsonb_agg(
+          jsonb_build_object('topic', tp.name, 'evidence_text', mt.evidence_text)
+          ORDER BY tp.name
+        )
+        FROM meeting_topics mt
+        JOIN user_followed_topics uftp
+          ON uftp.topic_id = mt.topic_id AND uftp.user_id = p_user_id
+        JOIN topics tp
+          ON tp.topic_id = mt.topic_id AND tp.removed_at IS NULL
+        WHERE mt.meeting_id = m.meeting_id
+      ), '[]'::jsonb)
+      ELSE '[]'::jsonb
+    END,
+    'followed_directly', EXISTS (
+      SELECT 1
+      FROM user_followed_meetings ufm
+      WHERE ufm.user_id = p_user_id AND ufm.meeting_id = m.meeting_id
+    )
+  )
+  FROM public.match_meetings_for_user(p_user_id) m
+  JOIN towns t ON t.town_id = m.town_id
+  ORDER BY m.start_at;
+$$;
+
+-- Supabase: only the API routes (service role) may run it, never the anon key.
+revoke all on function public.match_meetings_with_reasons (UUID) from public, anon, authenticated;
+
+grant execute on function public.match_meetings_with_reasons (UUID) to service_role;
 
 -- Table: meeting_updates
 -- Reviewed by: EG (Erick Gonzalez)

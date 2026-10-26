@@ -30,7 +30,7 @@ import { getSupabaseClient } from '../../lib/supabase';
 
 const townAMeeting = { meeting_id: 1, town_id: 1, title: 'Town A Council' };
 const townBMeeting = { meeting_id: 2, town_id: 2, title: 'Town B Planning Board' };
-const dbError = { message: 'function match_meetings_for_user(uuid) does not exist (42883)' };
+const dbError = { message: 'function match_meetings_with_reasons(uuid) does not exist (42883)' };
 
 function req(token: string | null = 'valid-token', url = 'http://localhost/api/matching-meetings') {
   return new Request(url, { headers: token ? { authorization: `Bearer ${token}` } : {} });
@@ -73,11 +73,11 @@ describe('GET /api/matching-meetings', () => {
   it('matches for the resident in the token, ignoring a user id in the URL', async () => {
     await GET(req('valid-token', 'http://localhost/api/matching-meetings?userId=someone-else'));
 
-    expect(db.rpcCalls).toEqual([{ name: 'match_meetings_for_user', args: { p_user_id: 'user-123' } }]);
+    expect(db.rpcCalls).toEqual([{ name: 'match_meetings_with_reasons', args: { p_user_id: 'user-123' } }]);
   });
 
   it('returns the matching meetings', async () => {
-    db.results.match_meetings_for_user = { data: [townAMeeting, townBMeeting], error: null };
+    db.results.match_meetings_with_reasons = { data: [townAMeeting, townBMeeting], error: null };
 
     const response = await GET(req());
 
@@ -85,8 +85,33 @@ describe('GET /api/matching-meetings', () => {
     expect(await response.json()).toEqual({ meetings: [townAMeeting, townBMeeting] });
   });
 
+  it('returns each meeting with its matching reason unchanged', async () => {
+    const salemHousing = {
+      meeting_id: 3,
+      town_id: 1,
+      title: 'Salem City Council',
+      town: 'Salem',
+      matched_topics: [{ topic: 'Housing', evidence_text: 'Item 4: affordable housing ordinance' }],
+      followed_directly: false,
+    };
+    const followedOnly = {
+      meeting_id: 4,
+      town_id: 2,
+      title: 'Beverly Planning Board',
+      town: 'Beverly',
+      matched_topics: [],
+      followed_directly: true,
+    };
+    db.results.match_meetings_with_reasons = { data: [salemHousing, followedOnly], error: null };
+
+    const response = await GET(req());
+
+    expect(response.status).toBe(200);
+    expect(await response.json()).toEqual({ meetings: [salemHousing, followedOnly] });
+  });
+
   it('returns an empty list when nothing matches', async () => {
-    db.results.match_meetings_for_user = { data: [], error: null };
+    db.results.match_meetings_with_reasons = { data: [], error: null };
 
     const response = await GET(req());
 
@@ -95,7 +120,7 @@ describe('GET /api/matching-meetings', () => {
   });
 
   it('returns a fixed message, not the database error, when matching fails', async () => {
-    db.results.match_meetings_for_user = { data: null, error: dbError };
+    db.results.match_meetings_with_reasons = { data: null, error: dbError };
 
     const response = await GET(req());
     const text = await response.text();
