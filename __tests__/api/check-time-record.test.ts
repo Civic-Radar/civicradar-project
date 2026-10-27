@@ -11,6 +11,7 @@ vi.mock('../../lib/supabase', () => ({
 vi.mock('../../lib/sources/civicclerk', () => ({
   fetchMeetings: vi.fn(),
   fetchMeetingFiles: vi.fn(),
+  fetchAgendaItems: vi.fn(),
   downloadFile: vi.fn(),
 }));
 
@@ -21,8 +22,18 @@ import { runTownRetrieval, type RetrievalSource } from '../../lib/retrieval/runT
 
 type Row = Record<string, unknown>;
 
-const TOWN_A = { town_id: 1, source_account_id: 'town-a', meeting_time_zone: 'America/New_York' };
-const TOWN_B = { town_id: 2, source_account_id: 'town-b', meeting_time_zone: 'America/New_York' };
+const TOWN_A = {
+  town_id: 1,
+  source_account_id: 'town-a',
+  meeting_time_zone: 'America/New_York',
+  provides_agenda_items: false,
+};
+const TOWN_B = {
+  town_id: 2,
+  source_account_id: 'town-b',
+  meeting_time_zone: 'America/New_York',
+  provides_agenda_items: false,
+};
 const TOWNS: Record<number, typeof TOWN_A> = { [TOWN_A.town_id]: TOWN_A, [TOWN_B.town_id]: TOWN_B };
 
 const MEETING_100: SourceMeeting = {
@@ -211,6 +222,11 @@ function createFakeSupabase(options: { accountRole?: string; startedAt?: () => s
         };
       }
 
+      // Agenda items (SRS-220.9), stored without assertions here.
+      if (table === 'agenda_items') {
+        return { upsert: async () => ({ data: null, error: null }) };
+      }
+
       throw new Error(`Unexpected table: ${table}`);
     },
     storage: {
@@ -242,6 +258,7 @@ function createSource(overrides: Partial<RetrievalSource> = {}): RetrievalSource
   return {
     fetchMeetings: async () => meetingListing(),
     fetchMeetingFiles: async () => fileListing(),
+    fetchAgendaItems: async () => [],
     downloadFile: download,
     ...overrides,
   };

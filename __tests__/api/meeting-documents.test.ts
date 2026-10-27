@@ -9,6 +9,7 @@ vi.mock('../../lib/supabase', () => ({
 vi.mock('../../lib/sources/civicclerk', () => ({
   fetchMeetings: vi.fn(),
   fetchMeetingFiles: vi.fn(),
+  fetchAgendaItems: vi.fn(),
   downloadFile: vi.fn(),
 }));
 
@@ -116,6 +117,7 @@ function createFakeSupabase() {
       name: 'Salem',
       source_account_id: 'example',
       meeting_time_zone: 'America/New_York',
+      provides_agenda_items: false,
       removed_at: null,
     },
   ];
@@ -207,6 +209,11 @@ function createFakeSupabase() {
           }),
           update: () => ({ eq: async () => ({ data: null, error: null }) }),
         };
+      }
+
+      // Agenda items (SRS-220.9), stored without assertions here.
+      if (table === 'agenda_items') {
+        return { upsert: async () => ({ data: null, error: null }) };
       }
 
       throw new Error(`Unexpected table: ${table}`);
