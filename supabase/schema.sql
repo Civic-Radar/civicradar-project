@@ -8,7 +8,7 @@
 --   Part 4  avatars bucket     - public storage bucket for profile pictures
 --
 -- Part 2 is generated from database/schema.sql (the portable PostgreSQL script,
--- which is the source of truth). Only seven things differ, and each is marked
+-- which is the source of truth). Only eight things differ, and each is marked
 -- "Supabase:" inline:
 --
 --   1. is_valid_time_zone() is created as public.is_valid_time_zone() with a
@@ -33,6 +33,9 @@
 --      why each one matched: its town, the followed topic tags with their
 --      agenda text, and whether the user follows it directly (SRS-401.5).
 --      Only the service role may run it.
+--   8. public.create_meeting_baseline(), fired by the meetings_first_baseline
+--      trigger, saves a new meeting's values as its first comparison baseline
+--      in the same transaction as the insert (SRS-404.7).
 -- =============================================================================
 -- =============================================================================
 -- PART 1. Profile table (used by app/api/profile)
@@ -134,6 +137,10 @@ drop function IF exists public.is_valid_time_zone (TEXT) CASCADE;
 drop function IF exists public.replace_followed_towns (UUID, INTEGER[]) CASCADE;
 
 drop function IF exists public.replace_meeting_topics (BIGINT, JSONB, JSONB) CASCADE;
+
+drop function IF exists public.match_meetings_with_reasons (UUID) CASCADE;
+
+drop function IF exists public.create_meeting_baseline () CASCADE;
 
 -- -----------------------------------------------------------------------------
 -- Helper function
@@ -404,6 +411,34 @@ create table meeting_baselines (
   is_canceled BOOLEAN not null,
   baselined_at TIMESTAMPTZ not null default now()
 );
+
+-- Function: create_meeting_baseline (trigger)
+-- Reviewed by: EG (Erick Gonzalez)
+-- Supports: SRS-404.7
+-- Purpose: Creates a meeting's first comparison baseline from its values when
+--          the meeting is first saved. It runs in the same transaction as the
+--          insert, so a meeting is never saved without a baseline. It never
+--          overwrites an existing baseline; refreshing it after each successful
+--          check is SRS-404.5.
+-- Supabase: not in database/schema.sql; fired by the meetings_first_baseline trigger.
+create function public.create_meeting_baseline () RETURNS trigger LANGUAGE plpgsql SECURITY INVOKER
+set
+  search_path = pg_catalog,
+  public -- Supabase: pin the search path (linter 0011)
+  as $$
+BEGIN
+  INSERT INTO meeting_baselines (meeting_id, start_at, location, online_link, is_canceled)
+  VALUES (NEW.meeting_id, NEW.start_at, NEW.location, NEW.online_link, NEW.is_canceled)
+  ON CONFLICT (meeting_id) DO NOTHING;
+  RETURN NULL;
+END;
+$$;
+
+-- Fires only for new meeting rows: retrieval's upsert of an existing meeting
+-- is an update and leaves its baseline alone.
+create trigger meetings_first_baseline
+after insert on meetings for each row
+execute function public.create_meeting_baseline ();
 
 -- Table: documents
 -- Reviewed by: MS (Marcos Salazar)
