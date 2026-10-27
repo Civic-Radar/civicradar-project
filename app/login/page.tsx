@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 import AuthCard, { inputClass, primaryButtonClass } from '../components/AuthCard';
 import { alertClasses } from '../components/ui/Alert';
+import { pathAfterSignIn } from '../../lib/setup';
 
 export default function LoginPage() {
   const router = useRouter();
@@ -29,7 +30,7 @@ export default function LoginPage() {
     if (response.ok) {
       const accessToken = data?.session?.session?.access_token;
       if (accessToken) localStorage.setItem('access_token', accessToken);
-      router.push('/dashboard');
+        router.push(await pathAfterSignIn(accessToken));
     } else {
       setMessage(data.error || 'Login failed.');
     }
