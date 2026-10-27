@@ -26,7 +26,7 @@ function errorMessage(error: unknown): string {
 
 // Maps each source meeting id to its meetings row for the town. Throws on
 // any failed read.
-async function loadMeetings(
+export async function loadMeetings(
   supabase: SupabaseClient,
   townId: number,
   sourceMeetingIds: string[],
