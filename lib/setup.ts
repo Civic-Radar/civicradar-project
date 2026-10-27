@@ -9,3 +9,17 @@ export async function pathAfterSignIn(accessToken: string | undefined): Promise<
     return '/dashboard';
   }
 }
+
+export async function skipSetup(accessToken: string | undefined): Promise<boolean> {
+  if (!accessToken) return false;
+  try {
+    const res = await fetch('/api/setup', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${accessToken}` },
+      body: JSON.stringify({ setup_status: 'Skipped' }),
+    });
+    return res.ok;
+  } catch {
+    return false;
+  }
+}
