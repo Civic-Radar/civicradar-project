@@ -231,6 +231,14 @@ BEGIN
     END IF;
   END LOOP;
 
+  -- Each meeting carries its town's time zone for the dashboard (SRS-501.1).
+  SELECT count(*) INTO n
+  FROM match_meetings_with_reasons(v_user) r
+  WHERE (r->>'meeting_id')::BIGINT = m13 AND r->>'meeting_time_zone' = 'America/New_York';
+  IF n <> 1 THEN
+    RAISE EXCEPTION 'CHECK FAILED: Each meeting includes its town''s time zone (expected 1 row, got %)', n;
+  END IF;
+
   -- The reasons describe exactly the meetings match_meetings_for_user returns.
   SELECT count(*) INTO n FROM (
     (SELECT (r->>'meeting_id')::BIGINT FROM match_meetings_with_reasons(v_user) r
@@ -247,6 +255,6 @@ BEGIN
     RAISE EXCEPTION 'CHECK FAILED: Reasons cover the same meetings as match_meetings_for_user (% meeting(s) differ)', n;
   END IF;
 
-  RAISE EXCEPTION 'ALL CHECKS PASSED (24 checks). This error rolls back the test data.';
+  RAISE EXCEPTION 'ALL CHECKS PASSED (25 checks). This error rolls back the test data.';
 END;
 $$;
