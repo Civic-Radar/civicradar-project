@@ -1,5 +1,6 @@
 import PageShell from '../../components/ui/PageShell';
 import TownPreferences from '../preferences/TownPreferences';
+import SkipSetupButton from './SkipSetupButton';
 
 export default function SetupPage() {
   return (
@@ -9,6 +10,7 @@ export default function SetupPage() {
       </p>
       <div className="mt-6 max-w-xl">
         <TownPreferences />
+        <SkipSetupButton />
       </div>
     </PageShell>
   );
