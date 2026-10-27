@@ -1,5 +1,5 @@
 import { getAuthenticatedUser, getToken, type SupabaseClient } from '../../../../lib/residentAuth';
-import { downloadFile, fetchMeetingFiles, fetchMeetings } from '../../../../lib/sources/civicclerk';
+import { downloadFile, fetchAgendaItems, fetchMeetingFiles, fetchMeetings } from '../../../../lib/sources/civicclerk';
 import { runTownRetrieval } from '../../../../lib/retrieval/runTownRetrieval';
 
 // Used when RETRIEVAL_MAX_PAGES is unset or invalid, so a missing setting can
@@ -63,7 +63,7 @@ export async function POST(request: Request) {
 
   const { data: town, error: townError } = await supabase!
     .from('towns')
-    .select('town_id, source_account_id, meeting_time_zone')
+    .select('town_id, source_account_id, meeting_time_zone, provides_agenda_items')
     .eq('town_id', townId)
     .is('removed_at', null)
     .maybeSingle();
@@ -79,7 +79,7 @@ export async function POST(request: Request) {
   const result = await runTownRetrieval(
     supabase!,
     town,
-    { fetchMeetings, fetchMeetingFiles, downloadFile },
+    { fetchMeetings, fetchMeetingFiles, fetchAgendaItems, downloadFile },
     { maxPages: retrievalMaxPages() },
   );
 
