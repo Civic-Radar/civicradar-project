@@ -1140,7 +1140,7 @@ Traces to: UR-310
 
 ## **UR-311 — Shared Officials List**
 
- **SRS-311.1 (UR-311) — View shared officials list.**The system shall display a single shared list of officials extracted from documents for the pilot municipality.  
+**SRS-311.1, AO, View shared officials list.** The system shall display a single shared list of officials extracted from documents for the pilot municipality.  
 Acceptance criteria:
 
 * Each official appears once in the list.  
@@ -1148,12 +1148,16 @@ Acceptance criteria:
 * Details that aren't available are labeled as unavailable (consistent with UR-308).  
 * Each entry links to at least one source document (consistent with UR-303).
 
-**SRS-311.2 (UR-311) — Merge repeated officials.** When an extraction finds an official already in the shared list, the system shall update that entry instead of creating a second one.  
+Traces to: UR-311
+
+**SRS-311.2, AO, Merge repeated officials.** When an extraction finds an official already in the shared list, the system shall update that entry instead of creating a second one.  
 Acceptance criteria:
 
 * A name match with the same body creates no duplicate entry.  
 * The entry shows the most recent title and contact details found.  
 * The entry keeps a link to every source document it came from.
+
+Traces to: UR-311
 
 # **5\. Interest Matching, Alerts & Digest**
 

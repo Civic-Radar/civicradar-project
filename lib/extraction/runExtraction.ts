@@ -1,7 +1,8 @@
 // Runs one extraction from start to finish (SRS-302.1, with the status changes of SRS-306.1):
 //
 //   Queued -> Processing -> read the document's text from CivicClerk
-//          -> find the officials with Claude -> save them -> Completed
+//          -> find the officials with Claude -> save them
+//          -> add them to the shared officials list (SRS-311.2) -> Completed
 //
 // Any problem on the way ends the extraction as Failed with a failure cause
 // (SRS-307.2): 'Missing source file', 'Unreadable file', 'File too large', or 'Other'.
@@ -9,6 +10,7 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { DocumentTextError, fetchDocumentText } from '../sources/civicclerkFiles';
 import { findOfficials, type FoundOfficial } from './findOfficials';
+import { addToSharedOfficials } from './sharedOfficials';
 
 // 25 MB, the largest PDF the requirements size for (SRS-NFR-6, SRS-NFR-11).
 export const MAX_FILE_BYTES = 25 * 1024 * 1024;
@@ -19,12 +21,15 @@ export type RunDeps = {
   fetchText: (sourceAccountId: string, sourceFileId: string) => Promise<string>;
   findOfficials: (text: string) => Promise<FoundOfficial[]>;
   now: () => string;
+  // SRS-311.2: adds the officials to the shared list. Defaults to the real one.
+  shareOfficials?: (supabase: SupabaseClient, documentId: number, officials: FoundOfficial[]) => Promise<unknown>;
 };
 
 const defaultDeps: RunDeps = {
   fetchText: (account, fileId) => fetchDocumentText(account, fileId),
   findOfficials: (text) => findOfficials(text),
   now: () => new Date().toISOString(),
+  shareOfficials: addToSharedOfficials,
 };
 
 export type RunResult =
@@ -116,7 +121,15 @@ export async function runExtraction(
       if (insertError) throw new Failure('Other');
     }
 
-    // 6. Done.
+    // 6. Add them to the shared officials list (SRS-311.2). This extraction's
+    //    own results are already saved, so a problem here doesn't fail it.
+    try {
+      await (deps.shareOfficials ?? addToSharedOfficials)(supabase, document.document_id, officials);
+    } catch {
+      console.error(`Shared officials list not updated for extraction ${extractionId}.`);
+    }
+
+    // 7. Done.
     const { error: doneError } = await supabase
       .from('extractions')
       .update({ status: 'Completed', completed_at: deps.now() })
