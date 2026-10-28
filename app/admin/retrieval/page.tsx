@@ -3,42 +3,29 @@
 // SRS-220.3, MS, Retrieval page
 
 import { useState } from 'react';
+import { ALL_TOWNS, runAllTowns, townsToRun, type TownRunResult } from './runAllTowns';
 import { useRetrievalTowns } from './useRetrievalTowns';
 
-type ResultLine = { text: string; failed: boolean };
-
-const ALL_TOWNS = 'all';
-
-// Plain retrieval page: choose a supported town and run retrieval for it
-// through POST /api/retrieval/meetings. A run can take minutes and is never retried.
+// Plain retrieval page: choose a supported town or All towns and run retrieval
+// through POST /api/retrieval/meetings, one town at a time. A run can take
+// minutes and is never retried.
 export default function RetrievalPage() {
   const state = useRetrievalTowns();
   const [choice, setChoice] = useState('');
   const [running, setRunning] = useState(false);
-  const [result, setResult] = useState<ResultLine | null>(null);
+  const [results, setResults] = useState<TownRunResult[]>([]);
 
   async function handleRun() {
-    if (state.status !== 'loaded') return;
-    const town = state.towns.find((t) => String(t.town_id) === choice);
-    if (!town) return;
+    if (state.status !== 'loaded' || running) return;
+    const towns = townsToRun(state.towns, choice);
+    if (towns.length === 0) return;
 
     setRunning(true);
-    setResult(null);
+    setResults([]);
     try {
-      const res = await fetch('/api/retrieval/meetings', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${state.token}` },
-        body: JSON.stringify({ townId: town.town_id }),
+      await runAllTowns(towns, (input, init) => fetch(input, init), state.token, (result) => {
+        setResults((current) => [...current, result]);
       });
-      if (res.ok) {
-        const data = await res.json().catch(() => ({}));
-        const notComplete = data.complete === false ? ' Not every page was read.' : '';
-        setResult({ text: `${town.name}: finished, ${data.saved ?? 0} meetings saved.${notComplete}`, failed: false });
-      } else {
-        setResult({ text: `${town.name}: failed (status ${res.status}).`, failed: true });
-      }
-    } catch {
-      setResult({ text: `${town.name}: failed.`, failed: true });
     } finally {
       setRunning(false);
     }
@@ -75,14 +62,18 @@ export default function RetrievalPage() {
           <button
             type="button"
             onClick={handleRun}
-            disabled={running || choice === '' || choice === ALL_TOWNS}
+            disabled={running || choice === ''}
             className="rounded border border-line bg-surface px-4 py-2 text-fg disabled:opacity-60"
           >
             {running ? 'Running…' : 'Run retrieval'}
           </button>
 
-          {result ? (
-            <p role="status" className={result.failed ? 'text-danger' : 'text-fg'}>{result.text}</p>
+          {results.length > 0 ? (
+            <ul role="status" className="space-y-1">
+              {results.map((result) => (
+                <li key={result.town_id} className={result.failed ? 'text-danger' : 'text-fg'}>{result.text}</li>
+              ))}
+            </ul>
           ) : null}
         </div>
       )}
