@@ -12,7 +12,7 @@ type Town = { town_id: number; name: string; followed: boolean };
 const LOAD_ERROR = 'Your followed towns could not be loaded. Please try again.';
 const SAVE_ERROR = 'Your followed towns could not be saved. Please try again.';
 
-export default function TownPreferences() {
+export default function TownPreferences({ onSaved }: { onSaved?: () => void } = {}) {
   const [token, setToken] = useState<string | null>(null);
   const [signedOut, setSignedOut] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -73,7 +73,7 @@ export default function TownPreferences() {
       const data = await res.json();
       if (res.status === 401) setSignedOut(true);
       else if (!res.ok) setSaveError(data.error || SAVE_ERROR);
-      else { setTowns(data.towns ?? []); setSaved(true); }
+      else { setTowns(data.towns ?? []); setSaved(true); onSaved?.(); }
     } catch {
       setSaveError(SAVE_ERROR);
     }

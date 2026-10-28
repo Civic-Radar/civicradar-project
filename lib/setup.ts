@@ -23,3 +23,20 @@ export async function skipSetup(accessToken: string | undefined): Promise<boolea
     return false;
   }
 }
+
+export type SetupStep = 'towns' | 'topics';
+
+export const SETUP_STEPS: Record<SetupStep, { label: string; description: string }> = {
+  towns: {
+    label: 'Step 1 of 2: Choose your towns',
+    description: 'Pick the towns you want to follow, so your dashboard shows meetings that matter to you.',
+  },
+  topics: {
+    label: 'Step 2 of 2: Choose your topics',
+    description: 'Pick the topics you care about, so you can find the meetings that discuss them.',
+  },
+};
+
+export function stepAfterSave(step: SetupStep): SetupStep | 'done' {
+  return step === 'towns' ? 'topics' : 'done';
+}
