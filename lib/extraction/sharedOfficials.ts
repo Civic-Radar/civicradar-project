@@ -11,9 +11,10 @@
 // Either way the document is linked to the official (official_sources), so the
 // entry keeps a link to every document it came from.
 //
-// The governing body is the one of the document's meeting. Meetings without a
-// catalog body (meetings.body_id is NULL) can't be placed in the list, so their
-// officials stay only in the extraction. Contact details are never logged (SRS-310.3).
+// The governing body is the one of the document's meeting. A meeting filed with
+// no body (meetings.body_id is NULL) uses the town's governing body when the town
+// has exactly one (Task 311.2-5); otherwise its officials stay only in the
+// extraction. Contact details are never logged (SRS-310.3).
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { FoundOfficial } from './findOfficials';
 
@@ -45,7 +46,12 @@ export function mergeDetails(existing: SharedOfficial, found: FoundOfficial) {
 
 const COLUMNS = 'official_id, full_name, title, role, email, phone';
 
-// The governing body of the document's meeting, or null if it has none.
+// The governing body of the document's meeting.
+//
+// Task 311.2-5: retrieval files some meetings (for example Salem's special
+// meetings, listed as "General") with no body. When the town has exactly one
+// governing body, those meetings belong to it. With no body or several, it is
+// left out (null) rather than guessed.
 async function bodyOfDocument(supabase: SupabaseClient, documentId: number): Promise<number | null> {
   const { data: document } = await supabase
     .from('documents')
@@ -56,10 +62,18 @@ async function bodyOfDocument(supabase: SupabaseClient, documentId: number): Pro
 
   const { data: meeting } = await supabase
     .from('meetings')
-    .select('meeting_id, body_id')
+    .select('meeting_id, town_id, body_id')
     .eq('meeting_id', document.meeting_id)
     .maybeSingle();
-  return meeting?.body_id ?? null;
+  if (!meeting) return null;
+  if (meeting.body_id !== null) return meeting.body_id;
+
+  const { data: bodies } = await supabase
+    .from('governing_bodies')
+    .select('body_id, removed_at')
+    .eq('town_id', meeting.town_id);
+  const current = (bodies ?? []).filter((b: { removed_at: string | null }) => b.removed_at === null);
+  return current.length === 1 ? current[0].body_id : null;
 }
 
 async function findByName(supabase: SupabaseClient, bodyId: number, fullName: string): Promise<SharedOfficial | null> {

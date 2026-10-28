@@ -78,18 +78,30 @@ function createDb(seed: Record<string, Row[]>) {
   return { supabase: { from } as unknown as SupabaseClient, tables };
 }
 
-// Two City Council documents (meetings 7 and 10, body 1), and one meeting with no body.
+// Salem (town 1, one body: City Council = 1): two City Council documents (meetings 7
+// and 10) and a special meeting filed as "General" with no body (meeting 18).
+// Town 2 has two bodies and town 3 none; each has a meeting with no body.
 function seed() {
   return {
     documents: [
       { document_id: 13, meeting_id: 7 },
       { document_id: 19, meeting_id: 10 },
+      { document_id: 18, meeting_id: 18 },
       { document_id: 30, meeting_id: 40 },
+      { document_id: 31, meeting_id: 41 },
     ],
     meetings: [
-      { meeting_id: 7, body_id: 1 },
-      { meeting_id: 10, body_id: 1 },
-      { meeting_id: 40, body_id: null },
+      { meeting_id: 7, town_id: 1, body_id: 1 },
+      { meeting_id: 10, town_id: 1, body_id: 1 },
+      { meeting_id: 18, town_id: 1, body_id: null },
+      { meeting_id: 40, town_id: 2, body_id: null },
+      { meeting_id: 41, town_id: 3, body_id: null },
+    ],
+    governing_bodies: [
+      { body_id: 1, town_id: 1, removed_at: null },
+      { body_id: 9, town_id: 1, removed_at: '2026-01-01T00:00:00Z' },
+      { body_id: 2, town_id: 2, removed_at: null },
+      { body_id: 3, town_id: 2, removed_at: null },
     ],
     officials: [],
     official_sources: [],
@@ -171,7 +183,19 @@ describe('Merge repeated officials (SRS-311.2)', () => {
     expect(tables.officials.map((o) => o.full_name)).toEqual(['Maureen Elizabeth Fisher', 'Jonathan Berk']);
   });
 
-  it('skips officials from a meeting with no governing body', async () => {
+  it('puts officials from a meeting filed with no body into the town\'s only body (Task 311.2-5)', async () => {
+    const { supabase, tables } = createDb(seed());
+
+    await addToSharedOfficials(supabase, 13, [FISHER_OCT_19]); // City Council hearing
+    const result = await addToSharedOfficials(supabase, 18, [FISHER_OCT_15]); // "General" special meeting
+
+    expect(result).toEqual({ added: 0, updated: 1, skipped: 0 });
+    expect(tables.officials).toHaveLength(1);
+    expect(tables.officials[0]).toMatchObject({ body_id: 1, email: 'mfisher@salem.com', details_document_id: 18 });
+    expect(tables.official_sources.map((s) => s.document_id)).toEqual([13, 18]);
+  });
+
+  it('skips officials from a meeting with no body when the town has several bodies', async () => {
     const { supabase, tables } = createDb(seed());
 
     const result = await addToSharedOfficials(supabase, 30, [FISHER_OCT_19]);
@@ -179,6 +203,15 @@ describe('Merge repeated officials (SRS-311.2)', () => {
     expect(result).toEqual({ added: 0, updated: 0, skipped: 1 });
     expect(tables.officials).toHaveLength(0);
     expect(tables.official_sources).toHaveLength(0);
+  });
+
+  it('skips officials from a meeting with no body when the town has no body at all', async () => {
+    const { supabase, tables } = createDb(seed());
+
+    const result = await addToSharedOfficials(supabase, 31, [FISHER_OCT_19]);
+
+    expect(result).toEqual({ added: 0, updated: 0, skipped: 1 });
+    expect(tables.officials).toHaveLength(0);
   });
 
   it('matches names the same way as the database index: ignoring letter case and extra spaces', () => {
