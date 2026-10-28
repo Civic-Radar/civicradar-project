@@ -5,7 +5,8 @@ import SignedOutNotice from '../../../components/ui/SignedOutNotice';
 import DocumentSummary from './DocumentSummary';
 import { useDocument } from './useDocument';
 
-// Document detail page. Identification and summary (SRS-203.1, SRS-204.2).
+// Document detail page. Identification, the stored PDF shown in the page, and
+// the summary (SRS-203.1, SRS-203.2, SRS-204.2).
 export default function DocumentDetailPage({ params }: { params: { id: string } }) {
   const state = useDocument(params.id);
 
@@ -26,6 +27,15 @@ export default function DocumentDetailPage({ params }: { params: { id: string } 
         ) : (
           <>
             <h1 className="mb-4 break-words font-display text-3xl font-normal leading-tight tracking-tight sm:text-4xl">{state.document.title}</h1>
+            {state.document.pdf_url ? (
+              <iframe
+                title="Document PDF"
+                src={`${state.document.pdf_url}#page=1`}
+                className="block h-[70vh] w-full rounded-xl border border-line bg-surface"
+              />
+            ) : (
+              <p className="text-fg-muted">The PDF is not available.</p>
+            )}
             <DocumentSummary text={state.document.summary_text} />
           </>
         )}

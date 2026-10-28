@@ -150,7 +150,12 @@ function callsTo(table: string, method: string) {
 }
 
 function loadedDocument(summary_text: string | null): DocumentIdentification {
-  return { ...IDENTIFICATION, summary_text, summary_generated_at: summary_text === null ? null : GENERATED_AT };
+  return {
+    ...IDENTIFICATION,
+    summary_text,
+    summary_generated_at: summary_text === null ? null : GENERATED_AT,
+    pdf_url: SIGNED_URL,
+  };
 }
 
 // Vitest compiles this project's JSX to React.createElement, and the page does
