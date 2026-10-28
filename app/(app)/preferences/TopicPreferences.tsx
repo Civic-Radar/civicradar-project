@@ -14,7 +14,7 @@ type Topic = { topic_id: number; name: string; followed: boolean };
 const LOAD_ERROR = 'Your followed topics could not be loaded. Please try again.';
 const SAVE_ERROR = 'Your followed topics could not be saved. Please try again.';
 
-export default function TopicPreferences() {
+export default function TopicPreferences({ onSaved }: { onSaved?: () => void } = {}) {
   const [token, setToken] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState('');
@@ -71,7 +71,7 @@ export default function TopicPreferences() {
         body: JSON.stringify({ topic_ids: topics.filter((topic) => topic.followed).map((topic) => topic.topic_id) }),
       });
       const data = await res.json();
-      if (res.ok) { setTopics(data.topics ?? []); setSaved(true); }
+      if (res.ok) { setTopics(data.topics ?? []); setSaved(true); onSaved?.(); }
       else setSaveError(data.error || SAVE_ERROR);
     } catch {
       setSaveError(SAVE_ERROR);
