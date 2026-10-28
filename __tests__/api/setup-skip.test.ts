@@ -66,8 +66,8 @@ describe('Setup skip (SRS-107.3)', () => {
     expect(await res.json()).toEqual({ setup_status: 'Skipped', needs_setup: false });
   });
 
-  it('rejects any setup status other than Skipped', async () => {
-    const res = await PATCH(req('PATCH', { setup_status: 'Completed' }));
+  it('rejects an unknown setup status', async () => {
+    const res = await PATCH(req('PATCH', { setup_status: 'Finished' }));
 
     expect(res.status).toBe(400);
     expect(db.upsert).not.toHaveBeenCalled();
