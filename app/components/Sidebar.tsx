@@ -12,11 +12,14 @@ import {
   Search,
   Settings,
   CircleUserRound,
+  RefreshCw,
   Menu,
   X,
 } from "lucide-react";
+import { useIsAdministrator } from "../admin/retrieval/useIsAdministrator";
 
-const navigation = [
+// adminOnly entries show only when GET /api/role says the user is a system administrator.
+const navigation: { name: string; href: string; icon: typeof LayoutDashboard; adminOnly?: boolean }[] = [
   { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
   { name: "Meetings", href: "/meetings", icon: CalendarDays },
   { name: "Documents", href: "/documents", icon: FileText },
@@ -24,12 +27,15 @@ const navigation = [
   { name: "Search", href: "/search", icon: Search },
   { name: "Preferences", href: "/preferences", icon: Settings },
   { name: "Profile", href: "/profile", icon: CircleUserRound },
+  { name: "Retrieval", href: "/admin/retrieval", icon: RefreshCw, adminOnly: true },
 ];
 
 function NavLinks({ pathname, onNavigate }: { pathname: string; onNavigate?: () => void }) {
+  const isAdministrator = useIsAdministrator();
+
   return (
     <ul className="space-y-1">
-      {navigation.map((item) => {
+      {navigation.filter((item) => !item.adminOnly || isAdministrator === true).map((item) => {
         const Icon = item.icon;
         const isActive = pathname === item.href || pathname.startsWith(item.href + "/");
 

@@ -4,12 +4,37 @@
 
 import { useState } from 'react';
 import { ALL_TOWNS, runAllTowns, townsToRun, type TownRunResult } from './runAllTowns';
+import { useIsAdministrator } from './useIsAdministrator';
 import { useRetrievalTowns } from './useRetrievalTowns';
 
-// Plain retrieval page: choose a supported town or All towns and run retrieval
+// Only a system administrator sees the retrieval tool. Everyone else gets no
+// heading and no control. The retrieval route still enforces the role itself.
+export default function RetrievalPage() {
+  const isAdministrator = useIsAdministrator();
+
+  if (isAdministrator === null) {
+    return (
+      <main className="min-h-screen bg-surface px-6 py-12 text-fg">
+        <p className="text-fg-muted">Loading…</p>
+      </main>
+    );
+  }
+
+  if (!isAdministrator) {
+    return (
+      <main className="min-h-screen bg-surface px-6 py-12 text-fg">
+        <p className="text-fg-muted">Not available.</p>
+      </main>
+    );
+  }
+
+  return <RetrievalTool />;
+}
+
+// Plain retrieval tool: choose a supported town or All towns and run retrieval
 // through POST /api/retrieval/meetings, one town at a time. A run can take
 // minutes and is never retried.
-export default function RetrievalPage() {
+function RetrievalTool() {
   const state = useRetrievalTowns();
   const [choice, setChoice] = useState('');
   const [running, setRunning] = useState(false);
