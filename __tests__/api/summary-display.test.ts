@@ -24,6 +24,12 @@ const db = vi.hoisted(() => ({
 // replaced by whatever state a test sets. No fetch, no localStorage, no effects.
 const hook = vi.hoisted(() => ({ state: { status: 'loading' } as DocumentState }));
 
+// The rows below are stored PDFs, so the route asks Storage for a signed link
+// (SRS-203.2). Storage builds the link from the stored path, as here.
+const SIGNED_URL = vi.hoisted(
+  () => 'https://example.supabase.co/storage/v1/object/sign/documents/1/1168.pdf?token=signed-token',
+);
+
 vi.mock('../../lib/supabase', () => {
   function chain(table: string) {
     let operation = '';
@@ -51,6 +57,11 @@ vi.mock('../../lib/supabase', () => {
         }),
       },
       from: vi.fn((table: string) => chain(table)),
+      storage: {
+        from: vi.fn(() => ({
+          createSignedUrl: vi.fn(async () => ({ data: { signedUrl: SIGNED_URL }, error: null })),
+        })),
+      },
     })),
   };
 });
@@ -66,12 +77,13 @@ import { getSupabaseClient } from '../../lib/supabase';
 const CONSOLE_METHODS = ['log', 'error', 'warn', 'info', 'debug'] as const;
 
 const SELECTED_COLUMNS =
-  'document_id, meeting_id, town_id, title, document_type, source_url, retrieved_at, summary_status, summary_text, summary_generated_at';
+  'document_id, meeting_id, town_id, title, document_type, source_url, retrieved_at, summary_status, summary_text, summary_generated_at, storage_path, mime_type';
 
 const RESPONSE_KEYS = [
   'document_id',
   'document_type',
   'meeting_id',
+  'pdf_url',
   'retrieved_at',
   'source_url',
   'summary_generated_at',
@@ -92,8 +104,9 @@ const IDENTIFICATION = {
   retrieved_at: '2026-10-01T12:00:00+00:00',
 };
 
-// Columns the route must never return. A real select would not read them; the
-// mock hands them back anyway to prove the response is built field by field.
+// Columns the route must never return. The select reads only storage_path and
+// mime_type (for the PDF link); the mock hands back all of them anyway to
+// prove the response is built field by field.
 const STORED_FILE = {
   storage_path: '1/1168.pdf',
   file_sha256: 'a'.repeat(64),
@@ -213,7 +226,7 @@ describe('GET /api/documents/[id] summary fields (SRS-204.2)', () => {
 
     expect(response.status).toBe(200);
     expect(body).toEqual({
-      document: { ...IDENTIFICATION, summary_text: STORED_TEXT, summary_generated_at: GENERATED_AT },
+      document: { ...IDENTIFICATION, summary_text: STORED_TEXT, summary_generated_at: GENERATED_AT, pdf_url: SIGNED_URL },
     });
     // No trimming and no escaping.
     expect(body.document.summary_text).toBe(STORED_TEXT);
@@ -231,7 +244,9 @@ describe('GET /api/documents/[id] summary fields (SRS-204.2)', () => {
     const body = JSON.parse(text);
 
     expect(response.status).toBe(200);
-    expect(body).toEqual({ document: { ...IDENTIFICATION, summary_text: null, summary_generated_at: null } });
+    expect(body).toEqual({
+      document: { ...IDENTIFICATION, summary_text: null, summary_generated_at: null, pdf_url: SIGNED_URL },
+    });
     expect(body.document).toHaveProperty('summary_text', null);
     expect(body.document).toHaveProperty('summary_generated_at', null);
     expect(text).toContain('"summary_text":null');
@@ -251,7 +266,7 @@ describe('GET /api/documents/[id] summary fields (SRS-204.2)', () => {
 
     expect(response.status).toBe(200);
     expect(JSON.parse(text)).toEqual({
-      document: { ...IDENTIFICATION, summary_text: null, summary_generated_at: null },
+      document: { ...IDENTIFICATION, summary_text: null, summary_generated_at: null, pdf_url: SIGNED_URL },
     });
     expect(text).not.toContain('First paragraph.');
     expect(text).not.toContain(GENERATED_AT);
@@ -261,7 +276,7 @@ describe('GET /api/documents/[id] summary fields (SRS-204.2)', () => {
     ['Complete', COMPLETE_ROW],
     ['Pending', PENDING_ROW],
     ['Failed', FAILED_ROW],
-  ])('returns exactly the nine keys and never summary_status for a %s document', async (status, row) => {
+  ])('returns exactly the ten keys and never summary_status for a %s document', async (status, row) => {
     storedRow(row);
 
     const response = await open();
@@ -290,7 +305,7 @@ describe('GET /api/documents/[id] summary fields (SRS-204.2)', () => {
     expect(new Set(db.calls.map((call) => call.table))).toEqual(new Set(['documents']));
   });
 
-  it('never reads or returns storage or hash fields', async () => {
+  it('never returns storage or hash fields, and reads only storage_path and mime_type for the PDF link', async () => {
     storedRow(COMPLETE_ROW);
 
     const response = await open();
@@ -298,12 +313,15 @@ describe('GET /api/documents/[id] summary fields (SRS-204.2)', () => {
     const body = JSON.parse(text);
 
     for (const column of STORED_FILE_COLUMNS) {
-      expect(SELECTED_COLUMNS).not.toContain(column);
       expect(body.document).not.toHaveProperty(column);
       expect(text).not.toContain(column);
     }
+    for (const column of ['file_sha256', 'file_size_bytes', 'source_file_id']) {
+      expect(SELECTED_COLUMNS).not.toContain(column);
+    }
     expect(text).not.toContain(STORED_FILE.file_sha256);
-    expect(text).not.toContain(STORED_FILE.storage_path);
+    // The stored path appears only inside the signed link that Storage builds.
+    expect(text.replace(SIGNED_URL, '')).not.toContain(STORED_FILE.storage_path);
   });
 });
 

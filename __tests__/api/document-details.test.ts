@@ -46,7 +46,7 @@ import { GET } from '../../app/api/documents/[id]/route';
 import { getSupabaseClient } from '../../lib/supabase';
 
 const SELECTED_COLUMNS =
-  'document_id, meeting_id, town_id, title, document_type, source_url, retrieved_at, summary_status, summary_text, summary_generated_at';
+  'document_id, meeting_id, town_id, title, document_type, source_url, retrieved_at, summary_status, summary_text, summary_generated_at, storage_path, mime_type';
 const LOAD_ERROR = 'This document could not be loaded. Please try again.';
 const dbError = { message: 'relation "documents" does not exist (42P01)' };
 
@@ -60,7 +60,8 @@ const DOCUMENT = {
   retrieved_at: '2026-10-01T12:00:00+00:00',
 };
 const PENDING_ROW = { ...DOCUMENT, summary_status: 'Pending', summary_text: null, summary_generated_at: null };
-const PENDING_RESPONSE = { ...DOCUMENT, summary_text: null, summary_generated_at: null };
+// The row has no storage_path or mime_type, so no PDF link is made (SRS-203.2).
+const PENDING_RESPONSE = { ...DOCUMENT, summary_text: null, summary_generated_at: null, pdf_url: null };
 
 function open(id: string, token: string | null = 'valid-token', headers?: Record<string, string>) {
   const request = new Request(`http://localhost/api/documents/${id}`, {
@@ -107,6 +108,7 @@ describe('GET /api/documents/[id] (SRS-203.1)', () => {
       'document_id',
       'document_type',
       'meeting_id',
+      'pdf_url',
       'retrieved_at',
       'source_url',
       'summary_generated_at',
@@ -120,7 +122,7 @@ describe('GET /api/documents/[id] (SRS-203.1)', () => {
   it('reads only the identification columns of one document by numeric id', async () => {
     await open('7');
 
-    // The select keeps out storage fields; summary_status is read but not returned.
+    // summary_status, storage_path and mime_type are read but not returned.
     expect(callsTo('documents', 'select')).toEqual([
       { table: 'documents', method: 'select', args: [SELECTED_COLUMNS] },
     ]);
