@@ -22,7 +22,7 @@ const navigation: { name: string; href: string; icon: typeof Users; also?: strin
   { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
   { name: "Meetings", href: "/meetings", icon: CalendarDays },
   { name: "Documents", href: "/documents", icon: FileText },
-  { name: "Contacts", href: "/extract", icon: Users, also: ["/officials"] },
+  { name: "Contacts", href: "/extract", icon: Users, also: ["/extractions", "/officials"] },
   { name: "Search", href: "/search", icon: Search },
   { name: "Preferences", href: "/preferences", icon: Settings },
   { name: "Profile", href: "/profile", icon: CircleUserRound },

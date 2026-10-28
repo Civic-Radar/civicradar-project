@@ -4,6 +4,8 @@
 //
 // POST /api/extractions   { document_id }  -> creates one Queued extraction
 // GET  /api/extractions                    -> lists the signed-in user's extractions
+// GET  /api/extractions?saved=1            -> only the completed ones (SRS-304.1),
+//                                             each with officials_found
 //
 // Also covers SRS-301.5 / SRS-301.6 (non-PDF files are rejected with the exact
 // message from the SRS) and SRS-306.3 (a second request for a document that is
@@ -101,14 +103,23 @@ export async function GET(request: Request) {
   if (configError) return Response.json({ error: 'Supabase credentials are not configured.' }, { status: 500 });
   if (!user) return Response.json({ error: 'Invalid or expired token.' }, { status: 401 });
 
-  // Only the signed-in user's own extractions are returned.
-  const { data, error } = await supabase!
-    .from('extractions')
-    .select(EXTRACTION_COLUMNS)
-    .eq('user_id', user.id)
-    .order('requested_at', { ascending: false });
+  // SRS-304.1: ?saved=1 returns only saved extractions, the completed ones that
+  // have results, newest extraction first (for the Saved Extractions page).
+  const saved = new URL(request.url).searchParams.get('saved') === '1';
+
+  // Only the signed-in user's own extractions are returned. Saved ones also count
+  // the officials each found (Task 304.1-5), in the same query.
+  const columns = saved ? `${EXTRACTION_COLUMNS}, officials:extracted_officials(count)` : EXTRACTION_COLUMNS;
+  let query = supabase!.from('extractions').select(columns).eq('user_id', user.id);
+  if (saved) query = query.eq('status', 'Completed');
+  const { data, error } = await query.order(saved ? 'completed_at' : 'requested_at', { ascending: false });
 
   if (error) return Response.json({ error: 'Could not load your extractions.' }, { status: 500 });
 
-  return Response.json({ extractions: data ?? [] }, { status: 200 });
+  if (!saved) return Response.json({ extractions: data ?? [] }, { status: 200 });
+
+  const extractions = ((data ?? []) as unknown as (Record<string, unknown> & { officials?: { count: number }[] })[]).map(
+    ({ officials, ...extraction }) => ({ ...extraction, officials_found: officials?.[0]?.count ?? 0 }),
+  );
+  return Response.json({ extractions }, { status: 200 });
 }

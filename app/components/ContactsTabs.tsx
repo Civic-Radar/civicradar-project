@@ -9,6 +9,7 @@ import { cx } from './ui/cx';
 
 const TABS = [
   { name: 'Request', href: '/extract' },
+  { name: 'Saved', href: '/extractions' }, // SRS-304.1, the Saved Extractions page
   { name: 'Officials', href: '/officials' }, // SRS-311.1
 ];
 
