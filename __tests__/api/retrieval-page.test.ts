@@ -233,10 +233,14 @@ describe('Administrators only (SRS-220.3 AC 4)', () => {
 });
 
 describe('Old /meetings page', () => {
-  // Called directly, not through the renderer, which retries a component that throws.
-  it('sends everyone to the dashboard and renders no retrieval control', () => {
-    expect(() => MeetingsPage()).toThrow('NEXT_REDIRECT /dashboard');
+  // The list loads in an effect, which does not run here, so the page renders its loading state.
+  it('keeps the Meetings list, does not redirect and renders no retrieval control', () => {
+    const markup = render(MeetingsPage);
 
-    expect(hooks.redirects).toEqual(['/dashboard']);
+    expect(markup).toMatch(/<h1[^>]*>Meetings<\/h1>/);
+    expect(markup).toContain('Loading stored meetings...');
+    expect(markup).not.toContain('Run retrieval');
+    expect(count(markup, 'button')).toBe(0);
+    expect(hooks.redirects).toEqual([]);
   });
 });

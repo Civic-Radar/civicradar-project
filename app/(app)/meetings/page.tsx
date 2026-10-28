@@ -56,9 +56,6 @@ export default function MeetingsPage() {
   const [meetings, setMeetings] = useState<Meeting[]>([]);
   const [loadingList, setLoadingList] = useState(true);
   const [loadError, setLoadError] = useState('');
-  const [running, setRunning] = useState(false);
-  const [result, setResult] = useState('');
-  const [resultIsError, setResultIsError] = useState(false);
 
   useEffect(() => {
     loadMeetings();
@@ -90,49 +87,13 @@ export default function MeetingsPage() {
     }
   }
 
-  async function handleRun() {
-    if (!town) return;
-    setRunning(true);
-    setResult('');
-    setResultIsError(false);
-    try {
-      const token = localStorage.getItem('access_token');
-      const response = await fetch('/api/retrieval/meetings', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
-        body: JSON.stringify({ townId: town.town_id }),
-      });
-      const data = await response.json();
-      if (response.ok) {
-        setResult(`Saved ${data.saved} meetings`);
-        await loadMeetings();
-      } else {
-        setResultIsError(true);
-        setResult(data.error || 'Retrieval failed.');
-      }
-    } catch {
-      setResultIsError(true);
-      setResult('Retrieval failed.');
-    } finally {
-      setRunning(false);
-    }
-  }
-
   return (
     <main className={styles.main}>
       <section className={styles.card}>
         <p className={styles.eyebrow}>Retrieval</p>
-        <h1 className={styles.heading}>{town ? `Meeting retrieval (${town.name})` : 'Meeting retrieval'}</h1>
+        <h1 className={styles.heading}>{town ? `Meetings (${town.name})` : 'Meetings'}</h1>
 
         <div className={styles.panel}>
-          <div className={styles.toolbar}>
-            <button type="button" onClick={handleRun} disabled={running || !town} className={styles.button}>
-              {running ? 'Running...' : 'Run retrieval'}
-            </button>
-          </div>
-
-          {result ? <p className={resultIsError ? styles.error : styles.message}>{result}</p> : null}
-
           {loadError ? <p className={styles.error}>{loadError}</p> : null}
 
           {loadingList ? (
