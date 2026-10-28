@@ -27,6 +27,7 @@ export default function DocumentDetailPage({ params }: { params: { id: string } 
         ) : (
           <>
             <h1 className="mb-4 break-words font-display text-3xl font-normal leading-tight tracking-tight sm:text-4xl">{state.document.title}</h1>
+            <DocumentSummary text={state.document.summary_text} />
             {state.document.pdf_url ? (
               <iframe
                 title="Document PDF"
@@ -36,7 +37,6 @@ export default function DocumentDetailPage({ params }: { params: { id: string } 
             ) : (
               <p className="text-fg-muted">The PDF is not available.</p>
             )}
-            <DocumentSummary text={state.document.summary_text} />
           </>
         )}
       </div>
