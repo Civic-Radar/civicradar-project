@@ -147,6 +147,13 @@ export type ExtractableDocument = {
   meeting: { meeting_id: number; title: string; start_at: string } | null;
 };
 
+// SRS-301.8 — a document can be extracted once its meeting has started. A
+// document with no meeting (or no start time) can't be placed in time, so it isn't listed.
+export function hasMeetingTakenPlace(document: { meeting: { start_at: string } | null }, now: Date): boolean {
+  const start = document.meeting?.start_at ? Date.parse(document.meeting.start_at) : NaN;
+  return Number.isFinite(start) && start <= now.getTime();
+}
+
 const DOCUMENT_TYPE_ORDER: Record<string, number> = { Agenda: 0, Packet: 1, Minutes: 2, Other: 3 };
 
 // Extraction page document list: newest meeting first, then within a meeting
