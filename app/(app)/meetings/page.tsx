@@ -1,22 +1,11 @@
 'use client';
 
 import Link from 'next/link';
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
+import SignedOutNotice from '../../components/ui/SignedOutNotice';
 import styles from './meetings.module.css';
-
-type Town = { town_id: number; name: string; meeting_time_zone: string };
-
-type Meeting = {
-  meeting_id: number;
-  town_id: number;
-  title: string | null;
-  source_body_name: string | null;
-  source_start_time: string | null;
-  start_at: string | null;
-  location: string | null;
-  online_link: string | null;
-  source_url: string | null;
-};
+import { meetingsForUser } from './meetingsForUser';
+import { useMeetingsList, type Meeting } from './useMeetingsList';
 
 // SRS-220.4: a detail the source omits is marked as not provided.
 const NOT_PROVIDED = 'Not provided by the source';
@@ -51,131 +40,102 @@ function TextOrNotProvided({ value }: { value: string | null }) {
   return <>{value}</>;
 }
 
+// Meetings page (SRS-220.3): the stored meetings of the towns the signed-in user follows.
 export default function MeetingsPage() {
-  const [town, setTown] = useState<Town | null>(null);
-  const [meetings, setMeetings] = useState<Meeting[]>([]);
-  const [loadingList, setLoadingList] = useState(true);
-  const [loadError, setLoadError] = useState('');
-  const [running, setRunning] = useState(false);
-  const [result, setResult] = useState('');
-  const [resultIsError, setResultIsError] = useState(false);
+  const state = useMeetingsList();
+  // Empty means All my towns.
+  const [selectedTownId, setSelectedTownId] = useState('');
 
-  useEffect(() => {
-    loadMeetings();
-  }, []);
-
-  async function loadMeetings() {
-    setLoadingList(true);
-    setLoadError('');
-    try {
-      const response = await fetch('/api/meetings', { cache: 'no-store' });
-      const data = await response.json();
-      if (!response.ok) {
-        setLoadError(data.error || 'Could not load stored meetings.');
-        return;
-      }
-      const towns: Town[] = data.towns ?? [];
-      if (towns.length === 0) {
-        setTown(null);
-        setLoadError('No supported towns were found.');
-        return;
-      }
-      const firstTown = towns[0];
-      setTown(firstTown);
-      setMeetings((data.meetings ?? []).filter((m: Meeting) => m.town_id === firstTown.town_id));
-    } catch {
-      setLoadError('Could not load stored meetings.');
-    } finally {
-      setLoadingList(false);
-    }
-  }
-
-  async function handleRun() {
-    if (!town) return;
-    setRunning(true);
-    setResult('');
-    setResultIsError(false);
-    try {
-      const token = localStorage.getItem('access_token');
-      const response = await fetch('/api/retrieval/meetings', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
-        body: JSON.stringify({ townId: town.town_id }),
-      });
-      const data = await response.json();
-      if (response.ok) {
-        setResult(`Saved ${data.saved} meetings`);
-        await loadMeetings();
-      } else {
-        setResultIsError(true);
-        setResult(data.error || 'Retrieval failed.');
-      }
-    } catch {
-      setResultIsError(true);
-      setResult('Retrieval failed.');
-    } finally {
-      setRunning(false);
-    }
-  }
+  const towns = state.status === 'loaded' ? state.towns : [];
+  const followedTownIds = state.status === 'loaded' ? state.followedTownIds : [];
+  const meetings =
+    state.status === 'loaded'
+      ? meetingsForUser(state.meetings, followedTownIds, selectedTownId ? Number(selectedTownId) : null)
+      : [];
+  const townsById = new Map(towns.map((town) => [town.town_id, town]));
+  const followedTowns = towns
+    .filter((town) => followedTownIds.includes(town.town_id))
+    .sort((a, b) => a.name.localeCompare(b.name));
 
   return (
     <main className={styles.main}>
       <section className={styles.card}>
-        <p className={styles.eyebrow}>Retrieval</p>
-        <h1 className={styles.heading}>{town ? `Meeting retrieval (${town.name})` : 'Meeting retrieval'}</h1>
+        <p className="mb-3 text-xs font-semibold uppercase tracking-[0.17em] text-accent">Civic Radar</p>
+        <h1 className={styles.heading}>Meetings</h1>
 
         <div className={styles.panel}>
-          <div className={styles.toolbar}>
-            <button type="button" onClick={handleRun} disabled={running || !town} className={styles.button}>
-              {running ? 'Running...' : 'Run retrieval'}
-            </button>
-          </div>
-
-          {result ? <p className={resultIsError ? styles.error : styles.message}>{result}</p> : null}
-
-          {loadError ? <p className={styles.error}>{loadError}</p> : null}
-
-          {loadingList ? (
+          {state.status === 'loading' ? (
             <p className={styles.muted}>Loading stored meetings...</p>
-          ) : town && !loadError ? (
-            meetings.length === 0 ? (
-              <p className={styles.empty}>No meetings are stored for this town yet.</p>
-            ) : (
-              <div className={styles.tableWrap}>
-                <table className={styles.table}>
-                  <thead>
-                    <tr>
-                      <th>Title</th>
-                      <th>Governing body</th>
-                      <th>Start time</th>
-                      <th>Location</th>
-                      <th>Online participation link</th>
-                      <th>Recording link</th>
-                      <th>Official source link</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {meetings.map((meeting) => (
-                      <tr key={meeting.meeting_id}>
-                        <td>
-                          <Link href={`/meetings/${meeting.meeting_id}`} className={styles.tableLink}>
-                            <TextOrNotProvided value={meeting.title} />
-                          </Link>
-                        </td>
-                        <td><TextOrNotProvided value={meeting.source_body_name} /></td>
-                        <td><TextOrNotProvided value={formatStartTime(meeting, town.meeting_time_zone)} /></td>
-                        <td><TextOrNotProvided value={meeting.location} /></td>
-                        <td><LinkOrNotProvided href={meeting.online_link} /></td>
-                        {/* Recording links are not stored yet (SRS-220.10). */}
-                        <td><span className={styles.missing}>{NOT_PROVIDED}</span></td>
-                        <td><LinkOrNotProvided href={meeting.source_url} /></td>
-                      </tr>
+          ) : state.status === 'signedOut' ? (
+            <SignedOutNotice className="p-6" message="You must be logged in to view your meetings." />
+          ) : state.status === 'loadFailed' ? (
+            <p className={styles.error}>Could not load stored meetings.</p>
+          ) : followedTownIds.length === 0 ? (
+            <div className="space-y-2 p-6">
+              <p className="text-fg-muted">Choose your towns in Preferences.</p>
+              <Link href="/preferences" className="text-accent hover:underline">Go to Preferences</Link>
+            </div>
+          ) : (
+            <>
+              <div className={styles.toolbar}>
+                <label className="flex flex-col gap-1 text-sm text-fg-muted">
+                  Town
+                  <select
+                    value={selectedTownId}
+                    onChange={(event) => setSelectedTownId(event.target.value)}
+                    className="min-h-11 rounded-md border border-line bg-surface px-3 text-fg"
+                  >
+                    <option value="">All my towns</option>
+                    {followedTowns.map((town) => (
+                      <option key={town.town_id} value={String(town.town_id)}>{town.name}</option>
                     ))}
-                  </tbody>
-                </table>
+                  </select>
+                </label>
               </div>
-            )
-          ) : null}
+              {meetings.length === 0 ? (
+                <p className={styles.empty}>No meetings are stored for your towns yet.</p>
+              ) : (
+                <div className={styles.tableWrap}>
+                  <table className={styles.table}>
+                    <thead>
+                      <tr>
+                        <th>Title</th>
+                        <th>Town</th>
+                        <th>Governing body</th>
+                        <th>Start time</th>
+                        <th>Location</th>
+                        <th>Online participation link</th>
+                        <th>Recording link</th>
+                        <th>Official source link</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {meetings.map((meeting) => {
+                        const town = townsById.get(meeting.town_id);
+                        return (
+                          <tr key={meeting.meeting_id}>
+                            <td>
+                              <Link href={`/meetings/${meeting.meeting_id}`} className={styles.tableLink}>
+                                <TextOrNotProvided value={meeting.title} />
+                              </Link>
+                            </td>
+                            <td><TextOrNotProvided value={town?.name ?? null} /></td>
+                            <td><TextOrNotProvided value={meeting.source_body_name} /></td>
+                            <td><TextOrNotProvided value={town ? formatStartTime(meeting, town.meeting_time_zone) : meeting.source_start_time} /></td>
+                            <td><TextOrNotProvided value={meeting.location} /></td>
+                            <td><LinkOrNotProvided href={meeting.online_link} /></td>
+                            {/* Recording links are not stored yet (SRS-220.10). */}
+                            <td><span className={styles.missing}>{NOT_PROVIDED}</span></td>
+                            <td><LinkOrNotProvided href={meeting.source_url} /></td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </>
+          )}
         </div>
       </section>
     </main>
