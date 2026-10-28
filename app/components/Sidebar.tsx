@@ -16,11 +16,13 @@ import {
   X,
 } from "lucide-react";
 
-const navigation = [
+// `also` lists other pages that belong to the same item, so it stays highlighted
+// on them (Contacts has tabs for its pages; see app/components/ContactsTabs.tsx).
+const navigation: { name: string; href: string; icon: typeof Users; also?: string[] }[] = [
   { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
   { name: "Meetings", href: "/meetings", icon: CalendarDays },
   { name: "Documents", href: "/documents", icon: FileText },
-  { name: "Contact Extraction", href: "/extract", icon: Users },
+  { name: "Contacts", href: "/extract", icon: Users, also: ["/officials"] },
   { name: "Search", href: "/search", icon: Search },
   { name: "Preferences", href: "/preferences", icon: Settings },
   { name: "Profile", href: "/profile", icon: CircleUserRound },
@@ -31,7 +33,7 @@ function NavLinks({ pathname, onNavigate }: { pathname: string; onNavigate?: () 
     <ul className="space-y-1">
       {navigation.map((item) => {
         const Icon = item.icon;
-        const isActive = pathname === item.href || pathname.startsWith(item.href + "/");
+        const isActive = [item.href, ...(item.also ?? [])].some((href) => pathname === href || pathname.startsWith(href + "/"));
 
         return (
           <li key={item.name}>
