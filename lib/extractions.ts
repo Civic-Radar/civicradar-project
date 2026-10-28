@@ -45,6 +45,29 @@ export const STATUS_STYLES: Record<ExtractionStatus, string> = {
   Failed: 'border-danger-vivid/40 bg-danger-vivid/10 text-danger-soft',
 };
 
+// SRS-304.1 — one entry on the Saved Extractions page (GET /api/extractions?saved=1),
+// with how many officials it found (Task 304.1-5).
+export type SavedExtraction = Extraction & { officials_found: number };
+
+// Task 304.1-5 — "1 official found" / "3 officials found" / "No officials found".
+export function officialsFoundLabel(count: number): string {
+  if (count === 0) return 'No officials found';
+  return `${count} ${count === 1 ? 'official' : 'officials'} found`;
+}
+
+// Task 304.1-5 — saved extractions whose source document title contains the search
+// text, ignoring letter case. An empty search shows them all.
+export function filterSavedExtractions<T extends { source_document_title: string }>(list: T[], search: string): T[] {
+  const text = search.trim().toLowerCase();
+  return text ? list.filter((e) => e.source_document_title.toLowerCase().includes(text)) : list;
+}
+
+// SRS-304.1 — when an extraction was performed: when it finished, or when it was
+// requested if it hasn't finished.
+export function extractionDate(extraction: { requested_at: string; completed_at: string | null }): string {
+  return extraction.completed_at ?? extraction.requested_at;
+}
+
 // MM/DD/YYYY h:mm AM, the date format used throughout the SRS.
 export function formatDateTime(iso: string): string {
   const d = new Date(iso);

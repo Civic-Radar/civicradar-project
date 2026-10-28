@@ -13,6 +13,7 @@
 
 import { BookOpen, Search } from 'lucide-react';
 import Link from 'next/link';
+import ContactsTabs from '../../components/ContactsTabs';
 import { useEffect, useState } from 'react';
 import { alertClasses } from '../../components/ui/Alert';
 import { badgeClasses } from '../../components/ui/Badge';
@@ -188,6 +189,8 @@ export default function ExtractPage() {
             Pick a government document and Civic Radar will pull out the officials and their contact information.
           </p>
         </header>
+
+        <ContactsTabs />
 
         {error ? (
           <p role="alert" className={alertClasses('error')}>{error}</p>
