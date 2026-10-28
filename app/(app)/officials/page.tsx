@@ -1,12 +1,13 @@
 'use client';
 
-// Officials page — SRS-311.1, AO, View shared officials list.
-// "The system shall display a single shared list of officials extracted from
-//  documents for the pilot municipality."
+// Officials page — SRS-311.1, AO, View officials list.
+// "The system shall display the officials found by the signed-in user's saved
+//  extractions who have an email address or telephone number, each listed once
+//  with the documents they were found in."
 //
-// Each official appears once (SRS-311.2 merges repeats), with name, title, role,
-// email, and phone, each next to its field name. A detail no document gave shows
-// "Not found" (as in SRS-308.1). Each entry links to every document it came from.
+// Each official appears once, with name, title, role, email, and phone, each next
+// to its field name. A detail no extraction found shows "Not found" (as in
+// SRS-308.1). Each entry links to every document it was found in.
 
 import Link from 'next/link';
 import { BookUser } from 'lucide-react';
@@ -16,11 +17,11 @@ import { alertClasses } from '../../components/ui/Alert';
 import { cardClasses } from '../../components/ui/Card';
 import SignedOutNotice from '../../components/ui/SignedOutNotice';
 import { NOT_FOUND_LABEL, OFFICIAL_FIELDS } from '../../../lib/extractions';
-import type { SharedOfficial } from '../../../lib/extractions';
+import type { MyOfficial } from '../../../lib/officialsList';
 
 export default function OfficialsPage() {
   const [token, setToken] = useState<string | null>(null);
-  const [officials, setOfficials] = useState<SharedOfficial[]>([]);
+  const [officials, setOfficials] = useState<MyOfficial[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
@@ -68,7 +69,7 @@ export default function OfficialsPage() {
           <p className="mb-3 text-xs font-semibold uppercase tracking-[0.17em] text-accent">Officials &amp; Contacts</p>
           <h1 className="font-display text-3xl font-normal leading-tight tracking-tight sm:text-4xl">Officials</h1>
           <p className="mt-3 text-sm leading-relaxed text-fg-muted">
-            Everyone found by contact extractions, listed once, with the most recent details and the documents they came from.
+            The officials your saved extractions found who have an email or phone number, each listed once, with the most recent details and the documents they came from.
           </p>
         </header>
 
@@ -81,7 +82,7 @@ export default function OfficialsPage() {
             <div className="flex min-h-[260px] flex-col items-center justify-center gap-4 px-6 py-16 text-center text-fg-muted">
               <BookUser aria-hidden="true" className="h-[30px] w-[30px] text-accent" />
               <p className="max-w-[450px] text-sm leading-relaxed">
-                No officials yet. They appear here after an extraction finds them on the{' '}
+                No officials with contact details yet. They appear here when one of your extractions finds someone with an email or phone number. Request one on the{' '}
                 <Link href="/extract" className="text-accent hover:underline">Request</Link> tab.
               </p>
             </div>
@@ -92,13 +93,9 @@ export default function OfficialsPage() {
               <h2 className="text-lg font-semibold">
                 {officials.length} {officials.length === 1 ? 'official' : 'officials'}
               </h2>
-              <ul className="mt-4 space-y-3" aria-label="Shared officials list">
+              <ul className="mt-4 space-y-3" aria-label="Officials list">
                 {officials.map((official) => (
-                  <li key={official.official_id} data-testid="shared-official" className="rounded-md border border-line p-4 sm:p-5">
-                    {official.body_name ? (
-                      <p className="mb-3 text-xs font-semibold uppercase tracking-[0.1em] text-accent">{official.body_name}</p>
-                    ) : null}
-
+                  <li key={official.key} data-testid="official" className="rounded-md border border-line p-4 sm:p-5">
                     <dl className="grid gap-x-6 gap-y-4 text-sm sm:grid-cols-2">
                       {OFFICIAL_FIELDS.map(({ key, label }) => {
                         const value = official[key];
@@ -119,8 +116,12 @@ export default function OfficialsPage() {
                       <p className="text-xs font-semibold uppercase tracking-[0.1em] text-fg-muted">Found in</p>
                       <ul className="mt-1 space-y-1">
                         {official.sources.map((source) => (
-                          <li key={source.document_id}>
-                            <Link href={`/documents/${source.document_id}`} className="break-words text-accent hover:underline">{source.title}</Link>
+                          <li key={source.extraction_id}>
+                            {source.document_id !== null ? (
+                              <Link href={`/documents/${source.document_id}`} className="break-words text-accent hover:underline">{source.title}</Link>
+                            ) : (
+                              <span className="break-words">{source.title}</span>
+                            )}
                           </li>
                         ))}
                       </ul>
