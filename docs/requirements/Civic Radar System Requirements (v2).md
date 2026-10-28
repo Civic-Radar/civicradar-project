@@ -722,11 +722,15 @@ Traces to: UR-220
 
 Traces to: UR-220
 
-**SRS-220.3, MS, Meeting details storage.** The system shall store each meeting's title, governing body, start time, location, online participation link, recording link, and official source link when the source provides them, and let only a system administrator start retrieval for one chosen town or for all supported towns from a retrieval page.
+**SRS-220.3, MS, Meeting details storage.** The system shall store each meeting's title, governing body, start time, location, online participation link, recording link, and official source link when the source provides them, show a signed-in user the stored meetings of the towns the user follows with each meeting's town name, and let only a system administrator start retrieval for one chosen town or for all supported towns from a retrieval page.
 
 **Acceptance Criteria:**
 
 •       Given a Salem meeting whose source lists a title, governing body, start time, location, and official source link, When the meeting is retrieved, Then each of those values is stored with the meeting.
+•       Given a user follows Brookline and not Salem, When the user opens the meetings page, Then only Brookline's meetings are listed and each row shows its town name.
+•       Given a user follows Salem and Brookline, When the user chooses Brookline in the town filter, Then only Brookline's meetings are listed.
+•       Given the town filter is set to Brookline, When the user clears the filter, Then meetings from both followed towns are listed.
+•       Given a user follows no towns, When the user opens the meetings page, Then no meetings are listed and the user is told to choose towns in Preferences.
 •       Given Salem and Brookline are supported towns and a system administrator chooses Brookline, When the administrator starts retrieval, Then Brookline's meetings and documents are retrieved and no Salem retrieval starts.
 •       Given Salem and Brookline are supported towns and a system administrator chooses all towns, When the administrator starts retrieval, Then the meetings and documents of both towns are retrieved.
 •       Given a signed-in user who is not a system administrator, When the user opens the application or the retrieval page's address, Then no link to the retrieval page and no retrieval control is shown.
