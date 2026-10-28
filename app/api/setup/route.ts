@@ -30,6 +30,7 @@ export async function GET(request: Request) {
 }
 
 // SRS-107.3: mark first-time setup as skipped so the user is not sent to setup again.
+// SRS-107.4: mark first-time setup as completed after the user saves their topics.
 export async function PATCH(request: Request) {
   const token = getToken(request);
   if (!token) return Response.json({ error: 'Unauthorized' }, { status: 401 });
@@ -41,16 +42,17 @@ export async function PATCH(request: Request) {
   if (authError || !user) return Response.json({ error: 'Invalid or expired token.' }, { status: 401 });
 
   const body = await request.json().catch(() => null);
-  if (body?.setup_status !== 'Skipped') {
-    return Response.json({ error: 'setup_status must be "Skipped".' }, { status: 400 });
+  const setupStatus = body?.setup_status;
+  if (setupStatus !== 'Skipped' && setupStatus !== 'Completed') {
+    return Response.json({ error: 'setup_status must be "Skipped" or "Completed".' }, { status: 400 });
   }
 
   // The user_accounts row may not exist yet, so upsert it.
   const { error } = await supabase
     .from('user_accounts')
-    .upsert({ user_id: user.id, email: user.email, setup_status: 'Skipped' }, { onConflict: 'user_id' });
+    .upsert({ user_id: user.id, email: user.email, setup_status: setupStatus }, { onConflict: 'user_id' });
 
   if (error) return Response.json({ error: 'Setup status could not be saved.' }, { status: 500 });
 
-  return Response.json({ setup_status: 'Skipped', needs_setup: false }, { status: 200 });
+  return Response.json({ setup_status: setupStatus, needs_setup: false }, { status: 200 });
 }

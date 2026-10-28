@@ -40,3 +40,17 @@ export const SETUP_STEPS: Record<SetupStep, { label: string; description: string
 export function stepAfterSave(step: SetupStep): SetupStep | 'done' {
   return step === 'towns' ? 'topics' : 'done';
 }
+
+export async function completeSetup(accessToken: string | undefined): Promise<boolean> {
+  if (!accessToken) return false;
+  try {
+    const res = await fetch('/api/setup', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${accessToken}` },
+      body: JSON.stringify({ setup_status: 'Completed' }),
+    });
+    return res.ok;
+  } catch {
+    return false;
+  }
+}
