@@ -10,8 +10,13 @@
 // Also covers SRS-301.5 / SRS-301.6 (non-PDF files are rejected with the exact
 // message from the SRS) and SRS-306.3 (a second request for a document that is
 // already Queued/Processing is refused instead of creating a duplicate).
+//
+// SRS-301.7, AO, Daily extraction limit: once a user has requested the daily
+// limit of extractions (10 by default, EXTRACTION_DAILY_LIMIT), another request
+// answers 429 with the SRS message and nothing is created.
 import { getSupabaseClient } from '../../../lib/supabase';
-import { ALREADY_IN_PROGRESS_MESSAGE, UNSUPPORTED_FORMAT_MESSAGE } from '../../../lib/extractions';
+import { ALREADY_IN_PROGRESS_MESSAGE, DAILY_LIMIT_MESSAGE, UNSUPPORTED_FORMAT_MESSAGE } from '../../../lib/extractions';
+import { dailyExtractionLimit, extractionRequestsToday } from '../../../lib/extraction/dailyLimit';
 
 const EXTRACTION_COLUMNS = 'extraction_id, user_id, document_id, source_document_title, status, requested_at, completed_at';
 
@@ -61,6 +66,13 @@ export async function POST(request: Request) {
   // SRS-301.5 / SRS-301.6: only PDFs can be extracted. No request is created.
   if (document.mime_type !== 'application/pdf') {
     return Response.json({ error: UNSUPPORTED_FORMAT_MESSAGE }, { status: 400 });
+  }
+
+  // SRS-301.7: at most the daily limit of requests per user per day. No request is created.
+  const requestsToday = await extractionRequestsToday(supabase!, user.id);
+  if (requestsToday === null) return Response.json({ error: 'The extraction request could not be created.' }, { status: 500 });
+  if (requestsToday >= dailyExtractionLimit()) {
+    return Response.json({ error: DAILY_LIMIT_MESSAGE }, { status: 429 });
   }
 
   // extractions.user_id references user_accounts. The starter's register route

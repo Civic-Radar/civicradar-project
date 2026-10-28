@@ -3,6 +3,9 @@
 // SRS-301.6 — exact wording required by the SRS.
 export const UNSUPPORTED_FORMAT_MESSAGE = "This file can't be extracted. Only PDF documents are supported.";
 
+// SRS-301.7 — exact wording when the user has reached the daily extraction limit.
+export const DAILY_LIMIT_MESSAGE = "You've reached today's extraction limit. Please try again tomorrow.";
+
 // SRS-303.2 — where the source link on an extraction result goes: the source
 // document's detail page (SRS-203.1). null when the extraction has no source
 // document any more (documents.document_id was removed), so nothing is linked.
