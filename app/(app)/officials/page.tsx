@@ -17,7 +17,7 @@ import { alertClasses } from '../../components/ui/Alert';
 import { cardClasses } from '../../components/ui/Card';
 import SignedOutNotice from '../../components/ui/SignedOutNotice';
 import { NOT_FOUND_LABEL, OFFICIAL_FIELDS } from '../../../lib/extractions';
-import type { MyOfficial } from '../../../lib/officialsList';
+import { groupByTown, type MyOfficial } from '../../../lib/officialsList';
 
 export default function OfficialsPage() {
   const [token, setToken] = useState<string | null>(null);
@@ -93,42 +93,53 @@ export default function OfficialsPage() {
               <h2 className="text-lg font-semibold">
                 {officials.length} {officials.length === 1 ? 'official' : 'officials'}
               </h2>
-              <ul className="mt-4 space-y-3" aria-label="Officials list">
-                {officials.map((official) => (
-                  <li key={official.key} data-testid="official" className="rounded-md border border-line p-4 sm:p-5">
-                    <dl className="grid gap-x-6 gap-y-4 text-sm sm:grid-cols-2">
-                      {OFFICIAL_FIELDS.map(({ key, label }) => {
-                        const value = official[key];
-                        const href = value && key === 'email' ? `mailto:${value}` : value && key === 'phone' ? `tel:${value.replace(/[^\d+]/g, '')}` : null;
-                        return (
-                          <div key={key} className={key === 'role' ? 'sm:col-span-2' : undefined}>
-                            <dt className="text-xs font-semibold uppercase tracking-[0.1em] text-fg-muted">{label}</dt>
-                            <dd className={`mt-1 break-words leading-relaxed ${!value ? 'text-fg-subtle italic' : key === 'full_name' ? 'text-base font-medium' : ''}`}>
-                              {href ? <a href={href} className="text-accent hover:underline">{value}</a> : value ?? NOT_FOUND_LABEL}
-                            </dd>
-                          </div>
-                        );
-                      })}
-                    </dl>
 
-                    {/* The documents this official was found in; each opens its detail page. */}
-                    <div className="mt-4 border-t border-line pt-3 text-sm">
-                      <p className="text-xs font-semibold uppercase tracking-[0.1em] text-fg-muted">Found in</p>
-                      <ul className="mt-1 space-y-1">
-                        {official.sources.map((source) => (
-                          <li key={source.extraction_id}>
-                            {source.document_id !== null ? (
-                              <Link href={`/documents/${source.document_id}`} className="break-words text-accent hover:underline">{source.title}</Link>
-                            ) : (
-                              <span className="break-words">{source.title}</span>
-                            )}
-                          </li>
-                        ))}
-                      </ul>
-                    </div>
-                  </li>
+              {/* Task 311.1-8: one section per city */}
+              <div className="mt-4 space-y-8">
+                {groupByTown(officials).map((group) => (
+                  <section key={group.town_id ?? 'none'} aria-label={group.town_name}>
+                    <h3 className="text-xs font-semibold uppercase tracking-[0.17em] text-accent">
+                      {group.town_name} <span className="text-fg-muted">· {group.officials.length}</span>
+                    </h3>
+                    <ul className="mt-3 space-y-3" aria-label={`Officials in ${group.town_name}`}>
+                      {group.officials.map((official) => (
+                        <li key={official.key} data-testid="official" className="rounded-md border border-line p-4 sm:p-5">
+                          <dl className="grid gap-x-6 gap-y-4 text-sm sm:grid-cols-2">
+                            {OFFICIAL_FIELDS.map(({ key, label }) => {
+                              const value = official[key];
+                              const href = value && key === 'email' ? `mailto:${value}` : value && key === 'phone' ? `tel:${value.replace(/[^\d+]/g, '')}` : null;
+                              return (
+                                <div key={key} className={key === 'role' ? 'sm:col-span-2' : undefined}>
+                                  <dt className="text-xs font-semibold uppercase tracking-[0.1em] text-fg-muted">{label}</dt>
+                                  <dd className={`mt-1 break-words leading-relaxed ${!value ? 'text-fg-subtle italic' : key === 'full_name' ? 'text-base font-medium' : ''}`}>
+                                    {href ? <a href={href} className="text-accent hover:underline">{value}</a> : value ?? NOT_FOUND_LABEL}
+                                  </dd>
+                                </div>
+                              );
+                            })}
+                          </dl>
+
+                          {/* The documents this official was found in; each opens its detail page. */}
+                          <div className="mt-4 border-t border-line pt-3 text-sm">
+                            <p className="text-xs font-semibold uppercase tracking-[0.1em] text-fg-muted">Found in</p>
+                            <ul className="mt-1 space-y-1">
+                              {official.sources.map((source) => (
+                                <li key={source.extraction_id}>
+                                  {source.document_id !== null ? (
+                                    <Link href={`/documents/${source.document_id}`} className="break-words text-accent hover:underline">{source.title}</Link>
+                                  ) : (
+                                    <span className="break-words">{source.title}</span>
+                                  )}
+                                </li>
+                              ))}
+                            </ul>
+                          </div>
+                        </li>
+                      ))}
+                    </ul>
+                  </section>
                 ))}
-              </ul>
+              </div>
             </>
           ) : null}
         </section>

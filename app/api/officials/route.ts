@@ -38,5 +38,16 @@ export async function GET(request: Request) {
   if (error) return Response.json({ error: 'Could not load the officials.' }, { status: 500 });
 
   const officials = buildOfficialsList((data ?? []) as unknown as ExtractionWithOfficials[]);
+
+  // Task 311.1-8: each official's town name, so the page can split the list by city.
+  // documents has no foreign key to towns, so the names are read separately.
+  const townIds = [...new Set(officials.map((o) => o.town_id).filter((id): id is number => id !== null))];
+  if (townIds.length > 0) {
+    const { data: towns, error: townsError } = await supabase.from('towns').select('town_id, name').in('town_id', townIds);
+    if (townsError) return Response.json({ error: 'Could not load the officials.' }, { status: 500 });
+    const names = new Map(((towns ?? []) as { town_id: number; name: string }[]).map((t) => [t.town_id, t.name]));
+    for (const official of officials) if (official.town_id !== null) official.town_name = names.get(official.town_id);
+  }
+
   return Response.json({ officials }, { status: 200 });
 }

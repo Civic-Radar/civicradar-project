@@ -11,7 +11,7 @@
 //   * Each entry links to every source document it was found in (consistent with UR-303).
 //   * Officials from another user's extractions are not listed.
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { buildOfficialsList, type ExtractionWithOfficials } from '../../lib/officialsList';
+import { buildOfficialsList, groupByTown, type ExtractionWithOfficials, type MyOfficial } from '../../lib/officialsList';
 
 type Row = Record<string, unknown>;
 let extractionRows: (ExtractionWithOfficials & { user_id: string; status: string })[] = [];
@@ -26,7 +26,12 @@ vi.mock('../../lib/supabase', () => ({
           : { data: { user: null }, error: { message: 'Invalid token' } },
       ),
     },
-    from: vi.fn(() => {
+    from: vi.fn((table: string) => {
+      if (table === 'towns') {
+        const towns = [{ town_id: 1, name: 'Salem' }, { town_id: 10, name: 'Brookline' }];
+        const q = { select: vi.fn(() => q), in: vi.fn(async (_c: string, ids: number[]) => ({ data: towns.filter((t) => ids.includes(t.town_id)), error: null })) };
+        return q;
+      }
       const query = {
         select: vi.fn(() => query),
         eq: vi.fn((column: string, value: unknown) => { filters.push([column, value]); return query; }),
@@ -50,10 +55,10 @@ const list = async (token: string | null = 'valid-token') => {
 const OCT_19 = { id: 13, title: 'Joint Public Hearing with the Planning Board Monday October 19, 2026' };
 const OCT_15 = { id: 18, title: 'Salem City Council Special Meeting October 15, 2026' };
 
-function extraction(id: number, doc: { id: number; title: string }, completedAt: string, officials: Row[], userId = 'user-a') {
+function extraction(id: number, doc: { id: number; title: string }, completedAt: string, officials: Row[], userId = 'user-a', townId = 1) {
   return {
     extraction_id: id, user_id: userId, status: 'Completed', completed_at: completedAt,
-    document_id: doc.id, source_document_title: doc.title, document: { town_id: 1 },
+    document_id: doc.id, source_document_title: doc.title, document: { town_id: townId },
     officials: officials as ExtractionWithOfficials['officials'],
   };
 }
@@ -137,5 +142,44 @@ describe('buildOfficialsList (SRS-311.1)', () => {
       extraction(2, OCT_15, '2026-10-25T15:00:00Z', [person('Kristen Sacco', { phone: '978-555-0100' })]),
     ]);
     expect(official.sources).toHaveLength(1);
+  });
+});
+
+describe('Officials split by city (Task 311.1-8)', () => {
+  const BROOKLINE_DOC = { id: 140, title: 'Agenda 10.22.2026 - 1' };
+
+  it("gives each official their city's name", async () => {
+    extractionRows.push(
+      extraction(50, BROOKLINE_DOC, '2026-10-25T15:00:00Z', [person('Polly Selkoe', { title: 'Regulatory Planning Director', email: 'pselkoe@brooklinema.gov' })], 'user-a', 10),
+    );
+
+    const { body } = await list();
+
+    expect(body.officials.map((o: Row) => [o.full_name, o.town_name])).toEqual([
+      ['Maureen Elizabeth Fisher', 'Salem'],
+      ['Polly Selkoe', 'Brookline'],
+    ]);
+  });
+
+  it('keeps the same name in two cities as two people', () => {
+    const officials = buildOfficialsList([
+      extraction(1, OCT_15, '2026-10-24T15:00:00Z', [person('Jane Doe', { email: 'jdoe@salem.com' })]),
+      extraction(2, BROOKLINE_DOC, '2026-10-25T15:00:00Z', [person('Jane Doe', { email: 'jdoe@brooklinema.gov' })], 'user-a', 10),
+    ]);
+    expect(officials).toHaveLength(2);
+  });
+
+  it('groups the list by city, cities in alphabetical order, unknown town last', () => {
+    const official = (name: string, town_id: number | null, town_name?: string): MyOfficial => ({
+      key: name, town_id, town_name, full_name: name, title: null, role: null, email: 'x@example.com', phone: null, sources: [],
+    });
+    const groups = groupByTown([
+      official('A', 1, 'Salem'), official('B', null), official('C', 10, 'Brookline'), official('D', 1, 'Salem'),
+    ]);
+    expect(groups.map((g) => [g.town_name, g.officials.map((o) => o.full_name)])).toEqual([
+      ['Brookline', ['C']],
+      ['Salem', ['A', 'D']],
+      ['Other', ['B']],
+    ]);
   });
 });

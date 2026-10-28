@@ -16,6 +16,9 @@ export type OfficialSource = { extraction_id: number; document_id: number | null
 
 export type MyOfficial = {
   key: string;
+  // The town of the documents the official was found in; its name is added by the API.
+  town_id: number | null;
+  town_name?: string;
   full_name: string;
   title: string | null;
   role: string | null;
@@ -50,7 +53,7 @@ export function buildOfficialsList(extractions: ExtractionWithOfficials[]): MyOf
       const existing = byPerson.get(key);
       if (!existing) {
         byPerson.set(key, {
-          key, full_name: found.full_name, title: found.title, role: found.role, email: found.email, phone: found.phone, sources: [source],
+          key, town_id: extraction.document?.town_id ?? null, full_name: found.full_name, title: found.title, role: found.role, email: found.email, phone: found.phone, sources: [source],
         });
         continue;
       }
@@ -64,4 +67,25 @@ export function buildOfficialsList(extractions: ExtractionWithOfficials[]): MyOf
   return [...byPerson.values()]
     .filter((official) => official.email || official.phone)
     .sort((a, b) => a.full_name.localeCompare(b.full_name));
+}
+
+// Task 311.1-8 — the list split by city, cities in alphabetical order. Officials whose
+// town isn't known come last, under "Other".
+export type TownGroup = { town_id: number | null; town_name: string; officials: MyOfficial[] };
+
+export function groupByTown(officials: MyOfficial[]): TownGroup[] {
+  const groups = new Map<string, TownGroup>();
+  for (const official of officials) {
+    const id = official.town_id;
+    const key = id === null ? "none" : String(id);
+    let group = groups.get(key);
+    if (!group) {
+      group = { town_id: id, town_name: official.town_name ?? "Other", officials: [] };
+      groups.set(key, group);
+    }
+    group.officials.push(official);
+  }
+  return [...groups.values()].sort((a, b) =>
+    a.town_id === null ? 1 : b.town_id === null ? -1 : a.town_name.localeCompare(b.town_name),
+  );
 }
