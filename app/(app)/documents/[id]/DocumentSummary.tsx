@@ -3,6 +3,7 @@ import Card from '../../../components/ui/Card';
 // Summary section of the document detail page (SRS-204.2). Shows the stored text
 // as plain text, one paragraph per line; renders nothing when there is no text.
 // SRS-207.1: a View source PDF link follows the text when there is a PDF link.
+// SRS-207.2: the link opens that stored PDF in a new tab.
 export default function DocumentSummary({
   text,
   sourcePdfUrl = null,
@@ -23,7 +24,8 @@ export default function DocumentSummary({
       </div>
       {sourcePdfUrl ? (
         <p className="mt-5">
-          <a href={sourcePdfUrl} className="text-accent hover:underline">View source PDF</a>
+          {/* Points to the stored copy the summary was generated from, never the source site. */}
+          <a href={sourcePdfUrl} target="_blank" rel="noopener noreferrer" className="text-accent hover:underline">View source PDF</a>
         </p>
       ) : null}
     </Card>

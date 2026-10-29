@@ -188,7 +188,7 @@ afterEach(() => {
 });
 
 describe('GET /api/documents/[id] PDF link (SRS-203.2)', () => {
-  it('returns the signed Storage link for a stored PDF, valid for 600 seconds', async () => {
+  it('returns the signed Storage link for a stored PDF, valid for 3600 seconds', async () => {
     storedRow(STORED_PDF_ROW);
 
     const response = await open();
@@ -198,7 +198,7 @@ describe('GET /api/documents/[id] PDF link (SRS-203.2)', () => {
     expect(body).toEqual({
       document: { ...IDENTIFICATION, summary_text: null, summary_generated_at: null, pdf_url: SIGNED_URL },
     });
-    expect(storage.calls).toEqual([{ bucket: 'documents', path: '1/1168.pdf', expiresIn: 600 }]);
+    expect(storage.calls).toEqual([{ bucket: 'documents', path: '1/1168.pdf', expiresIn: 3600 }]);
     // The link is the Storage copy, never the source's own address.
     expect(body.document.pdf_url).not.toBe(IDENTIFICATION.source_url);
   });
@@ -281,15 +281,18 @@ describe('Document detail page in-page PDF (SRS-203.2)', () => {
     expect(markup).not.toContain(NOT_AVAILABLE);
   });
 
-  it('opens no new tab: no target attribute and no link but View source PDF', () => {
+  it('opens no new tab from the viewer: only the View source PDF link has a target', () => {
     const markup = renderLoaded(loadedDocument(SIGNED_URL, 'First paragraph.'));
 
     expect(iframesIn(markup)[0]).not.toHaveProperty('target');
-    expect(markup).not.toContain('target=');
-    expect(markup).not.toContain('_blank');
+    // The View source PDF link (SRS-207.2) is the only element with a target.
+    expect(markup.match(/<[^>]*\btarget=[^>]*>/g)).toEqual([
+      `<a href="${SIGNED_URL}" target="_blank" rel="noopener noreferrer" class="text-accent hover:underline">`,
+    ]);
+    expect(markup.split('_blank')).toHaveLength(2);
     // The only link is the summary's View source PDF link (SRS-207.1).
     expect(markup.match(/<a\b[^>]*>[\s\S]*?<\/a>/g)).toEqual([
-      `<a href="${SIGNED_URL}" class="text-accent hover:underline">View source PDF</a>`,
+      `<a href="${SIGNED_URL}" target="_blank" rel="noopener noreferrer" class="text-accent hover:underline">View source PDF</a>`,
     ]);
   });
 

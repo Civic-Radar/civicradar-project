@@ -85,7 +85,9 @@ describe('Document detail page View source PDF link (SRS-207.1)', () => {
     const section = summarySection(markup) ?? '';
 
     expect(linksIn(markup)).toHaveLength(1);
-    expect(linksIn(section)).toEqual([`<a href="${SIGNED_URL}" class="text-accent hover:underline">${LINK_TEXT}</a>`]);
+    expect(linksIn(section)).toEqual([
+      `<a href="${SIGNED_URL}" target="_blank" rel="noopener noreferrer" class="text-accent hover:underline">${LINK_TEXT}</a>`,
+    ]);
     expect(markup.split(LINK_TEXT)).toHaveLength(2);
   });
 
@@ -99,11 +101,12 @@ describe('Document detail page View source PDF link (SRS-207.1)', () => {
     expect(markup.indexOf(LINK_TEXT)).toBeLessThan(markup.indexOf('</section>'));
   });
 
-  it('never links to the source address and sets no target or rel', () => {
+  it('never links to the source address and sets only the new-tab target and rel', () => {
     const markup = renderLoaded(COMPLETE_DOCUMENT);
 
     expect(markup).not.toContain(SOURCE_URL);
-    expect(linksIn(markup)[0]).not.toMatch(/\b(target|rel)=/);
+    // SRS-207.2 adds the new-tab target and rel; no other target or rel value.
+    expect(linksIn(markup)[0].match(/\b(target|rel)="[^"]*"/g)).toEqual(['target="_blank"', 'rel="noopener noreferrer"']);
   });
 
   it.each([
