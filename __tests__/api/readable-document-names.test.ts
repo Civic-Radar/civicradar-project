@@ -2,7 +2,7 @@
 // Towns upload files with names like "Agenda V2"; the extraction pages name a
 // document by its town, meeting, date, and type instead.
 import { describe, expect, it } from 'vitest';
-import { documentTypeLabel, readableDocumentName } from '../../lib/extractions';
+import { documentTypeLabel, formatFileSize, readableDocumentName } from '../../lib/extractions';
 
 const BICYCLE = { title: 'Bicycle Advisory Committee Meeting', start_at: '2026-10-28T23:00:00Z' };
 
@@ -42,5 +42,13 @@ describe('readableDocumentName', () => {
   it('labels each document type in plain words', () => {
     expect(['Agenda', 'Packet', 'Minutes', 'Other', 'Something new'].map(documentTypeLabel))
       .toEqual(['Agenda', 'Agenda packet', 'Minutes', 'Document', 'Document']);
+  });
+});
+
+describe('formatFileSize (Fix: type badges and sizes in the extraction list)', () => {
+  it('shows small files in KB and large ones in MB', () => {
+    expect(formatFileSize(120 * 1024)).toBe('120 KB');
+    expect(formatFileSize(300)).toBe('1 KB');
+    expect(formatFileSize(7059970)).toBe('6.7 MB');
   });
 });

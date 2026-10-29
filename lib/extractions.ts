@@ -145,6 +145,8 @@ export type ExtractableDocument = {
   retrieved_at: string;
   // The meeting the document belongs to, for grouping on the extraction page.
   meeting: { meeting_id: number; title: string; start_at: string } | null;
+  // The stored file's size, shown in the list so long packets stand out.
+  file_size_bytes?: number;
   // The document's town, shown with its meeting and used by the town tabs.
   town_id: number;
   town_name?: string;
@@ -153,6 +155,12 @@ export type ExtractableDocument = {
 // Fix: readable document names. Towns upload files with names like "Agenda V2" or
 // "10.28.26 SC Packet"; these name a document by what it is instead.
 const DOCUMENT_TYPE_LABELS: Record<string, string> = { Agenda: 'Agenda', Packet: 'Agenda packet', Minutes: 'Minutes', Other: 'Document' };
+
+// "120 KB", "6.7 MB" — a file's size in the units people read.
+export function formatFileSize(bytes: number): string {
+  if (bytes < 1024 * 1024) return `${Math.max(1, Math.round(bytes / 1024))} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
 
 export function documentTypeLabel(type: string): string {
   return DOCUMENT_TYPE_LABELS[type] ?? 'Document';

@@ -44,7 +44,7 @@ export async function GET(request: Request) {
 
   const { data, error } = await supabase
     .from('documents')
-    .select('document_id, title, document_type, mime_type, retrieved_at, town_id, meeting:meetings(meeting_id, title, start_at)')
+    .select('document_id, title, document_type, mime_type, file_size_bytes, retrieved_at, town_id, meeting:meetings(meeting_id, title, start_at)')
     .in('town_id', townIds)
     .limit(MAX_DOCUMENTS);
 

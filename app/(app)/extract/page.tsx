@@ -15,7 +15,7 @@
 // Documents are grouped by meeting, newest meeting first, with a search box.
 // Only the most recent meetings are shown until the user asks for more.
 
-import { BookOpen, Search } from 'lucide-react';
+import { BookOpen, ClipboardList, File, FileText, Files, Search } from 'lucide-react';
 import Link from 'next/link';
 import ContactsTabs from '../../components/ContactsTabs';
 import { useEffect, useState } from 'react';
@@ -23,10 +23,19 @@ import { alertClasses } from '../../components/ui/Alert';
 import { badgeClasses } from '../../components/ui/Badge';
 import { buttonClasses } from '../../components/ui/Button';
 import { cardClasses } from '../../components/ui/Card';
-import { STATUS_STYLES, documentTypeLabel, formatDateTime, formatMeetingDate, readableDocumentName } from '../../../lib/extractions';
+import { STATUS_STYLES, documentTypeLabel, formatDateTime, formatFileSize, formatMeetingDate, readableDocumentName } from '../../../lib/extractions';
 import type { ExtractableDocument, Extraction } from '../../../lib/extractions';
 
 const MEETINGS_PER_PAGE = 8;
+
+// Fix: each document type gets its own badge colour and icon, so agendas,
+// packets, and minutes are easy to tell apart in the list.
+const TYPE_LOOK: Record<string, { tone: 'info' | 'warning' | 'success' | 'neutral'; icon: typeof FileText }> = {
+  Agenda: { tone: 'info', icon: FileText },
+  Packet: { tone: 'warning', icon: Files },
+  Minutes: { tone: 'success', icon: ClipboardList },
+  Other: { tone: 'neutral', icon: File },
+};
 
 type MeetingGroup = { key: string; title: string; townName: string | null; startAt: string | null; documents: ExtractableDocument[] };
 
@@ -315,15 +324,23 @@ export default function ExtractPage() {
                                   <span className={`h-2 w-2 rounded-full ${isSelected ? 'bg-accent' : 'bg-transparent'}`} />
                                 </span>
                                 {/* Compact row: title on the left, type and format on the right */}
-                                <span className="min-w-0 flex-1 truncate text-sm" title={doc.title}>
-                                  <span className="font-medium">{documentTypeLabel(doc.document_type)}</span>
-                                  <span className="text-fg-muted"> · {doc.title}</span>
-                                </span>
+                                {/* The document type as a coloured badge with its own icon */}
+                                {(() => {
+                                  const look = TYPE_LOOK[doc.document_type] ?? TYPE_LOOK.Other;
+                                  const Icon = look.icon;
+                                  return (
+                                    <span className={badgeClasses(look.tone, 'inline-flex shrink-0 items-center gap-1')}>
+                                      <Icon aria-hidden="true" className="h-3.5 w-3.5" />
+                                      {documentTypeLabel(doc.document_type)}
+                                    </span>
+                                  );
+                                })()}
+                                <span className="min-w-0 flex-1 truncate text-sm text-fg-muted" title={doc.title}>{doc.title}</span>
                                 {isSelected ? (
                                   <span className={badgeClasses('success', 'shrink-0')}>Selected</span>
                                 ) : null}
                                 <span className="shrink-0 whitespace-nowrap text-xs text-fg-muted">
-                                  {isPdf ? 'PDF' : 'Not a PDF'}
+                                  {doc.file_size_bytes ? `${formatFileSize(doc.file_size_bytes)} · ` : ''}{isPdf ? 'PDF' : 'Not a PDF'}
                                 </span>
                               </button>
                             </li>
