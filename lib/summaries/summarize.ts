@@ -70,7 +70,7 @@ export function fillUserMessage(documentType: DocumentType, title: string, townN
     .replace('[the town name]', () => townName);
 }
 
-function requireEnv(name: 'ANTHROPIC_API_KEY' | 'SUMMARY_MODEL'): string {
+function requireEnv(name: 'SUMMARY_API_KEY' | 'SUMMARY_MODEL'): string {
   const value = process.env[name]?.trim();
   if (!value) {
     throw new Error(`Summary is not configured: ${name} is not set`);
@@ -81,7 +81,7 @@ function requireEnv(name: 'ANTHROPIC_API_KEY' | 'SUMMARY_MODEL'): string {
 // Summarizes a stored PDF with the Claude API. The PDF is sent as a document
 // so scanned pages are read too. The provider stays behind this function.
 export async function summarizeDocument(input: SummaryInput): Promise<SummaryResult> {
-  const apiKey = requireEnv('ANTHROPIC_API_KEY');
+  const apiKey = requireEnv('SUMMARY_API_KEY');
   const model = requireEnv('SUMMARY_MODEL');
 
   const client = new Anthropic({ apiKey });

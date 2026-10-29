@@ -49,7 +49,7 @@ describe('POST /api/summaries/process secret and settings checks (SRS-204.1)', (
       }),
     );
     vi.stubEnv('SUMMARY_PROCESS_SECRET', PROCESS_SECRET);
-    vi.stubEnv('ANTHROPIC_API_KEY', ANTHROPIC_KEY);
+    vi.stubEnv('SUMMARY_API_KEY', ANTHROPIC_KEY);
     vi.stubEnv('SUMMARY_MODEL', MODEL_NAME);
     vi.stubEnv('SUPABASE_SERVICE_ROLE_KEY', SERVICE_ROLE_KEY);
     for (const method of CONSOLE_METHODS) {
@@ -104,7 +104,7 @@ describe('POST /api/summaries/process secret and settings checks (SRS-204.1)', (
     await expectResponse(await callProcess(header), 401, 'Unauthorized.');
   });
 
-  it.each(['ANTHROPIC_API_KEY', 'SUMMARY_MODEL', 'SUPABASE_SERVICE_ROLE_KEY'])(
+  it.each(['SUMMARY_API_KEY', 'SUMMARY_MODEL', 'SUPABASE_SERVICE_ROLE_KEY'])(
     'returns 500 naming %s when it is missing, with the right secret',
     async (name) => {
       vi.stubEnv(name, '');
@@ -118,7 +118,7 @@ describe('POST /api/summaries/process secret and settings checks (SRS-204.1)', (
   );
 
   it('checks the secret before the settings', async () => {
-    vi.stubEnv('ANTHROPIC_API_KEY', '');
+    vi.stubEnv('SUMMARY_API_KEY', '');
 
     await expectResponse(await callProcess('not-the-secret'), 401, 'Unauthorized.');
   });

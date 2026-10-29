@@ -482,7 +482,7 @@ describe('Summary generation start (SRS-204.1)', () => {
       }),
     );
     vi.stubEnv('SUPABASE_SERVICE_ROLE_KEY', SERVICE_ROLE_KEY);
-    vi.stubEnv('ANTHROPIC_API_KEY', ANTHROPIC_KEY);
+    vi.stubEnv('SUMMARY_API_KEY', ANTHROPIC_KEY);
     vi.stubEnv('SUMMARY_MODEL', MODEL_NAME);
     for (const method of CONSOLE_METHODS) {
       vi.spyOn(console, method).mockImplementation(() => {});
@@ -720,7 +720,7 @@ describe('Summary generation start (SRS-204.1)', () => {
     expect(consoleOutput()).toContain('recorded 6 attempts, starting 5, left 1 for POST /api/summaries/process');
   });
 
-  it.each(['ANTHROPIC_API_KEY', 'SUMMARY_MODEL'])(
+  it.each(['SUMMARY_API_KEY', 'SUMMARY_MODEL'])(
     'records the attempt but starts no job when %s is missing',
     async (name) => {
       vi.stubEnv(name, '');

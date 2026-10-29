@@ -299,7 +299,7 @@ describe('Complete meeting retrieval (SRS-220.1)', () => {
     beforeEach(() => {
       vi.clearAllMocks();
       vi.stubEnv('SUPABASE_SERVICE_ROLE_KEY', 'test-service-role-key');
-      vi.stubEnv('ANTHROPIC_API_KEY', '');
+      vi.stubEnv('SUMMARY_API_KEY', '');
       vi.stubEnv('SUMMARY_MODEL', '');
       vi.stubEnv('RETRIEVAL_MAX_PAGES', '2');
       vi.spyOn(console, 'log').mockImplementation(() => {});
