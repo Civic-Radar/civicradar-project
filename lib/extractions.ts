@@ -145,6 +145,9 @@ export type ExtractableDocument = {
   retrieved_at: string;
   // The meeting the document belongs to, for grouping on the extraction page.
   meeting: { meeting_id: number; title: string; start_at: string } | null;
+  // The document's town, shown with its meeting and used by the town tabs.
+  town_id: number;
+  town_name?: string;
 };
 
 // SRS-301.8 — a document can be extracted once its meeting has started. A

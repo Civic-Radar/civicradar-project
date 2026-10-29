@@ -24,6 +24,11 @@ vi.mock('../../lib/supabase', () => ({
         const q = { select: vi.fn(() => q), eq: vi.fn(async () => ({ data: follows, error: null })) };
         return q;
       }
+      if (table === 'towns') {
+        const all = [{ town_id: SALEM, name: 'Salem' }, { town_id: BROOKLINE, name: 'Brookline' }];
+        const q = { select: vi.fn(() => q), in: vi.fn(async (_c: string, ids: number[]) => ({ data: all.filter((t) => ids.includes(t.town_id)), error: null })) };
+        return q;
+      }
       const q = {
         select: vi.fn(() => q),
         in: vi.fn((_column: string, ids: unknown[]) => { townFilter = ids; return q; }),
@@ -94,5 +99,26 @@ describe('Extractable documents (SRS-301.8)', () => {
     expect(hasMeetingTakenPlace({ meeting: { start_at: '2026-10-27T18:00:00Z' } }, NOW)).toBe(true);
     expect(hasMeetingTakenPlace({ meeting: { start_at: '2026-10-27T18:01:00Z' } }, NOW)).toBe(false);
     expect(hasMeetingTakenPlace({ meeting: null }, NOW)).toBe(false);
+  });
+});
+
+describe('Town on each document, and the followed towns (Fix: extraction list towns)', () => {
+  it("gives each document its town's name", async () => {
+    follows = [{ town_id: SALEM }, { town_id: BROOKLINE }];
+
+    const { body } = await list();
+
+    expect(body.documents.map((d: Row) => [d.document_id, d.town_name])).toEqual([
+      [3, 'Brookline'],
+      [1, 'Salem'],
+    ]);
+  });
+
+  it('lists the followed towns in alphabetical order, for the town tabs', async () => {
+    follows = [{ town_id: SALEM }, { town_id: BROOKLINE }];
+
+    const { body } = await list();
+
+    expect(body.towns).toEqual([{ town_id: BROOKLINE, name: 'Brookline' }, { town_id: SALEM, name: 'Salem' }]);
   });
 });

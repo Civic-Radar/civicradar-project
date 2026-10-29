@@ -28,7 +28,7 @@ import type { ExtractableDocument, Extraction } from '../../../lib/extractions';
 
 const MEETINGS_PER_PAGE = 8;
 
-type MeetingGroup = { key: string; title: string; startAt: string | null; documents: ExtractableDocument[] };
+type MeetingGroup = { key: string; title: string; townName: string | null; startAt: string | null; documents: ExtractableDocument[] };
 
 // Groups the (already sorted) documents by meeting, keeping their order.
 function groupByMeeting(documents: ExtractableDocument[]): MeetingGroup[] {
@@ -37,7 +37,13 @@ function groupByMeeting(documents: ExtractableDocument[]): MeetingGroup[] {
     const key = doc.meeting ? String(doc.meeting.meeting_id) : 'none';
     let group = groups.get(key);
     if (!group) {
-      group = { key, title: doc.meeting?.title.trim() || 'Other documents', startAt: doc.meeting?.start_at ?? null, documents: [] };
+      group = {
+        key,
+        title: doc.meeting?.title.trim() || 'Other documents',
+        townName: doc.town_name ?? null,
+        startAt: doc.meeting?.start_at ?? null,
+        documents: [],
+      };
       groups.set(key, group);
     }
     group.documents.push(doc);
@@ -52,6 +58,9 @@ export default function ExtractPage() {
   const [documents, setDocuments] = useState<ExtractableDocument[]>([]);
   // SRS-301.8: false when the user follows no town, so there is nothing to list.
   const [followsAnyTown, setFollowsAnyTown] = useState(true);
+  // The followed towns, and the town tab chosen ('all' shows every followed town).
+  const [towns, setTowns] = useState<{ town_id: number; name: string }[]>([]);
+  const [townTab, setTownTab] = useState<number | 'all'>('all');
   const [extractions, setExtractions] = useState<Extraction[]>([]);
   const [selectedId, setSelectedId] = useState<number | null>(null);
   const [query, setQuery] = useState('');
@@ -92,6 +101,7 @@ export default function ExtractPage() {
 
     setDocuments(docsData.documents);
     setFollowsAnyTown(docsData.followsAnyTown !== false);
+    setTowns(docsData.towns ?? []);
     setExtractions(extData.extractions);
   }
 
@@ -106,11 +116,12 @@ export default function ExtractPage() {
   // Search matches the document title or its meeting's title, ignoring case.
   // While searching, every matching meeting is shown.
   const search = query.trim().toLowerCase();
+  const inTown = townTab === 'all' ? documents : documents.filter((d) => d.town_id === townTab);
   const matching = search
-    ? documents.filter(
+    ? inTown.filter(
         (d) => d.title.toLowerCase().includes(search) || (d.meeting?.title.toLowerCase().includes(search) ?? false),
       )
-    : documents;
+    : inTown;
   const groups = groupByMeeting(matching);
   const shownGroups = search ? groups : groups.slice(0, meetingsShown);
   const hiddenMeetings = groups.length - shownGroups.length;
@@ -229,6 +240,29 @@ export default function ExtractPage() {
             </div>
           ) : (
             <>
+              {/* One tab per followed town, when there is more than one */}
+              {towns.length > 1 ? (
+                <div role="tablist" aria-label="Towns" className="mt-4 flex flex-wrap gap-2">
+                  {[{ town_id: 'all' as const, name: 'All towns' }, ...towns].map((town) => {
+                    const active = townTab === town.town_id;
+                    return (
+                      <button
+                        key={town.town_id}
+                        type="button"
+                        role="tab"
+                        aria-selected={active}
+                        onClick={() => { setTownTab(town.town_id); setMeetingsShown(MEETINGS_PER_PAGE); }}
+                        className={`inline-flex min-h-9 items-center rounded-md border px-3 py-1.5 text-xs font-semibold transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent ${
+                          active ? 'border-accent bg-accent-wash text-fg' : 'border-line bg-card text-fg-muted hover:border-line-strong hover:bg-raised'
+                        }`}
+                      >
+                        {town.name}
+                      </button>
+                    );
+                  })}
+                </div>
+              ) : null}
+
               <label htmlFor="document-search" className="sr-only">Search documents</label>
               <div className="mt-4 flex items-center gap-2 rounded-md border border-line bg-card pl-4 transition focus-within:border-accent focus-within:outline focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-accent">
                 <Search aria-hidden="true" className="h-[17px] w-[17px] shrink-0 text-fg-subtle" />
@@ -256,6 +290,7 @@ export default function ExtractPage() {
                   {shownGroups.map((group) => (
                     <section key={group.key} aria-label={group.title}>
                       <h3 className="text-sm font-semibold text-fg">
+                        {group.townName ? <span className="text-accent">{group.townName} · </span> : null}
                         {group.title}
                         {group.startAt ? <span className="font-normal text-fg-muted"> · {formatMeetingDate(group.startAt)}</span> : null}
                       </h3>
