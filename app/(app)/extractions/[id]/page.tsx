@@ -16,6 +16,9 @@
 //
 // SRS-303.2, AO, Source document link: the document title is a link to the
 // source document's detail page (SRS-203.1, /documents/<id>).
+//
+// SRS-307.2, AO, Known failure cause: a failed extraction also says why when the
+// file could not be read, was over the size limit, or was missing.
 
 import { BookOpen } from 'lucide-react';
 import Link from 'next/link';
@@ -248,9 +251,13 @@ export default function ExtractionPage({ params }: { params: { id: string } }) {
         ) : null}
 
         {extraction?.status === 'Failed' ? (
-          <p role="alert" className={alertClasses('error')}>
-            Extraction was not completed.
-          </p>
+          <div role="alert" className={alertClasses('error')}>
+            <p>Extraction was not completed.</p>
+            {/* SRS-307.2: the cause, when it is a known one */}
+            {extraction.failure_message ? (
+              <p data-testid="failure-cause" className="mt-1">{extraction.failure_message}</p>
+            ) : null}
+          </div>
         ) : null}
 
         <p className="text-sm text-fg-muted">

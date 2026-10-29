@@ -106,10 +106,27 @@ export const NOT_FOUND_LABEL = 'Not found';
 // SRS-302.4 — exact wording when a completed extraction found nobody.
 export const NO_OFFICIALS_MESSAGE = 'No officials could be extracted from this document.';
 
+// The causes an extraction can fail with (extractions.failure_cause CHECK constraint).
+export type FailureCause = 'Unreadable file' | 'File too large' | 'Missing source file' | 'Other';
+
 // One extraction as returned by GET /api/extractions/[id].
 export type ExtractionDetail = Extraction & {
-  failure_cause: 'Unreadable file' | 'File too large' | 'Missing source file' | 'Other' | null;
+  failure_cause: FailureCause | null;
+  // SRS-307.2: the cause in plain words when it is a known one; null otherwise.
+  failure_message: string | null;
 };
+
+// SRS-307.2 — the known causes, in plain words. No error codes or technical details.
+// 'Other' is not a known cause (SRS-307.3), so it has no message here.
+export const FAILURE_CAUSE_MESSAGES: Record<Exclude<FailureCause, 'Other'>, string> = {
+  'Unreadable file': 'The file could not be read.',
+  'File too large': 'The file is larger than the 25 MB size limit.',
+  'Missing source file': 'The source file could not be found.',
+};
+
+export function failureCauseMessage(cause: string | null): string | null {
+  return cause && cause in FAILURE_CAUSE_MESSAGES ? FAILURE_CAUSE_MESSAGES[cause as keyof typeof FAILURE_CAUSE_MESSAGES] : null;
+}
 
 // GET /api/extractions/[id] response: officials is filled once the extraction is Completed.
 export type ExtractionDetailResponse = {
