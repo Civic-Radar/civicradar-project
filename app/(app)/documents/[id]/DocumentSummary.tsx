@@ -2,7 +2,14 @@ import Card from '../../../components/ui/Card';
 
 // Summary section of the document detail page (SRS-204.2). Shows the stored text
 // as plain text, one paragraph per line; renders nothing when there is no text.
-export default function DocumentSummary({ text }: { text: string | null }) {
+// SRS-207.1: a View source PDF link follows the text when there is a PDF link.
+export default function DocumentSummary({
+  text,
+  sourcePdfUrl = null,
+}: {
+  text: string | null;
+  sourcePdfUrl?: string | null;
+}) {
   const paragraphs = (text ?? '').split(/[\r\n]+/).map((line) => line.trim()).filter(Boolean);
   if (paragraphs.length === 0) return null;
 
@@ -14,6 +21,11 @@ export default function DocumentSummary({ text }: { text: string | null }) {
       <div className="mt-5 max-w-prose space-y-4 text-base leading-relaxed text-fg">
         {paragraphs.map((paragraph, index) => <p key={index}>{paragraph}</p>)}
       </div>
+      {sourcePdfUrl ? (
+        <p className="mt-5">
+          <a href={sourcePdfUrl} className="text-accent hover:underline">View source PDF</a>
+        </p>
+      ) : null}
     </Card>
   );
 }
