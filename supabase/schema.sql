@@ -31,8 +31,9 @@
 --      service role may run it.
 --   7. public.match_meetings_with_reasons() returns those same meetings with
 --      why each one matched: its town, the followed topic tags with their
---      agenda text, and whether the user follows it directly (SRS-401.5).
---      Only the service role may run it.
+--      agenda text, and whether the user follows it directly (SRS-401.5),
+--      plus the town's time zone for the dashboard (SRS-501.1). Only the
+--      service role may run it.
 --   8. public.create_meeting_baseline(), fired by the meetings_first_baseline
 --      trigger, saves a new meeting's values as its first comparison baseline
 --      in the same transaction as the insert (SRS-404.7).
@@ -765,9 +766,10 @@ grant execute on function public.match_meetings_for_user (UUID) to service_role;
 
 -- Function: match_meetings_with_reasons
 -- Reviewed by: EG (Erick Gonzalez)
--- Supports: SRS-401.5
+-- Supports: SRS-401.5, SRS-501.1
 -- Purpose: Returns the same meetings as match_meetings_for_user, each as a
---          JSON object holding the meeting's columns plus why it matched:
+--          JSON object holding the meeting's columns, meeting_time_zone (its
+--          town's, for local start times on the dashboard), and why it matched:
 --          town (the meeting's town name), matched_topics (the user's followed,
 --          non-removed topic tags on the meeting, each with the agenda text that
 --          produced it, sorted by topic name) and followed_directly. Tags are
@@ -782,6 +784,7 @@ set
   as $$
   SELECT to_jsonb(m) || jsonb_build_object(
     'town', t.name,
+    'meeting_time_zone', t.meeting_time_zone,
     'matched_topics', CASE
       WHEN t.removed_at IS NULL AND EXISTS (
         SELECT 1

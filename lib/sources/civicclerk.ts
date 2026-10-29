@@ -1,4 +1,11 @@
-import type { DocumentType, MeetingFilesListing, MeetingListing, SourceFile, SourceMeeting } from './types';
+import type {
+  DocumentType,
+  MeetingFilesListing,
+  MeetingListing,
+  SourceAgendaItem,
+  SourceFile,
+  SourceMeeting,
+} from './types';
 
 // All CivicClerk specifics live in this file. {code} is the town's
 // towns.source_account_id (e.g. Salem is "salemma").
@@ -48,7 +55,29 @@ interface CivicClerkEvent {
   startDateTime?: string | null;
   eventLocation?: CivicClerkLocation | null;
   publishedFiles?: CivicClerkPublishedFile[] | null;
+  // The agenda's id, not the event id. 0 when the meeting has no agenda.
+  agendaId?: number | null;
+  hasAgenda?: boolean | null;
 }
+
+// One entry of a meeting's agenda. Sections and items share this shape, and
+// childItems nests entries of the same shape. hasChildItems is not used: it
+// can be false even when childItems has entries.
+interface CivicClerkAgendaEntry {
+  id?: number | null;
+  isDeleted?: boolean | null;
+  agendaObjectItemName?: string | null; // HTML
+  agendaObjectItemDescription?: string | null; // HTML
+  childItems?: CivicClerkAgendaEntry[] | null;
+}
+
+interface CivicClerkAgenda {
+  agendaIsPublish?: boolean | null;
+  items?: CivicClerkAgendaEntry[];
+}
+
+// title is VARCHAR(1000) in agenda_items.
+const MAX_TITLE_LENGTH = 1000;
 
 interface CivicClerkPage {
   value?: CivicClerkEvent[];
@@ -96,6 +125,10 @@ function toSourceMeeting(event: CivicClerkEvent, sourceAccountId: string): Sourc
     location: joinLocation(event.eventLocation),
     onlineLink: null, // CivicClerk sends no online participation link (zoomMeetingId is not a link)
     sourceUrl: portalEventUrl(sourceAccountId, sourceMeetingId),
+    agendaRef:
+      event.hasAgenda === true && typeof event.agendaId === 'number' && event.agendaId > 0
+        ? String(event.agendaId)
+        : null,
   };
 }
 
@@ -245,6 +278,135 @@ export async function fetchMeetingFiles(sourceAccountId: string, maxPages: numbe
   );
 
   return { filesByMeeting: new Map(items), complete, pagesRead };
+}
+
+const NAMED_ENTITIES = new Map<string, string>([
+  ['nbsp', ' '],
+  ['amp', '&'],
+  ['lt', '<'],
+  ['gt', '>'],
+  ['quot', '"'],
+]);
+
+function decodeEntity(entity: string, name: string): string {
+  if (name.startsWith('#')) {
+    const codePoint = /^#x/i.test(name) ? parseInt(name.slice(2), 16) : parseInt(name.slice(1), 10);
+    return Number.isSafeInteger(codePoint) && codePoint >= 0 && codePoint <= 0x10ffff
+      ? String.fromCodePoint(codePoint)
+      : entity;
+  }
+  return NAMED_ENTITIES.get(name.toLowerCase()) ?? entity;
+}
+
+// Turns an agenda HTML string into plain text: line-ending tags become
+// newlines, table cell ends become spaces, every other tag is dropped, the
+// common entities are decoded, and each line is trimmed with empty lines
+// dropped. Returns '' when nothing is left.
+function htmlToText(html: unknown): string {
+  if (typeof html !== 'string') {
+    return '';
+  }
+
+  return html
+    .replace(/<br\s*\/?>/gi, '\n')
+    .replace(/<\/(?:p|div|tr|li|h[1-6])\s*>/gi, '\n')
+    .replace(/<\/(?:td|th)\s*>/gi, ' ')
+    .replace(/<[^>]*>/g, '')
+    .replace(/&(nbsp|amp|lt|gt|quot|#39|#\d+|#x[0-9a-f]+);/gi, decodeEntity)
+    .replace(/ /g, ' ')
+    .split(/\r\n|\r|\n/)
+    .map((line) => line.trim())
+    .filter((line) => line !== '')
+    .join('\n');
+}
+
+// Flattens the agenda depth first in array order: an entry, then its
+// childItems. Deleted entries, entries with no title and repeated ids are
+// skipped; skips are logged by id only. sortOrder is the position among the
+// kept entries, starting at 1.
+function toSourceAgendaItems(entries: CivicClerkAgendaEntry[], agendaRef: string): SourceAgendaItem[] {
+  const items: SourceAgendaItem[] = [];
+  const seen = new Set<string>();
+
+  const visit = (list: CivicClerkAgendaEntry[]) => {
+    for (const entry of list) {
+      if (entry.id === null || entry.id === undefined) {
+        throw new Error(`CivicClerk returned an agenda entry without an id in agenda ${agendaRef}`);
+      }
+      const sourceItemId = String(entry.id);
+
+      if (entry.isDeleted === true) {
+        // A deleted entry is skipped, but its children are still read.
+      } else if (seen.has(sourceItemId)) {
+        console.error(`CivicClerk agenda ${agendaRef} repeats item ${sourceItemId}, kept the first`);
+      } else {
+        seen.add(sourceItemId);
+        const name = htmlToText(entry.agendaObjectItemName);
+        const description = htmlToText(entry.agendaObjectItemDescription);
+        const title = Array.from(name.split('\n')[0]).slice(0, MAX_TITLE_LENGTH).join('');
+
+        if (title === '') {
+          console.error(`CivicClerk agenda ${agendaRef} item ${sourceItemId} has no title, skipped`);
+        } else {
+          const itemText = [name, description].filter((part) => part !== '').join('\n\n');
+          items.push({ sourceItemId, sortOrder: items.length + 1, title, itemText: itemText === '' ? null : itemText });
+        }
+      }
+
+      if (Array.isArray(entry.childItems)) {
+        visit(entry.childItems);
+      }
+    }
+  };
+
+  visit(entries);
+  return items;
+}
+
+// Returns the agenda items of one meeting's agenda, in agenda order, with one
+// request (SRS-220.9). agendaRef is the meeting's SourceMeeting.agendaRef. An
+// agenda that is not published has no public items and gives an empty list.
+// Throws on a failed request, a timeout, a body that is not JSON, and a body
+// without an item list: a failed listing is never "no agenda items".
+export async function fetchAgendaItems(sourceAccountId: string, agendaRef: string): Promise<SourceAgendaItem[]> {
+  if (!/^[a-z0-9-]+$/i.test(sourceAccountId)) {
+    throw new Error(`Invalid CivicClerk account id: "${sourceAccountId}"`);
+  }
+  if (!/^\d+$/.test(agendaRef)) {
+    throw new Error(`Invalid CivicClerk agenda id: "${agendaRef}"`);
+  }
+
+  const url = `${API_BASE_URL.replace('{code}', sourceAccountId)}/Meetings/${agendaRef}`;
+  // The same signal also covers reading the body.
+  const signal = AbortSignal.timeout(PAGE_TIMEOUT_MS);
+
+  let response: Response;
+  try {
+    response = await fetch(url, { headers: { Accept: 'application/json' }, signal });
+  } catch (error) {
+    throw new Error(`CivicClerk could not be reached: ${(error as Error).message}`);
+  }
+
+  if (!response.ok) {
+    throw new Error(`CivicClerk agenda request failed with status ${response.status}: ${url}`);
+  }
+
+  let agenda: CivicClerkAgenda;
+  try {
+    agenda = (await response.json()) as CivicClerkAgenda;
+  } catch (error) {
+    throw new Error(`CivicClerk returned agenda ${agendaRef} that is not JSON: ${(error as Error).message}`);
+  }
+
+  if (agenda === null || typeof agenda !== 'object' || !Array.isArray(agenda.items)) {
+    throw new Error(`CivicClerk returned agenda ${agendaRef} without an item list`);
+  }
+
+  if (agenda.agendaIsPublish !== true) {
+    return [];
+  }
+
+  return toSourceAgendaItems(agenda.items, agendaRef);
 }
 
 // Downloads one file's bytes and returns them with the MIME type the source

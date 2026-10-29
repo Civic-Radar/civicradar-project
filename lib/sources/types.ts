@@ -10,6 +10,18 @@ export interface SourceMeeting {
   location: string | null;
   onlineLink: string | null;
   sourceUrl: string | null; // official source page
+  // The reference fetchAgendaItems takes for this meeting's agenda, or null
+  // when the source lists no agenda for it (SRS-220.9).
+  agendaRef?: string | null;
+}
+
+// Common agenda item shape for one entry of a meeting's agenda (SRS-220.9).
+// Source-specific field names stay inside the client.
+export interface SourceAgendaItem {
+  sourceItemId: string; // item identity within a meeting
+  sortOrder: number; // position in the agenda, starting at 1
+  title: string;
+  itemText: string | null; // plain text, null when the source gives none
 }
 
 // The documents.document_type values. Each source client maps its own file

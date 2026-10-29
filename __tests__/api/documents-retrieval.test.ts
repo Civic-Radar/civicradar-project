@@ -10,6 +10,7 @@ vi.mock('../../lib/supabase', () => ({
 vi.mock('../../lib/sources/civicclerk', () => ({
   fetchMeetings: vi.fn(),
   fetchMeetingFiles: vi.fn(),
+  fetchAgendaItems: vi.fn(),
   downloadFile: vi.fn(),
 }));
 
@@ -21,8 +22,18 @@ const SALEM_TOWN_ID = 1;
 const OTHER_TOWN_ID = 2;
 
 const TOWNS: Record<number, Row> = {
-  [SALEM_TOWN_ID]: { town_id: SALEM_TOWN_ID, source_account_id: 'salemma', meeting_time_zone: 'America/New_York' },
-  [OTHER_TOWN_ID]: { town_id: OTHER_TOWN_ID, source_account_id: 'example-two', meeting_time_zone: 'America/New_York' },
+  [SALEM_TOWN_ID]: {
+    town_id: SALEM_TOWN_ID,
+    source_account_id: 'salemma',
+    meeting_time_zone: 'America/New_York',
+    provides_agenda_items: false,
+  },
+  [OTHER_TOWN_ID]: {
+    town_id: OTHER_TOWN_ID,
+    source_account_id: 'example-two',
+    meeting_time_zone: 'America/New_York',
+    provides_agenda_items: false,
+  },
 };
 
 // Salem meeting 1192, which lists Agenda file 1166 and Agenda Packet file 1167.
@@ -214,6 +225,11 @@ function createFakeSupabase() {
           }),
           update: () => ({ eq: async () => ({ data: null, error: null }) }),
         };
+      }
+
+      // Agenda items (SRS-220.9), stored without assertions here.
+      if (table === 'agenda_items') {
+        return { upsert: async () => ({ data: null, error: null }) };
       }
 
       throw new Error(`Unexpected table: ${table}`);

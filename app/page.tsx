@@ -42,7 +42,7 @@ export default function Home() {
           </h1>
           <p className="mt-6 max-w-2xl text-lg leading-[1.9] text-fg-muted">
             Civic Radar keeps track of town meetings and published documents so you don&apos;t have to check every portal
-            yourself. Now available for Salem, MA.
+            yourself.
           </p>
           <div className="mt-8 flex flex-wrap gap-3">
             <Link href="/register" className={buttonClasses({ variant: "primary", className: "px-6" })}>

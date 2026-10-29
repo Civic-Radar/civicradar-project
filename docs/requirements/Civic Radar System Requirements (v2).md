@@ -410,9 +410,9 @@ Traces to: UR-204
 
 **UR-205, MS — Summary Placement.** As a user, I want a document's summary displayed directly below its PDF, so that I can reference both without navigating elsewhere.
 
-**SRS-205.1, MS, Summary positioned below PDF.** The system shall place the summary section directly below the PDF viewer, with no other section between them, when a document detail page opens.
+**SRS-205.1, MS, Summary positioned above PDF.** The system shall place the summary section directly above the PDF viewer, with no other section between them, when a document detail page opens.
 
-**Acceptance Criteria:** Given document X has a Complete summary, When the user opens its detail page, Then the summary section is the first section below the PDF viewer.
+**Acceptance Criteria:** Given document X has a Complete summary, When the user opens its detail page, Then the PDF viewer is the first section below the summary section.
 
 Traces to: UR-205
 
@@ -514,9 +514,9 @@ Traces to: UR-209
 
 Traces to: UR-210
 
-**SRS-210.2, MS, Failed message on detail page.** The system shall display "A summary could not be generated for this document. You can still read the original PDF above." in the summary section when the user opens the detail page of a document whose summary status is Failed.
+**SRS-210.2, MS, Failed message on detail page.** The system shall display "A summary could not be generated for this document. You can still read the original PDF below." in the summary section when the user opens the detail page of a document whose summary status is Failed.
 
-**Acceptance Criteria:** Given document X has summary status Failed, When the user opens its detail page, Then "A summary could not be generated for this document. You can still read the original PDF above." appears in the summary section.
+**Acceptance Criteria:** Given document X has summary status Failed, When the user opens its detail page, Then "A summary could not be generated for this document. You can still read the original PDF below." appears in the summary section.
 
 Traces to: UR-210
 
@@ -722,10 +722,18 @@ Traces to: UR-220
 
 Traces to: UR-220
 
-**SRS-220.3, MS, Meeting details storage.** The system shall store each meeting's title, governing body, start time, location, online participation link, recording link, and official source link when the source provides them.
+**SRS-220.3, MS, Meeting details storage.** The system shall store each meeting's title, governing body, start time, location, online participation link, recording link, and official source link when the source provides them, show a signed-in user the stored meetings of the towns the user follows with each meeting's town name, and let only a system administrator start retrieval for one chosen town or for all supported towns from a retrieval page.
 
-**Acceptance Criteria:** Given a Salem meeting whose source lists a title, governing body, start time, location, and official source link, When the meeting is retrieved, Then each of those values is stored with the meeting.
+**Acceptance Criteria:**
 
+•       Given a Salem meeting whose source lists a title, governing body, start time, location, and official source link, When the meeting is retrieved, Then each of those values is stored with the meeting.
+•       Given a user follows Brookline and not Salem, When the user opens the meetings page, Then only Brookline's meetings are listed and each row shows its town name.
+•       Given a user follows Salem and Brookline, When the user chooses Brookline in the town filter, Then only Brookline's meetings are listed.
+•       Given the town filter is set to Brookline, When the user clears the filter, Then meetings from both followed towns are listed.
+•       Given a user follows no towns, When the user opens the meetings page, Then no meetings are listed and the user is told to choose towns in Preferences.
+•       Given Salem and Brookline are supported towns and a system administrator chooses Brookline, When the administrator starts retrieval, Then Brookline's meetings and documents are retrieved and no Salem retrieval starts.
+•       Given Salem and Brookline are supported towns and a system administrator chooses all towns, When the administrator starts retrieval, Then the meetings and documents of both towns are retrieved.
+•       Given a signed-in user who is not a system administrator, When the user opens the application or the retrieval page's address, Then no link to the retrieval page and no retrieval control is shown.
 Traces to: UR-220
 
 **SRS-220.4, MS, Missing meeting fields.** The system shall mark a meeting detail as not provided when the source omits that detail.
@@ -1140,20 +1148,26 @@ Traces to: UR-310
 
 ## **UR-311 — Shared Officials List**
 
- **SRS-311.1 (UR-311) — View shared officials list.**The system shall display a single shared list of officials extracted from documents for the pilot municipality.  
+**SRS-311.1, AO, View officials list.** The system shall display the officials found by the signed-in user's saved extractions who have an email address or telephone number, each listed once with the documents they were found in.  
 Acceptance criteria:
 
-* Each official appears once in the list.  
-* Each entry shows name, title, role, and available contact information.  
+* Each official appears once in the list, even when several of the user's extractions found them.  
+* Each entry shows name, title, role, email address, and telephone number, with the most recent details found.  
+* Only officials with an email address or telephone number are listed.  
 * Details that aren't available are labeled as unavailable (consistent with UR-308).  
-* Each entry links to at least one source document (consistent with UR-303).
+* Each entry links to every source document it was found in (consistent with UR-303).  
+* Officials from another user's extractions are not listed.
 
-**SRS-311.2 (UR-311) — Merge repeated officials.** When an extraction finds an official already in the shared list, the system shall update that entry instead of creating a second one.  
+Traces to: UR-311
+
+**SRS-311.2, AO, Merge repeated officials.** When an extraction finds an official already in the shared list, the system shall update that entry instead of creating a second one.  
 Acceptance criteria:
 
 * A name match with the same body creates no duplicate entry.  
 * The entry shows the most recent title and contact details found.  
 * The entry keeps a link to every source document it came from.
+
+Traces to: UR-311
 
 # **5\. Interest Matching, Alerts & Digest**
 
