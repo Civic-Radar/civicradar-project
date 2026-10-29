@@ -100,12 +100,14 @@ async function endCheck(
 // (SRS-220.9), one meeting at a time. A meeting with no agenda gets no
 // request. A failed listing or save is logged and the pass moves on: a failed
 // listing is never "no agenda items", and nothing here stops the run.
+// Returns how many meetings' agenda items were not stored, so the run knows
+// whether every read succeeded.
 async function retrieveAgendaItems(
   supabase: SupabaseClient,
   town: RetrievalRunTown,
   meetings: SourceMeeting[],
   fetchAgendaItems: RetrievalSource['fetchAgendaItems'],
-): Promise<void> {
+): Promise<number> {
   // The first listing of a meeting wins.
   const agendaRefs = new Map<string, string>();
   for (const meeting of meetings) {
@@ -114,7 +116,7 @@ async function retrieveAgendaItems(
     }
   }
   if (agendaRefs.size === 0) {
-    return;
+    return 0;
   }
 
   let meetingRows: Awaited<ReturnType<typeof loadMeetings>>;
@@ -122,7 +124,7 @@ async function retrieveAgendaItems(
     meetingRows = await loadMeetings(supabase, town.town_id, [...agendaRefs.keys()]);
   } catch (error: unknown) {
     console.error(`Agenda retrieval: town ${town.town_id} meeting lookup failed: ${errorMessage(error)}`);
-    return;
+    return agendaRefs.size;
   }
 
   let stored = 0;
@@ -130,6 +132,7 @@ async function retrieveAgendaItems(
   for (const [sourceMeetingId, agendaRef] of agendaRefs) {
     const meeting = meetingRows.get(sourceMeetingId);
     if (!meeting) {
+      failed += 1;
       console.error(`Agenda retrieval: town ${town.town_id} meeting ${sourceMeetingId} has no meetings row, skipped`);
       continue;
     }
@@ -150,6 +153,24 @@ async function retrieveAgendaItems(
   console.log(
     `Agenda retrieval: town ${town.town_id} stored ${stored} items for ${agendaRefs.size} meetings, failed ${failed}`,
   );
+  return failed;
+}
+
+// Compares the town's meetings with their baselines, records each change, and
+// advances the baselines (SRS-404.5, SRS-404.6). Called only after a run in
+// which every read succeeded; after any failed read the previous baselines
+// stay (SRS-404.9). Never throws: a failure is logged and the baselines stay
+// as they were, so the next successful check records the change instead.
+async function processSuccessfulCheck(supabase: SupabaseClient, townId: number, check: CheckRow): Promise<void> {
+  try {
+    const { error } = await supabase.rpc('process_successful_check', { p_check_id: check.check_id });
+
+    if (error) {
+      console.error(`Baseline update: town ${townId} check ${check.check_id} failed: ${error.message}`);
+    }
+  } catch (error: unknown) {
+    console.error(`Baseline update: town ${townId} check ${check.check_id} failed: ${errorMessage(error)}`);
+  }
 }
 
 // One retrieval run for one town, the entry point the route calls today and
@@ -164,7 +185,10 @@ async function retrieveAgendaItems(
 // new meeting or document and nothing failed. An incomplete listing does not
 // count as failed here (SRS-222.3). When the town's provides_agenda_items is
 // true, the saved meetings' agenda items are stored before the file pass
-// (SRS-220.9); otherwise no agenda-item request is made.
+// (SRS-220.9); otherwise no agenda-item request is made. Only when both
+// listings were complete and no agenda listing or file download failed is the
+// check successful (Definition 10); then, after the check row is closed, the
+// town's changes are recorded and its baselines advanced (SRS-404.5).
 export async function runTownRetrieval(
   supabase: SupabaseClient,
   town: RetrievalRunTown,
@@ -182,6 +206,10 @@ export async function runTownRetrieval(
   // Set only when the document pass finished, so any earlier exit leaves
   // changes_found false.
   let documents: RetrieveDocumentsResult | null = null;
+  let agendaFailed = 0;
+  // Set only when every read succeeded, so any earlier exit keeps the
+  // previous baselines (SRS-404.9).
+  let successful = false;
 
   try {
     // A failed fetch is never "no meetings": any client error stops the run.
@@ -206,7 +234,7 @@ export async function runTownRetrieval(
 
     // Only a town verified to provide agenda items gets any agenda request.
     if (town.provides_agenda_items === true) {
-      await retrieveAgendaItems(supabase, town, meetingListing.meetings, source.fetchAgendaItems);
+      agendaFailed = await retrieveAgendaItems(supabase, town, meetingListing.meetings, source.fetchAgendaItems);
     }
 
     // A failed listing is never "no files". Details stay in the server log.
@@ -231,9 +259,13 @@ export async function runTownRetrieval(
       return { ok: false, status: 500, error: `Saved ${saved} meetings, but retrieving their documents failed.` };
     }
 
+    successful = complete && agendaFailed === 0 && documents.failed === 0;
     return { ok: true, saved, complete };
   } finally {
     const changesFound = documents !== null && newMeetings + documents.stored > 0 && documents.failed === 0;
     await endCheck(supabase, town.town_id, check, changesFound, now);
+    if (successful) {
+      await processSuccessfulCheck(supabase, town.town_id, check);
+    }
   }
 }
