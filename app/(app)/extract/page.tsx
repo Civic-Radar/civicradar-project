@@ -23,7 +23,7 @@ import { alertClasses } from '../../components/ui/Alert';
 import { badgeClasses } from '../../components/ui/Badge';
 import { buttonClasses } from '../../components/ui/Button';
 import { cardClasses } from '../../components/ui/Card';
-import { STATUS_STYLES, documentTypeLabel, formatDateTime, formatFileSize, formatMeetingDate, readableDocumentName, versionLabels } from '../../../lib/extractions';
+import { STATUS_STYLES, documentTypeLabel, formatDateTime, formatFileSize, formatMeetingDate, readableDocumentName, versionLabels, withoutDates } from '../../../lib/extractions';
 import type { ExtractableDocument, Extraction } from '../../../lib/extractions';
 
 const MEETINGS_PER_PAGE = 8;
@@ -302,7 +302,7 @@ export default function ExtractPage() {
                     <section key={group.key} aria-label={group.title}>
                       <h3 className="text-sm font-semibold text-fg">
                         {group.townName ? <span className="text-accent">{group.townName} · </span> : null}
-                        {group.title}
+                        {group.startAt ? withoutDates(group.title) : group.title}
                         {group.startAt ? <span className="font-normal text-fg-muted"> · {formatMeetingDate(group.startAt)}</span> : null}
                       </h3>
                       <ul className="mt-2 space-y-1.5">
@@ -346,7 +346,7 @@ export default function ExtractPage() {
                                   className={`min-w-0 flex-1 truncate text-sm ${versions.get(doc.document_id) === 'earlier' ? 'text-fg-subtle' : 'text-fg-muted'}`}
                                   title={doc.title}
                                 >
-                                  {doc.title}
+                                  {withoutDates(doc.title)}
                                 </span>
                                 {isSelected ? (
                                   <span className={badgeClasses('success', 'shrink-0')}>Selected</span>

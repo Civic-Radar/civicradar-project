@@ -186,6 +186,30 @@ export function versionLabels(
   return labels;
 }
 
+// Fix: in the extraction list the meeting heading already shows the date, so a
+// date inside a document or meeting name is only repeated. These remove it:
+// "Monday October 19, 2026", "October 22, 2026", "10.28.26", "10/27/2026",
+// "2026 10 21", "2026-10-21". A name that would be left empty is kept as is.
+const MONTHS = 'January|February|March|April|May|June|July|August|September|October|November|December|Jan|Feb|Mar|Apr|Jun|Jul|Aug|Sep|Sept|Oct|Nov|Dec';
+const DATE_PATTERNS = [
+  new RegExp(`\\b(?:(?:Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday),?\\s+)?(?:${MONTHS})\\.?\\s+\\d{1,2}(?:st|nd|rd|th)?,?\\s+\\d{4}\\b`, 'gi'),
+  /\b\d{1,2}[./-]\d{1,2}[./-](?:\d{4}|\d{2})\b/g,
+  /\b\d{4}[ .-]\d{1,2}[ .-]\d{1,2}\b/g,
+];
+
+export function withoutDates(name: string): string {
+  let out = name;
+  for (const pattern of DATE_PATTERNS) out = out.replace(pattern, ' ');
+  out = out
+    .replace(/\s{2,}/g, ' ')
+    .replace(/\s*,\s*(?=[–—-]\s)/g, ' ') // "Meeting, - Rev 2" -> "Meeting - Rev 2"
+    .replace(/\s+,/g, ',') // "Packet II , x" -> "Packet II, x"
+    .replace(/[\s,;–—-]+$/, '') // a separator left dangling at the end
+    .replace(/^[\s,;–—-]+/, '') // or at the start
+    .trim();
+  return out || name;
+}
+
 // "120 KB", "6.7 MB" — a file's size in the units people read.
 export function formatFileSize(bytes: number): string {
   if (bytes < 1024 * 1024) return `${Math.max(1, Math.round(bytes / 1024))} KB`;
