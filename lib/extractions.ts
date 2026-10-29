@@ -62,6 +62,11 @@ export function filterSavedExtractions<T extends { source_document_title: string
   return text ? list.filter((e) => e.source_document_title.toLowerCase().includes(text)) : list;
 }
 
+// SRS-305.2 — the deletion confirmation names the extraction's source document.
+export function deletionConfirmationMessage(sourceDocumentTitle: string): string {
+  return `Delete your extraction of "${sourceDocumentTitle}"?`;
+}
+
 // SRS-304.1 — when an extraction was performed: when it finished, or when it was
 // requested if it hasn't finished.
 export function extractionDate(extraction: { requested_at: string; completed_at: string | null }): string {
