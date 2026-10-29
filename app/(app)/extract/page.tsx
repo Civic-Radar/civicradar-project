@@ -23,7 +23,7 @@ import { alertClasses } from '../../components/ui/Alert';
 import { badgeClasses } from '../../components/ui/Badge';
 import { buttonClasses } from '../../components/ui/Button';
 import { cardClasses } from '../../components/ui/Card';
-import { STATUS_STYLES, formatDateTime, formatMeetingDate } from '../../../lib/extractions';
+import { STATUS_STYLES, documentTypeLabel, formatDateTime, formatMeetingDate, readableDocumentName } from '../../../lib/extractions';
 import type { ExtractableDocument, Extraction } from '../../../lib/extractions';
 
 const MEETINGS_PER_PAGE = 8;
@@ -315,12 +315,15 @@ export default function ExtractPage() {
                                   <span className={`h-2 w-2 rounded-full ${isSelected ? 'bg-accent' : 'bg-transparent'}`} />
                                 </span>
                                 {/* Compact row: title on the left, type and format on the right */}
-                                <span className="min-w-0 flex-1 truncate text-sm font-medium" title={doc.title}>{doc.title}</span>
+                                <span className="min-w-0 flex-1 truncate text-sm" title={doc.title}>
+                                  <span className="font-medium">{documentTypeLabel(doc.document_type)}</span>
+                                  <span className="text-fg-muted"> · {doc.title}</span>
+                                </span>
                                 {isSelected ? (
                                   <span className={badgeClasses('success', 'shrink-0')}>Selected</span>
                                 ) : null}
                                 <span className="shrink-0 whitespace-nowrap text-xs text-fg-muted">
-                                  {doc.document_type} · {isPdf ? 'PDF' : 'Not a PDF'}
+                                  {isPdf ? 'PDF' : 'Not a PDF'}
                                 </span>
                               </button>
                             </li>
@@ -351,7 +354,7 @@ export default function ExtractPage() {
 
           <p className="mt-4 text-xs font-semibold uppercase tracking-[0.1em] text-fg-muted">Selected document:</p>
           <p className="mt-3 break-words text-sm font-medium" data-testid="selected-title">
-            {selected ? selected.title : <span className="font-normal text-fg-subtle">None selected</span>}
+            {selected ? readableDocumentName(selected) : <span className="font-normal text-fg-subtle">None selected</span>}
           </p>
 
           {selectedInFlight ? (
@@ -360,7 +363,7 @@ export default function ExtractPage() {
 
           {confirming && selected ? (
             <div className="mt-5 rounded-md border border-line bg-raised p-5">
-              <p className="break-words text-sm leading-relaxed text-fg-muted">Extract officials and contact information from <strong className="font-semibold text-fg">{selected.title}</strong>?</p>
+              <p className="break-words text-sm leading-relaxed text-fg-muted">Extract officials and contact information from <strong className="font-semibold text-fg">{readableDocumentName(selected)}</strong>?</p>
               <div className="mt-5 flex flex-wrap gap-3">
                 <button
                   type="button"

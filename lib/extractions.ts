@@ -150,6 +150,31 @@ export type ExtractableDocument = {
   town_name?: string;
 };
 
+// Fix: readable document names. Towns upload files with names like "Agenda V2" or
+// "10.28.26 SC Packet"; these name a document by what it is instead.
+const DOCUMENT_TYPE_LABELS: Record<string, string> = { Agenda: 'Agenda', Packet: 'Agenda packet', Minutes: 'Minutes', Other: 'Document' };
+
+export function documentTypeLabel(type: string): string {
+  return DOCUMENT_TYPE_LABELS[type] ?? 'Document';
+}
+
+// "Brookline · Bicycle Advisory Committee Meeting · Oct 28, 2026 · Agenda". The
+// date is left out when the meeting title already has a year in it. Without a
+// meeting, the original file name is kept.
+export function readableDocumentName(document: {
+  title: string;
+  document_type: string;
+  town_name?: string | null;
+  meeting: { title: string; start_at: string } | null;
+}): string {
+  if (!document.meeting) return document.title;
+  const meetingTitle = document.meeting.title.trim();
+  const date = /\b(19|20)\d\d\b/.test(meetingTitle)
+    ? null
+    : new Date(document.meeting.start_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'America/New_York' });
+  return [document.town_name, meetingTitle, date, documentTypeLabel(document.document_type)].filter(Boolean).join(' · ');
+}
+
 // SRS-301.8 — a document can be extracted once its meeting has started. A
 // document with no meeting (or no start time) can't be placed in time, so it isn't listed.
 export function hasMeetingTakenPlace(document: { meeting: { start_at: string } | null }, now: Date): boolean {
