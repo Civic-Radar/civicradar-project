@@ -156,6 +156,36 @@ export type ExtractableDocument = {
 // "10.28.26 SC Packet"; these name a document by what it is instead.
 const DOCUMENT_TYPE_LABELS: Record<string, string> = { Agenda: 'Agenda', Packet: 'Agenda packet', Minutes: 'Minutes', Other: 'Document' };
 
+// Fix: when a town posts a corrected document it marks the title "AMENDED"
+// (or "REVISED", "UPDATED") and keeps the original too. Within one meeting and
+// one document type, the marked one is the latest and the others are earlier
+// versions. Nothing is guessed when no title in the group is marked.
+const AMENDED = /\b(amended|revised|updated)\b/i;
+
+export function isAmendedTitle(title: string): boolean {
+  return AMENDED.test(title);
+}
+
+export type VersionLabel = 'latest' | 'earlier';
+
+export function versionLabels(
+  documents: { document_id: number; title: string; document_type: string; meeting: { meeting_id: number } | null }[],
+): Map<number, VersionLabel> {
+  const groups = new Map<string, typeof documents>();
+  for (const doc of documents) {
+    if (!doc.meeting) continue;
+    const key = `${doc.meeting.meeting_id}|${doc.document_type}`;
+    groups.set(key, [...(groups.get(key) ?? []), doc]);
+  }
+  const labels = new Map<number, VersionLabel>();
+  for (const group of groups.values()) {
+    const amended = group.filter((d) => isAmendedTitle(d.title));
+    if (amended.length === 0 || amended.length === group.length) continue;
+    for (const doc of group) labels.set(doc.document_id, isAmendedTitle(doc.title) ? 'latest' : 'earlier');
+  }
+  return labels;
+}
+
 // "120 KB", "6.7 MB" — a file's size in the units people read.
 export function formatFileSize(bytes: number): string {
   if (bytes < 1024 * 1024) return `${Math.max(1, Math.round(bytes / 1024))} KB`;
@@ -200,6 +230,8 @@ export function sortDocuments(documents: ExtractableDocument[]): ExtractableDocu
       (b.meeting?.start_at ?? '').localeCompare(a.meeting?.start_at ?? '') ||
       (a.meeting?.meeting_id ?? 0) - (b.meeting?.meeting_id ?? 0) ||
       (DOCUMENT_TYPE_ORDER[a.document_type] ?? 9) - (DOCUMENT_TYPE_ORDER[b.document_type] ?? 9) ||
+      // An amended version comes before the original it corrects.
+      Number(isAmendedTitle(b.title)) - Number(isAmendedTitle(a.title)) ||
       a.title.localeCompare(b.title),
   );
 }

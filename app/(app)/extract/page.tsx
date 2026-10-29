@@ -23,7 +23,7 @@ import { alertClasses } from '../../components/ui/Alert';
 import { badgeClasses } from '../../components/ui/Badge';
 import { buttonClasses } from '../../components/ui/Button';
 import { cardClasses } from '../../components/ui/Card';
-import { STATUS_STYLES, documentTypeLabel, formatDateTime, formatFileSize, formatMeetingDate, readableDocumentName } from '../../../lib/extractions';
+import { STATUS_STYLES, documentTypeLabel, formatDateTime, formatFileSize, formatMeetingDate, readableDocumentName, versionLabels } from '../../../lib/extractions';
 import type { ExtractableDocument, Extraction } from '../../../lib/extractions';
 
 const MEETINGS_PER_PAGE = 8;
@@ -132,6 +132,8 @@ export default function ExtractPage() {
       )
     : inTown;
   const groups = groupByMeeting(matching);
+  // Fix: which documents are the latest (amended) version and which are earlier ones.
+  const versions = versionLabels(documents);
   const shownGroups = search ? groups : groups.slice(0, meetingsShown);
   const hiddenMeetings = groups.length - shownGroups.length;
 
@@ -335,7 +337,17 @@ export default function ExtractPage() {
                                     </span>
                                   );
                                 })()}
-                                <span className="min-w-0 flex-1 truncate text-sm text-fg-muted" title={doc.title}>{doc.title}</span>
+                                {versions.get(doc.document_id) === 'latest' ? (
+                                  <span className={badgeClasses('success', 'shrink-0')}>Latest</span>
+                                ) : versions.get(doc.document_id) === 'earlier' ? (
+                                  <span className={badgeClasses('neutral', 'shrink-0')}>Earlier version</span>
+                                ) : null}
+                                <span
+                                  className={`min-w-0 flex-1 truncate text-sm ${versions.get(doc.document_id) === 'earlier' ? 'text-fg-subtle' : 'text-fg-muted'}`}
+                                  title={doc.title}
+                                >
+                                  {doc.title}
+                                </span>
                                 {isSelected ? (
                                   <span className={badgeClasses('success', 'shrink-0')}>Selected</span>
                                 ) : null}
