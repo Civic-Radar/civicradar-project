@@ -1,4 +1,5 @@
 import { getSupabaseClient } from '../../../../lib/supabase';
+import { ADMIN_ONLY_ERROR, ROLE_CHECK_ERROR, isSystemAdministrator } from '../../../../lib/catalogAdmin';
 import {
   TOWN_COLUMNS,
   cleanTownInput,
@@ -21,6 +22,7 @@ async function getAuthenticatedUser(token: string) {
 }
 
 // SRS-104.6: save an edited town. Source account identifier and meeting time zone are required.
+// SRS-104.1: only a system administrator may edit a town.
 export async function PATCH(request: Request, { params }: { params: { townId: string } }) {
   const token = getToken(request);
   if (!token) return Response.json({ error: 'Unauthorized' }, { status: 401 });
@@ -28,6 +30,10 @@ export async function PATCH(request: Request, { params }: { params: { townId: st
   const { user, supabase, configError } = await getAuthenticatedUser(token);
   if (configError) return Response.json({ error: 'Supabase credentials are not configured.' }, { status: 500 });
   if (!user) return Response.json({ error: 'Invalid or expired token.' }, { status: 401 });
+
+  const isAdmin = await isSystemAdministrator(supabase!, user.id);
+  if (isAdmin === null) return Response.json({ error: ROLE_CHECK_ERROR }, { status: 500 });
+  if (!isAdmin) return Response.json({ error: ADMIN_ONLY_ERROR }, { status: 403 });
 
   const townId = Number(params.townId);
   if (!Number.isInteger(townId) || townId <= 0) {
