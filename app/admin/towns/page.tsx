@@ -2,10 +2,13 @@
 
 // SRS-104.6, KJ, Town source settings
 // SRS-104.1, KJ, Catalog management access
+// SRS-104.4, KJ, Catalog entry removal
 
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { useIsAdministrator } from '../retrieval/useIsAdministrator';
+import CatalogRemoveButton from './CatalogRemoveButton';
+import TopicCatalog from './TopicCatalog';
 
 type Town = { town_id: number; name: string; source_account_id: string; meeting_time_zone: string };
 type TownField = 'name' | 'source_account_id' | 'meeting_time_zone';
@@ -124,7 +127,7 @@ export default function TownSettingsPage() {
     );
   }
 
-    if (!isAdministrator) {
+  if (!isAdministrator) {
     return (
       <main className="min-h-screen bg-surface text-fg flex items-center justify-center px-6">
         <section className="text-center space-y-4">
@@ -226,17 +229,32 @@ export default function TownSettingsPage() {
                     <p className="font-medium">{town.name}</p>
                     <p className="text-xs text-fg-subtle">{town.source_account_id} · {town.meeting_time_zone}</p>
                   </div>
-                  <button
-                    onClick={() => startEdit(town)}
-                    className="rounded-full border border-line bg-raised px-3 py-1 text-xs hover:border-accent-strong hover:text-accent-soft"
-                  >
-                    Edit
-                  </button>
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => startEdit(town)}
+                      className="rounded-full border border-line bg-raised px-3 py-1 text-xs hover:border-accent-strong hover:text-accent-soft"
+                    >
+                      Edit
+                    </button>
+                    <CatalogRemoveButton
+                      kind="town"
+                      id={town.town_id}
+                      name={town.name}
+                      token={token}
+                      onRemoved={(name) => {
+                        setSuccess(`Removed ${name}. Residents no longer see it in their town list.`);
+                        if (editingId === town.town_id) resetForm();
+                        fetchTowns(token);
+                      }}
+                    />
+                  </div>
                 </li>
               ))}
             </ul>
           )}
         </div>
+
+        <TopicCatalog token={token} />
 
         <p className="mt-8 text-sm text-fg-muted">
           Back to <Link href="/" className="text-accent hover:underline">home</Link>
