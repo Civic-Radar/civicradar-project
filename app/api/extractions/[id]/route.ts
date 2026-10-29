@@ -67,3 +67,48 @@ export async function GET(request: Request, { params }: { params: { id: string }
 
   return Response.json({ extraction, officials }, { status: 200 });
 }
+
+// SRS-305.4, AO, Permanent deletion.
+// "The system shall permanently delete the extraction when the user confirms deletion."
+//
+// DELETE /api/extractions/[id] removes one of the signed-in user's extractions.
+// Its officials (extracted_officials) go with it (on delete cascade), so it can't
+// be opened again. The shared officials list (SRS-311) is not affected.
+//   200  deleted
+//   403  the extraction belongs to someone else (SRS-310.2); nothing is deleted
+//   404  no extraction with that id
+export async function DELETE(request: Request, { params }: { params: { id: string } }) {
+  const token = getToken(request);
+  if (!token) return Response.json({ error: 'Unauthorized' }, { status: 401 });
+
+  const extractionId = Number(params.id);
+  if (!/^\d+$/.test(params.id) || !Number.isSafeInteger(extractionId)) {
+    return Response.json({ error: 'Invalid extraction id.' }, { status: 400 });
+  }
+
+  const supabase = getSupabaseClient();
+  if (!supabase) return Response.json({ error: 'Supabase credentials are not configured.' }, { status: 500 });
+
+  const { data: { user }, error: authError } = await supabase.auth.getUser(token);
+  if (authError || !user) return Response.json({ error: 'Invalid or expired token.' }, { status: 401 });
+
+  const { data: extraction, error } = await supabase
+    .from('extractions')
+    .select('extraction_id, user_id')
+    .eq('extraction_id', extractionId)
+    .maybeSingle();
+
+  if (error) return Response.json({ error: 'The extraction could not be deleted.' }, { status: 500 });
+  if (!extraction) return Response.json({ error: 'Extraction not found.' }, { status: 404 });
+  if (extraction.user_id !== user.id) return Response.json({ error: ACCESS_DENIED_MESSAGE }, { status: 403 });
+
+  // The owner check is repeated in the delete itself, so only the owner's row can go.
+  const { error: deleteError } = await supabase
+    .from('extractions')
+    .delete()
+    .eq('extraction_id', extractionId)
+    .eq('user_id', user.id);
+
+  if (deleteError) return Response.json({ error: 'The extraction could not be deleted.' }, { status: 500 });
+  return Response.json({ deleted: true }, { status: 200 });
+}
