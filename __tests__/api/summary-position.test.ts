@@ -45,8 +45,8 @@ const SECTION_AFTER_TITLE = /<\/h1><section\b[^>]*><h2\b[^>]*>Summary<\/h2>/;
 // The end of the summary section: the summary text, its wrapper, the section close.
 const SECTION_END = `<p>${SUMMARY_TEXT}</p></div></section>`;
 
-// With a PDF link, the View source PDF link (SRS-207.1) closes the section instead.
-const SECTION_END_WITH_LINK = `<p>${SUMMARY_TEXT}</p></div><p class="mt-5"><a href="${SIGNED_URL}" class="text-accent hover:underline">View source PDF</a></p></section>`;
+// With a PDF link, the View source PDF link (SRS-207.1, new tab per SRS-207.2) closes the section instead.
+const SECTION_END_WITH_LINK = `<p>${SUMMARY_TEXT}</p></div><p class="mt-5"><a href="${SIGNED_URL}" target="_blank" rel="noopener noreferrer" class="text-accent hover:underline">View source PDF</a></p></section>`;
 
 // Vitest compiles this project's JSX to React.createElement, and the page does
 // not import React, so React is stubbed as a global for the render.
