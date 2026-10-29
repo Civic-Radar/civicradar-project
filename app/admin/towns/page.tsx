@@ -1,9 +1,11 @@
 'use client';
 
 // SRS-104.6, KJ, Town source settings
+// SRS-104.1, KJ, Catalog management access
 
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
+import { useIsAdministrator } from '../retrieval/useIsAdministrator';
 
 type Town = { town_id: number; name: string; source_account_id: string; meeting_time_zone: string };
 type TownField = 'name' | 'source_account_id' | 'meeting_time_zone';
@@ -22,6 +24,7 @@ const COMMON_TIME_ZONES = [
 
 export default function TownSettingsPage() {
   const [token, setToken] = useState<string | null>(null);
+  const isAdministrator = useIsAdministrator();
   const [loading, setLoading] = useState(true);
   const [towns, setTowns] = useState<Town[]>([]);
 
@@ -100,7 +103,7 @@ export default function TownSettingsPage() {
     return `mt-1 w-full rounded-xl border ${border} bg-surface px-4 py-3 text-fg outline-none transition`;
   }
 
-  if (loading) {
+  if (loading || isAdministrator === null) {
     return (
       <main className="min-h-screen bg-surface text-fg flex items-center justify-center">
         <p className="text-fg-subtle">Loading…</p>
@@ -115,6 +118,19 @@ export default function TownSettingsPage() {
           <p className="text-fg-muted">You must be logged in to manage towns.</p>
           <Link href="/login" className="inline-block rounded-full border border-line bg-raised px-4 py-2 text-sm hover:border-accent-strong hover:text-accent-soft">
             Go to login
+          </Link>
+        </section>
+      </main>
+    );
+  }
+
+    if (!isAdministrator) {
+    return (
+      <main className="min-h-screen bg-surface text-fg flex items-center justify-center px-6">
+        <section className="text-center space-y-4">
+          <p role="alert" className="text-fg-muted">Only a system administrator can manage the catalog.</p>
+          <Link href="/dashboard" className="inline-block rounded-full border border-line bg-raised px-4 py-2 text-sm hover:border-accent-strong hover:text-accent-soft">
+            Go to dashboard
           </Link>
         </section>
       </main>
