@@ -410,9 +410,9 @@ Traces to: UR-204
 
 **UR-205, MS — Summary Placement.** As a user, I want a document's summary displayed directly below its PDF, so that I can reference both without navigating elsewhere.
 
-**SRS-205.1, MS, Summary positioned below PDF.** The system shall place the summary section directly below the PDF viewer, with no other section between them, when a document detail page opens.
+**SRS-205.1, MS, Summary positioned above PDF.** The system shall place the summary section directly above the PDF viewer, with no other section between them, when a document detail page opens.
 
-**Acceptance Criteria:** Given document X has a Complete summary, When the user opens its detail page, Then the summary section is the first section below the PDF viewer.
+**Acceptance Criteria:** Given document X has a Complete summary, When the user opens its detail page, Then the PDF viewer is the first section below the summary section.
 
 Traces to: UR-205
 
@@ -514,9 +514,9 @@ Traces to: UR-209
 
 Traces to: UR-210
 
-**SRS-210.2, MS, Failed message on detail page.** The system shall display "A summary could not be generated for this document. You can still read the original PDF above." in the summary section when the user opens the detail page of a document whose summary status is Failed.
+**SRS-210.2, MS, Failed message on detail page.** The system shall display "A summary could not be generated for this document. You can still read the original PDF below." in the summary section when the user opens the detail page of a document whose summary status is Failed.
 
-**Acceptance Criteria:** Given document X has summary status Failed, When the user opens its detail page, Then "A summary could not be generated for this document. You can still read the original PDF above." appears in the summary section.
+**Acceptance Criteria:** Given document X has summary status Failed, When the user opens its detail page, Then "A summary could not be generated for this document. You can still read the original PDF below." appears in the summary section.
 
 Traces to: UR-210
 

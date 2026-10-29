@@ -290,19 +290,19 @@ describe('Document detail page in-page PDF (SRS-203.2)', () => {
     expect(markup).not.toMatch(/<a\b/);
   });
 
-  it('places the viewer after the title and directly before the summary section', () => {
+  it('places the viewer after the title and directly after the summary section', () => {
     const markup = renderLoaded(loadedDocument(SIGNED_URL, 'First paragraph.'));
 
     expect(markup.indexOf('</h1>')).toBeGreaterThan(-1);
     expect(markup.indexOf('</h1>')).toBeLessThan(markup.indexOf('<iframe'));
-    expect(markup).toMatch(/<\/iframe><section\b/);
+    expect(markup).toMatch(/<\/section><iframe\b/);
   });
 
   it('shows "The PDF is not available." in place of the viewer when pdf_url is null', () => {
     const markup = renderLoaded(loadedDocument(null, 'First paragraph.'));
 
     expect(iframesIn(markup)).toEqual([]);
-    expect(markup).toMatch(new RegExp(`<\\/h1><p class="text-fg-muted">${NOT_AVAILABLE.replace(/\./g, '\\.')}<\\/p><section\\b`));
+    expect(markup).toMatch(new RegExp(`<\\/section><p class="text-fg-muted">${NOT_AVAILABLE.replace(/\./g, '\\.')}<\\/p><\\/div>`));
   });
 
   it('keeps the rest of the page unchanged when pdf_url is null', () => {
