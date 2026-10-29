@@ -286,7 +286,7 @@ export default function ExtractPage() {
                   <p className="max-w-[450px] text-sm font-semibold leading-relaxed">No documents match &ldquo;{query.trim()}&rdquo;.</p>
                 </div>
               ) : (
-                <div className="mt-4 space-y-6" role="radiogroup" aria-label="Documents">
+                <div className="mt-4 space-y-5" role="radiogroup" aria-label="Documents">
                   {shownGroups.map((group) => (
                     <section key={group.key} aria-label={group.title}>
                       <h3 className="text-sm font-semibold text-fg">
@@ -294,7 +294,7 @@ export default function ExtractPage() {
                         {group.title}
                         {group.startAt ? <span className="font-normal text-fg-muted"> · {formatMeetingDate(group.startAt)}</span> : null}
                       </h3>
-                      <ul className="mt-3 space-y-3">
+                      <ul className="mt-2 space-y-1.5">
                         {group.documents.map((doc) => {
                           const isSelected = doc.document_id === selectedId;
                           const isPdf = doc.mime_type === 'application/pdf';
@@ -305,25 +305,22 @@ export default function ExtractPage() {
                                 role="radio"
                                 aria-checked={isSelected}
                                 onClick={() => selectDocument(doc.document_id)}
-                                className={`flex w-full items-start gap-3 rounded-md border p-4 text-left transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent ${
+                                className={`flex w-full items-center gap-3 rounded-md border px-3 py-2.5 text-left transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent ${
                                   isSelected
                                     ? 'border-accent bg-accent-wash'
                                     : 'border-line bg-card hover:border-line-strong hover:bg-raised'
                                 }`}
                               >
-                                <span aria-hidden="true" className="mt-0.5 grid h-4 w-4 shrink-0 place-items-center rounded-full border border-line-strong bg-card">
+                                <span aria-hidden="true" className="grid h-4 w-4 shrink-0 place-items-center rounded-full border border-line-strong bg-card">
                                   <span className={`h-2 w-2 rounded-full ${isSelected ? 'bg-accent' : 'bg-transparent'}`} />
                                 </span>
-                                <span className="min-w-0 flex-1">
-                                  <span className="flex items-start justify-between gap-3">
-                                    <span className="break-words text-sm font-medium">{doc.title}</span>
-                                    {isSelected ? (
-                                      <span className={badgeClasses('success', 'shrink-0')}>Selected</span>
-                                    ) : null}
-                                  </span>
-                                  <span className="mt-2 block text-xs leading-relaxed text-fg-muted">
-                                    {doc.document_type} · {isPdf ? 'PDF' : 'Not a PDF'}
-                                  </span>
+                                {/* Compact row: title on the left, type and format on the right */}
+                                <span className="min-w-0 flex-1 truncate text-sm font-medium" title={doc.title}>{doc.title}</span>
+                                {isSelected ? (
+                                  <span className={badgeClasses('success', 'shrink-0')}>Selected</span>
+                                ) : null}
+                                <span className="shrink-0 whitespace-nowrap text-xs text-fg-muted">
+                                  {doc.document_type} · {isPdf ? 'PDF' : 'Not a PDF'}
                                 </span>
                               </button>
                             </li>
