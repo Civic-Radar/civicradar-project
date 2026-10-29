@@ -74,24 +74,26 @@ BEGIN
       b.start_at, b.location, b.online_link;
   END IF;
 
-  -- 5. The next retrieval moves meeting 1 from Tuesday to Thursday and changes
-  -- its place. The meeting is updated; its baseline keeps the first values,
-  -- because refreshing baselines is SRS-404.5's job.
+  -- 5. The next retrieval lists meeting 1 again with the same values. It is
+  -- still one meeting with one baseline holding the first values. A repeat
+  -- retrieval with changed values updates the baseline through
+  -- meetings_record_changes (SRS-404.6), which its own test covers.
   INSERT INTO meetings (town_id, source_meeting_id, title, source_start_time, start_at, location, online_link)
-    VALUES (test_town, 'test-baseline-1', 'Test Council', '11/5/2026 7:00 PM', '2026-11-05 19:00:00-05',
-            'Test Baseline Annex', 'https://example.org/test-baseline-live')
+    VALUES (test_town, 'test-baseline-1', 'Test Council', '11/3/2026 7:00 PM', '2026-11-03 19:00:00-05',
+            'Test Baseline Hall, 1 Main St', 'https://example.org/test-baseline-live')
     ON CONFLICT (town_id, source_meeting_id) DO UPDATE
       SET title = excluded.title, source_start_time = excluded.source_start_time,
           start_at = excluded.start_at, location = excluded.location, online_link = excluded.online_link;
 
-  SELECT count(*) INTO n FROM meetings WHERE meeting_id = m_first AND location = 'Test Baseline Annex';
+  SELECT count(*) INTO n FROM meetings WHERE town_id = test_town AND source_meeting_id = 'test-baseline-1';
   SELECT * INTO b FROM meeting_baselines WHERE meeting_id = m_first;
   IF n <> 1
      OR (SELECT count(*) FROM meeting_baselines WHERE meeting_id = m_first) <> 1
      OR b.start_at IS DISTINCT FROM '2026-11-03 19:00:00-05'::TIMESTAMPTZ
-     OR b.location IS DISTINCT FROM 'Test Baseline Hall, 1 Main St' THEN
-    RAISE EXCEPTION 'CHECK FAILED: A repeat retrieval leaves the first baseline alone (meeting updated: %, baseline start %, location %)',
-      n = 1, b.start_at, b.location;
+     OR b.location IS DISTINCT FROM 'Test Baseline Hall, 1 Main St'
+     OR b.online_link IS DISTINCT FROM 'https://example.org/test-baseline-live' THEN
+    RAISE EXCEPTION 'CHECK FAILED: A repeat retrieval keeps one meeting and one baseline (meeting rows: %, baseline start %, location %)',
+      n, b.start_at, b.location;
   END IF;
 
   -- 6. If the baseline cannot be saved, the meeting is not saved either, so a

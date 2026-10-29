@@ -8,7 +8,7 @@
 --   Part 4  avatars bucket     - public storage bucket for profile pictures
 --
 -- Part 2 is generated from database/schema.sql (the portable PostgreSQL script,
--- which is the source of truth). Only eight things differ, and each is marked
+-- which is the source of truth). Only nine things differ, and each is marked
 -- "Supabase:" inline:
 --
 --   1. is_valid_time_zone() is created as public.is_valid_time_zone() with a
@@ -37,6 +37,9 @@
 --   8. public.create_meeting_baseline(), fired by the meetings_first_baseline
 --      trigger, saves a new meeting's values as its first comparison baseline
 --      in the same transaction as the insert (SRS-404.7).
+--   9. public.record_meeting_changes(), fired by the meetings_record_changes
+--      trigger, records one update per changed schedule detail against the
+--      meeting's baseline and then refreshes the baseline (SRS-404.6).
 -- =============================================================================
 -- =============================================================================
 -- PART 1. Profile table (used by app/api/profile)
@@ -142,6 +145,8 @@ drop function IF exists public.replace_meeting_topics (BIGINT, JSONB, JSONB) CAS
 drop function IF exists public.match_meetings_with_reasons (UUID) CASCADE;
 
 drop function IF exists public.create_meeting_baseline () CASCADE;
+
+drop function IF exists public.record_meeting_changes () CASCADE;
 
 -- -----------------------------------------------------------------------------
 -- Helper function
@@ -419,8 +424,8 @@ create table meeting_baselines (
 -- Purpose: Creates a meeting's first comparison baseline from its values when
 --          the meeting is first saved. It runs in the same transaction as the
 --          insert, so a meeting is never saved without a baseline. It never
---          overwrites an existing baseline; refreshing it after each successful
---          check is SRS-404.5.
+--          overwrites an existing baseline; record_meeting_changes refreshes it
+--          when a monitored value changes (SRS-404.6).
 -- Supabase: not in database/schema.sql; fired by the meetings_first_baseline trigger.
 create function public.create_meeting_baseline () RETURNS trigger LANGUAGE plpgsql SECURITY INVOKER
 set
@@ -436,7 +441,7 @@ END;
 $$;
 
 -- Fires only for new meeting rows: retrieval's upsert of an existing meeting
--- is an update and leaves its baseline alone.
+-- is an update, which meetings_record_changes handles.
 create trigger meetings_first_baseline
 after insert on meetings for each row
 execute function public.create_meeting_baseline ();
@@ -869,6 +874,86 @@ create table meeting_updates (
     (update_type = 'Recording published') = (recording_id is not null)
   )
 );
+
+-- Function: record_meeting_changes (trigger)
+-- Reviewed by: EG (Erick Gonzalez)
+-- Supports: SRS-404.6
+-- Purpose: Records one meeting_updates row for each schedule detail (start
+--          time, location, online link, cancellation) that differs from the
+--          meeting's comparison baseline, then saves the new values as the
+--          baseline so the same change is not recorded again. It runs in the
+--          same transaction as the update, so a change is never saved without
+--          its record. A meeting with no baseline gets one and records nothing,
+--          because there is no previous value to compare against. Start times
+--          are stored as UTC ISO 8601 text and cancellation as true/false.
+--          Agenda item, document, and recording updates are not recorded yet.
+-- Supabase: not in database/schema.sql; fired by the meetings_record_changes trigger.
+create function public.record_meeting_changes () RETURNS trigger LANGUAGE plpgsql SECURITY INVOKER
+set
+  search_path = pg_catalog,
+  public -- Supabase: pin the search path (linter 0011)
+  as $$
+DECLARE
+  base meeting_baselines%ROWTYPE;
+BEGIN
+  -- Lock the baseline so two saves of the same meeting can't both record the change.
+  SELECT * INTO base FROM meeting_baselines WHERE meeting_id = NEW.meeting_id FOR UPDATE;
+
+  IF NOT FOUND THEN
+    INSERT INTO meeting_baselines (meeting_id, start_at, location, online_link, is_canceled)
+    VALUES (NEW.meeting_id, NEW.start_at, NEW.location, NEW.online_link, NEW.is_canceled);
+    RETURN NULL;
+  END IF;
+
+  IF NEW.start_at IS DISTINCT FROM base.start_at THEN
+    INSERT INTO meeting_updates (meeting_id, update_type, previous_value, new_value)
+    VALUES (
+      NEW.meeting_id,
+      'Start time changed',
+      to_char(base.start_at AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS"Z"'),
+      to_char(NEW.start_at AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS"Z"')
+    );
+  END IF;
+
+  IF NEW.location IS DISTINCT FROM base.location THEN
+    INSERT INTO meeting_updates (meeting_id, update_type, previous_value, new_value)
+    VALUES (NEW.meeting_id, 'Location changed', base.location, NEW.location);
+  END IF;
+
+  IF NEW.online_link IS DISTINCT FROM base.online_link THEN
+    INSERT INTO meeting_updates (meeting_id, update_type, previous_value, new_value)
+    VALUES (NEW.meeting_id, 'Online link changed', base.online_link, NEW.online_link);
+  END IF;
+
+  IF NEW.is_canceled IS DISTINCT FROM base.is_canceled THEN
+    INSERT INTO meeting_updates (meeting_id, update_type, previous_value, new_value)
+    VALUES (NEW.meeting_id, 'Cancellation changed', base.is_canceled::text, NEW.is_canceled::text);
+  END IF;
+
+  IF (NEW.start_at, NEW.location, NEW.online_link, NEW.is_canceled)
+     IS DISTINCT FROM (base.start_at, base.location, base.online_link, base.is_canceled) THEN
+    UPDATE meeting_baselines
+    SET start_at = NEW.start_at,
+        location = NEW.location,
+        online_link = NEW.online_link,
+        is_canceled = NEW.is_canceled,
+        baselined_at = now()
+    WHERE meeting_id = NEW.meeting_id;
+  END IF;
+
+  RETURN NULL;
+END;
+$$;
+
+-- Fires when retrieval's upsert updates an existing meeting. New meetings get
+-- their first baseline from meetings_first_baseline instead.
+create trigger meetings_record_changes
+after
+update OF start_at,
+location,
+online_link,
+is_canceled on meetings for each row
+execute function public.record_meeting_changes ();
 
 -- Table: user_alerts
 -- Reviewed by: EG (Erick Gonzalez)
