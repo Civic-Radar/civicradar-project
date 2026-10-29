@@ -30,7 +30,7 @@ export default function DocumentDetailPage({ params }: { params: { id: string } 
               {state.document.title}
             </h1>
 
-            <DocumentSummary text={state.document.summary_text} />
+            <DocumentSummary text={state.document.summary_text} sourcePdfUrl={state.document.pdf_url} />
 
             {/* SRS-203.2 / SRS-205.1: the PDF stays inside the page, directly after the summary. */}
             {state.document.pdf_url ? (

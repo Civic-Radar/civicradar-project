@@ -281,13 +281,16 @@ describe('Document detail page in-page PDF (SRS-203.2)', () => {
     expect(markup).not.toContain(NOT_AVAILABLE);
   });
 
-  it('opens no new tab: no target attribute and no link', () => {
+  it('opens no new tab: no target attribute and no link but View source PDF', () => {
     const markup = renderLoaded(loadedDocument(SIGNED_URL, 'First paragraph.'));
 
     expect(iframesIn(markup)[0]).not.toHaveProperty('target');
     expect(markup).not.toContain('target=');
     expect(markup).not.toContain('_blank');
-    expect(markup).not.toMatch(/<a\b/);
+    // The only link is the summary's View source PDF link (SRS-207.1).
+    expect(markup.match(/<a\b[^>]*>[\s\S]*?<\/a>/g)).toEqual([
+      `<a href="${SIGNED_URL}" class="text-accent hover:underline">View source PDF</a>`,
+    ]);
   });
 
   it('places the viewer after the title and directly after the summary section', () => {
@@ -310,7 +313,12 @@ describe('Document detail page in-page PDF (SRS-203.2)', () => {
     const withoutPdf = renderLoaded(loadedDocument(null, 'First paragraph.'));
 
     const viewer = withPdf.match(/<iframe\b[^>]*><\/iframe>/)?.[0];
+    // The View source PDF link (SRS-207.1) also goes away with the PDF link.
+    const sourceLink = withPdf.match(/<p class="mt-5"><a\b[^>]*>View source PDF<\/a><\/p>/)?.[0];
     expect(viewer).toBeDefined();
-    expect(withoutPdf).toBe(withPdf.replace(viewer!, `<p class="text-fg-muted">${NOT_AVAILABLE}</p>`));
+    expect(sourceLink).toBeDefined();
+    expect(withoutPdf).toBe(
+      withPdf.replace(sourceLink!, '').replace(viewer!, `<p class="text-fg-muted">${NOT_AVAILABLE}</p>`),
+    );
   });
 });
