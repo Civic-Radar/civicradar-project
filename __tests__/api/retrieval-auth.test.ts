@@ -185,7 +185,7 @@ describe('Retrieval access control', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     vi.stubEnv('SUPABASE_SERVICE_ROLE_KEY', 'test-service-role-key');
-    vi.stubEnv('ANTHROPIC_API_KEY', '');
+    vi.stubEnv('SUMMARY_API_KEY', '');
     vi.stubEnv('SUMMARY_MODEL', '');
     vi.spyOn(console, 'log').mockImplementation(() => {});
     vi.spyOn(console, 'error').mockImplementation(() => {});

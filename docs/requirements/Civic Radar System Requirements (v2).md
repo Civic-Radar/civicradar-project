@@ -376,10 +376,12 @@ Traces to: UR-203
 
 **UR-204, MS — View Document Summary.** As a user, I want to view a document's AI-generated summary, so that I don't have to read the full PDF to understand it.
 
-**SRS-204.1, MS, Summary generation start.** The system shall start generating an AI summary of a document when retrieval of that document completes.
+**SRS-204.1, MS, Summary generation start.** The system shall start generating an AI summary of a document when retrieval of that document completes, and keep processing every document whose summary generation has not finished, without any user action.
 
-**Acceptance Criteria:** Given a new document is retrieved, When retrieval completes, Then a summary generation attempt for that document is recorded.
+**Acceptance Criteria:**
 
+•       Given a new document is retrieved, When retrieval completes, Then a summary generation attempt for that document is recorded.
+•       Given 12 new documents are retrieved and no user takes any action, When 60 minutes have passed, Then none of the 12 has an attempt that is still In progress.
 Traces to: UR-204
 
 **SRS-204.2, MS, Summary display.** The system shall display a document's summary on its detail page when the document's summary status is Complete.
