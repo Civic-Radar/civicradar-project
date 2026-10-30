@@ -880,6 +880,12 @@ Traces to: UR-301
 
 Traces to: UR-301
 
+**SRS-301.7, AO, Daily extraction limit.** The system shall refuse a new extraction request, and display "You've reached today's extraction limit. Please try again tomorrow.", when the signed-in user has already requested the daily limit of extractions (10 by default) that day.
+
+**Acceptance Criteria:** Given a user has requested 10 extractions today, When the user requests another, Then no extraction request is created and "You've reached today's extraction limit. Please try again tomorrow." is displayed.
+
+Traces to: UR-301
+
 ## **UR-302 — View Extracted Details**
 
 **UR-302, AO — View extracted details.** As a user, I want to see each extracted official’s name, title, role, and available contact information, so that I can understand who they are and how to reach them.
@@ -1969,7 +1975,7 @@ Every UR is expanded into at least one SRS requirement. Counts are in parenthese
 | UR-220 | Retrieve Meetings | MS | SRS-220.1 to SRS-220.10 (10) | — |
 | UR-221 | Keep Meeting Data Current | MS | SRS-221.1 to SRS-221.3 (3) | SRS-NFR-15 |
 | UR-222 | Report Source Check Status | MS | SRS-222.1 to SRS-222.3 (3) | — |
-| UR-301 | Request Contact Extraction | AO | SRS-301.1 to SRS-301.6 (6) | — |
+| UR-301 | Request Contact Extraction | AO | SRS-301.1 to SRS-301.7 (7) | — |
 | UR-302 | View Extracted Details | AO | SRS-302.1 to SRS-302.4 (4) | — |
 | UR-303 | Identify the Source Document | AO | SRS-303.1 to SRS-303.4 (4) | — |
 | UR-304 | View Saved Extraction | AO | SRS-304.1 to SRS-304.3 (3) | — |
