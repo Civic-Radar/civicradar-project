@@ -64,6 +64,8 @@ Civic Radar is a browser-based platform that helps residents follow local govern
 
 **UR-101, KJ — Topic selection.** As a resident, I want to select the local issues that matter to me, such as housing, transportation, or school budgets, so that the platform surfaces the small number of government items that affect my life instead of everything my town discusses.
 
+**Topic source.** The topics a resident can choose from are the topic entries in the platform catalog. The catalog is not fixed in code: system administrators add, rename, and remove topics through catalog management (UR-104), and changes appear to residents without redeployment. Residents can only select from the catalog; they cannot create or edit topics. At initial deployment the catalog contains the starter topics listed in SRS-101.5.
+
 **SRS-101.1, KJ, Topic list display.** The system shall display every topic in the platform catalog when the resident opens the topic selection section.
 
 **Acceptance Criteria:** Given the catalog contains the topics Housing, Parking, and Budget, When the resident opens the topic selection section, Then all three topics are displayed.
@@ -85,6 +87,36 @@ Traces to: UR-101
 **SRS-101.4, KJ, Saved topic preferences.** The system shall store the resident's selected topics as their followed topics when the resident saves the topic selection section.
 
 **Acceptance Criteria:** Given the resident selects Housing and Parking and saves the page, When the resident signs out, signs back in, and opens the topic selection section, Then Housing and Parking are marked as selected.
+
+Traces to: UR-101
+
+**SRS-101.5, KJ, Initial topic catalog.** The system shall contain the following topics in the catalog at initial deployment: Housing, Transportation & Parking, School Budget, Zoning & Land Use, Public Safety, Parks & Recreation, Taxes & Municipal Budget, and Environment.
+
+**Acceptance Criteria:** Given a new deployment with no administrator changes, When the resident opens the topic selection section, Then exactly these eight topics are displayed.
+
+Traces to: UR-101
+
+**SRS-101.6, KJ, Topic description display.** The system shall display each topic's name and description on the topic selection section.
+
+**Acceptance Criteria:** Given Housing has the description "Affordable housing, rentals, and new residential development", When the resident opens the topic selection section, Then that description is displayed with Housing.
+
+Traces to: UR-101
+
+**SRS-101.7, KJ, Resident catalog restriction.** The system shall deny any request to add, rename, or remove a catalog topic from an account without the system administrator role.
+
+**Acceptance Criteria:** Given a signed-in resident, When the resident sends a request to add the topic "Snow Removal", Then the request is denied and the catalog is unchanged.
+
+Traces to: UR-101
+
+**SRS-101.8, KJ, Renamed topic retention.** The system shall keep a topic in each resident's followed topics when a system administrator renames that topic.
+
+**Acceptance Criteria:** Given the resident follows "Parks", When the administrator renames it to "Parks & Recreation", Then the resident's topic selection section shows "Parks & Recreation" as selected.
+
+Traces to: UR-101
+
+**SRS-101.9, KJ, Removed topic handling.** The system shall remove a topic from every resident's followed topics when a system administrator confirms removal of that topic from the catalog.
+
+**Acceptance Criteria:** Given the resident follows Housing and Parks, When the administrator removes Parks, Then the resident's followed topics contain only Housing.
 
 Traces to: UR-101
 
@@ -1941,12 +1973,14 @@ Every UR is expanded into at least one SRS requirement. Counts are in parenthese
 
 | UR | Title | Owner | SRS requirements | NFRs |
 | :---- | :---- | :---- | :---- | :---- |
-| UR-101 | Topic Selection | KJ | SRS-101.1 to SRS-101.4 (4) | — |
+| UR-101 | Topic Selection | KJ | SRS-101.1 to SRS-101.9 (9) | — |
 | UR-102 | Data Freshness | KJ | SRS-102.1 to SRS-102.3 (3) | — |
 | UR-103 | Organization Permissions | KJ | SRS-103.1 to SRS-103.4 (4) | — |
 | UR-104 | Platform Catalog Management | KJ | SRS-104.1 to SRS-104.6 (6) | — |
 | UR-105 | Account Activity History | KJ | SRS-105.1 to SRS-105.4 (4) | — |
 | UR-106 | Account Suspension | KJ | SRS-106.1 to SRS-106.4 (4) | — |
+| UR-107 | First-Time Setup | KJ | SRS-107.1 to SRS-107.4 (4) | — |
+| UR-108 | Shared Organization Follows | KJ | SRS-108.1 to SRS-108.4 (4) | — |
 | UR-201 | Document List View | MS | SRS-201.1 to SRS-201.4 (4) | SRS-NFR-5 |
 | UR-202 | Document Identification | MS | SRS-202.1 to SRS-202.5 (5) | — |
 | UR-203 | Open Document PDF | MS | SRS-203.1 to SRS-203.4 (4) | SRS-NFR-6 |
