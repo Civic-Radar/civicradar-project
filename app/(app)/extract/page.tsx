@@ -23,7 +23,7 @@ import { alertClasses } from '../../components/ui/Alert';
 import { badgeClasses } from '../../components/ui/Badge';
 import { buttonClasses } from '../../components/ui/Button';
 import { cardClasses } from '../../components/ui/Card';
-import { STATUS_STYLES, documentTypeLabel, formatDateTime, formatFileSize, formatMeetingDate, readableDocumentName, versionLabels, withoutDates } from '../../../lib/extractions';
+import { DAILY_LIMIT_MESSAGE, STATUS_STYLES, documentTypeLabel, formatDateTime, formatFileSize, formatMeetingDate, readableDocumentName, versionLabels, withoutDates } from '../../../lib/extractions';
 import type { ExtractableDocument, Extraction } from '../../../lib/extractions';
 
 const MEETINGS_PER_PAGE = 8;
@@ -388,6 +388,10 @@ export default function ExtractPage() {
 
           {selectedInFlight ? (
             <p className="mt-3 text-sm text-warning">An extraction for this document is already in progress.</p>
+          ) : null}
+          {/* SRS-301.7: also next to the button, which may be far below the message at the top. */}
+          {limitReached ? (
+            <p className="mt-3 text-sm text-danger">{DAILY_LIMIT_MESSAGE}</p>
           ) : null}
 
           {confirming && selected ? (
