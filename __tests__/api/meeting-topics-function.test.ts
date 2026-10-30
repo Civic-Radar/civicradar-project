@@ -70,3 +70,47 @@ describe('replace_meeting_topics (SRS-401.4)', () => {
     expect(schema).toContain('drop function IF exists public.replace_meeting_topics (BIGINT, JSONB, JSONB) CASCADE;');
   });
 });
+
+// SRS-401.10, EG, Unavailable classification: mark_meeting_unavailable database function (Task 401.10-1)
+const unavailableStart = schema.indexOf('create function public.mark_meeting_unavailable');
+const unavailableBody = unavailableStart === -1 ? '' : schema.slice(unavailableStart, schema.indexOf('$$;', unavailableStart));
+
+describe('mark_meeting_unavailable (SRS-401.10)', () => {
+  it('takes a meeting id and the agenda that was read, and returns a boolean', () => {
+    expect(unavailableBody).toMatch(
+      /^create function public\.mark_meeting_unavailable \(p_meeting_id BIGINT, p_agenda JSONB\) RETURNS boolean LANGUAGE plpgsql SECURITY INVOKER/,
+    );
+    expect(unavailableBody).toMatch(/search_path = pg_catalog,\s+public/);
+  });
+
+  it('locks the meeting, then saves nothing when the agenda changed, before any write', () => {
+    const lock = unavailableBody.indexOf('PERFORM 1 FROM meetings WHERE meeting_id = p_meeting_id FOR UPDATE;');
+    const compare = unavailableBody.indexOf('IS DISTINCT FROM p_agenda THEN');
+    const stale = unavailableBody.indexOf('RETURN false;');
+    const del = unavailableBody.indexOf('DELETE FROM meeting_topics');
+
+    expect(lock).toBeGreaterThan(-1);
+    expect(compare).toBeGreaterThan(lock);
+    expect(stale).toBeGreaterThan(compare);
+    expect(del).toBeGreaterThan(stale);
+    expect(unavailableBody).toMatch(/WHERE meeting_id = p_meeting_id AND removed_at IS NULL\s+\) IS DISTINCT FROM p_agenda/);
+  });
+
+  it('removes the tags, marks the meeting Unavailable, and returns true, in that order', () => {
+    const del = unavailableBody.indexOf('DELETE FROM meeting_topics WHERE meeting_id = p_meeting_id;');
+    const upd = unavailableBody.indexOf("UPDATE meetings SET topic_classification = 'Unavailable' WHERE meeting_id = p_meeting_id;");
+    const done = unavailableBody.indexOf('RETURN true;');
+
+    expect(del).toBeGreaterThan(-1);
+    expect(upd).toBeGreaterThan(del);
+    expect(done).toBeGreaterThan(upd);
+  });
+
+  it('can only be run by the service role, and is dropped when the schema is rebuilt', () => {
+    expect(schema).toContain(
+      'revoke all on function public.mark_meeting_unavailable (BIGINT, JSONB) from public, anon, authenticated;',
+    );
+    expect(schema).toContain('grant execute on function public.mark_meeting_unavailable (BIGINT, JSONB) to service_role;');
+    expect(schema).toContain('drop function IF exists public.mark_meeting_unavailable (BIGINT, JSONB) CASCADE;');
+  });
+});

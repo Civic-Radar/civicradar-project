@@ -8,7 +8,7 @@
 --   Part 4  avatars bucket     - public storage bucket for profile pictures
 --
 -- Part 2 is generated from database/schema.sql (the portable PostgreSQL script,
--- which is the source of truth). Only nine things differ, and each is marked
+-- which is the source of truth). Only ten things differ, and each is marked
 -- "Supabase:" inline:
 --
 --   1. is_valid_time_zone() is created as public.is_valid_time_zone() with a
@@ -40,6 +40,10 @@
 --   9. public.record_meeting_changes(), fired by the meetings_record_changes
 --      trigger, records one update per changed schedule detail against the
 --      meeting's baseline and then refreshes the baseline (SRS-404.6).
+--  10. public.mark_meeting_unavailable() marks a meeting with no agenda text
+--      Unavailable and removes its topic tags in one transaction, unless the
+--      meeting's agenda changed after it was read (SRS-401.10). Only the
+--      service role may run it.
 -- =============================================================================
 -- =============================================================================
 -- PART 1. Profile table (used by app/api/profile)
@@ -141,6 +145,8 @@ drop function IF exists public.is_valid_time_zone (TEXT) CASCADE;
 drop function IF exists public.replace_followed_towns (UUID, INTEGER[]) CASCADE;
 
 drop function IF exists public.replace_meeting_topics (BIGINT, JSONB, JSONB) CASCADE;
+
+drop function IF exists public.mark_meeting_unavailable (BIGINT, JSONB) CASCADE;
 
 drop function IF exists public.match_meetings_with_reasons (UUID) CASCADE;
 
@@ -706,6 +712,53 @@ $$;
 revoke all on function public.replace_meeting_topics (BIGINT, JSONB, JSONB) from public, anon, authenticated;
 
 grant execute on function public.replace_meeting_topics (BIGINT, JSONB, JSONB) to service_role;
+
+-- Function: mark_meeting_unavailable
+-- Reviewed by: EG (Erick Gonzalez)
+-- Supports: SRS-401.10
+-- Purpose: Marks a meeting with no agenda text to classify as Unavailable and
+--          removes its topic tags, in one transaction, so the meeting no longer
+--          matches on agenda text that is gone. p_agenda is the JSON array of
+--          {"agenda_item_id", "item_text"} that was read, in sort_order,
+--          agenda_item_id order. Locking the meeting row first makes overlapping
+--          runs check one at a time; a run whose agenda is no longer the
+--          meeting's current agenda saves nothing and returns false, so a late
+--          run never removes tags from newer text. replace_meeting_topics marks
+--          the meeting Classified once agenda text is available.
+-- Supabase: not in database/schema.sql; called by lib/meetingTagging.ts.
+create function public.mark_meeting_unavailable (p_meeting_id BIGINT, p_agenda JSONB) RETURNS boolean LANGUAGE plpgsql SECURITY INVOKER
+set
+  search_path = pg_catalog,
+  public -- Supabase: pin the search path (linter 0011)
+  as $$
+BEGIN
+  PERFORM 1 FROM meetings WHERE meeting_id = p_meeting_id FOR UPDATE;
+  IF NOT FOUND THEN
+    RAISE EXCEPTION 'Meeting % not found', p_meeting_id;
+  END IF;
+
+  IF (
+    SELECT coalesce(
+      jsonb_agg(jsonb_build_object('agenda_item_id', agenda_item_id, 'item_text', item_text) ORDER BY sort_order, agenda_item_id),
+      '[]'::jsonb
+    )
+    FROM agenda_items
+    WHERE meeting_id = p_meeting_id AND removed_at IS NULL
+  ) IS DISTINCT FROM p_agenda THEN
+    RETURN false;
+  END IF;
+
+  DELETE FROM meeting_topics WHERE meeting_id = p_meeting_id;
+
+  UPDATE meetings SET topic_classification = 'Unavailable' WHERE meeting_id = p_meeting_id;
+  RETURN true;
+END;
+$$;
+
+-- Supabase: only the API routes (service role) may run it, never the anon key.
+revoke all on function public.mark_meeting_unavailable (BIGINT, JSONB) from public, anon, authenticated;
+
+grant execute on function public.mark_meeting_unavailable (BIGINT, JSONB) to service_role;
 
 -- Table: user_followed_meetings
 -- Reviewed by: EG (Erick Gonzalez)
