@@ -24,6 +24,8 @@ const CONSOLE_METHODS = ['log', 'error', 'warn', 'info', 'debug'] as const;
 const SIGNED_URL = 'https://example.supabase.co/storage/v1/object/sign/documents/1/1168.pdf?token=signed-token';
 const SOURCE_URL = 'https://example.org/files/60.pdf';
 const LINK_TEXT = 'View source PDF';
+// SRS-207.4: the Open on CivicClerk link to source_url sits between the title and the summary section.
+const SOURCE_PAGE_LINK = `<a href="${SOURCE_URL}" target="_blank" rel="noopener noreferrer" class="text-accent hover:underline">Open on CivicClerk</a>`;
 const SUMMARY_TEXT = 'The council approved the budget.';
 
 // A Complete document: the API returns summary_text only when the summary is Complete.
@@ -84,7 +86,10 @@ describe('Document detail page View source PDF link (SRS-207.1)', () => {
     const markup = renderLoaded(COMPLETE_DOCUMENT);
     const section = summarySection(markup) ?? '';
 
-    expect(linksIn(markup)).toHaveLength(1);
+    // Exactly two links: Open on CivicClerk before the summary section (SRS-207.4) and this one inside it.
+    expect(linksIn(markup)).toHaveLength(2);
+    expect(linksIn(markup)[0]).toBe(SOURCE_PAGE_LINK);
+    expect(markup.indexOf(SOURCE_PAGE_LINK)).toBeLessThan(markup.indexOf('<section'));
     expect(linksIn(section)).toEqual([
       `<a href="${SIGNED_URL}" target="_blank" rel="noopener noreferrer" class="text-accent hover:underline">${LINK_TEXT}</a>`,
     ]);
@@ -104,9 +109,12 @@ describe('Document detail page View source PDF link (SRS-207.1)', () => {
   it('never links to the source address and sets only the new-tab target and rel', () => {
     const markup = renderLoaded(COMPLETE_DOCUMENT);
 
-    expect(markup).not.toContain(SOURCE_URL);
+    // The source address appears only as the Open on CivicClerk link (SRS-207.4), never on View source PDF.
+    expect(markup.split(SOURCE_URL)).toHaveLength(2);
+    expect(markup).toContain(SOURCE_PAGE_LINK);
+    expect(linksIn(markup)[1]).not.toContain(SOURCE_URL);
     // SRS-207.2 adds the new-tab target and rel; no other target or rel value.
-    expect(linksIn(markup)[0].match(/\b(target|rel)="[^"]*"/g)).toEqual(['target="_blank"', 'rel="noopener noreferrer"']);
+    expect(linksIn(markup)[1].match(/\b(target|rel)="[^"]*"/g)).toEqual(['target="_blank"', 'rel="noopener noreferrer"']);
   });
 
   it.each([
@@ -118,7 +126,8 @@ describe('Document detail page View source PDF link (SRS-207.1)', () => {
 
     expect(markup).not.toContain('<section');
     expect(markup).not.toContain(LINK_TEXT);
-    expect(linksIn(markup)).toEqual([]);
+    // Only the Open on CivicClerk link (SRS-207.4) remains.
+    expect(linksIn(markup)).toEqual([SOURCE_PAGE_LINK]);
   });
 
   it('shows the summary but no link when pdf_url is null', () => {
@@ -126,14 +135,16 @@ describe('Document detail page View source PDF link (SRS-207.1)', () => {
 
     expect(summarySection(markup)).toContain(`<p>${SUMMARY_TEXT}</p>`);
     expect(markup).not.toContain(LINK_TEXT);
-    expect(linksIn(markup)).toEqual([]);
+    // Only the Open on CivicClerk link (SRS-207.4) remains.
+    expect(linksIn(markup)).toEqual([SOURCE_PAGE_LINK]);
   });
 
   it('keeps the PDF viewer directly after the summary section', () => {
     const markup = renderLoaded(COMPLETE_DOCUMENT);
 
     expect(markup.split('<section').length - 1).toBe(1);
-    expect(markup).toMatch(/<\/h1><section\b/);
+    // The Open on CivicClerk link (SRS-207.4) is the only thing between the title and the section.
+    expect(markup).toContain(`</h1><p>${SOURCE_PAGE_LINK}</p><section`);
     expect(markup).toMatch(/<\/a><\/p><\/section><iframe title="Document PDF"/);
     expect(markup.split('<iframe').length - 1).toBe(1);
   });

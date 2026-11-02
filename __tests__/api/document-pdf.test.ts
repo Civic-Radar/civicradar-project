@@ -281,19 +281,22 @@ describe('Document detail page in-page PDF (SRS-203.2)', () => {
     expect(markup).not.toContain(NOT_AVAILABLE);
   });
 
-  it('opens no new tab from the viewer: only the View source PDF link has a target', () => {
+  it('opens no new tab from the viewer: only the two links have a target', () => {
     const markup = renderLoaded(loadedDocument(SIGNED_URL, 'First paragraph.'));
 
     expect(iframesIn(markup)[0]).not.toHaveProperty('target');
-    // The View source PDF link (SRS-207.2) is the only element with a target.
+    // Open on CivicClerk (SRS-207.4) and View source PDF (SRS-207.2) are the only elements with a target.
     expect(markup.match(/<[^>]*\btarget=[^>]*>/g)).toEqual([
+      `<a href="${IDENTIFICATION.source_url}" target="_blank" rel="noopener noreferrer" class="text-accent hover:underline">`,
       `<a href="${SIGNED_URL}" target="_blank" rel="noopener noreferrer" class="text-accent hover:underline">`,
     ]);
-    expect(markup.split('_blank')).toHaveLength(2);
-    // The only link is the summary's View source PDF link (SRS-207.1).
+    expect(markup.split('_blank')).toHaveLength(3);
+    // The only links are Open on CivicClerk before the summary section and its View source PDF link (SRS-207.1).
     expect(markup.match(/<a\b[^>]*>[\s\S]*?<\/a>/g)).toEqual([
+      `<a href="${IDENTIFICATION.source_url}" target="_blank" rel="noopener noreferrer" class="text-accent hover:underline">Open on CivicClerk</a>`,
       `<a href="${SIGNED_URL}" target="_blank" rel="noopener noreferrer" class="text-accent hover:underline">View source PDF</a>`,
     ]);
+    expect(markup.indexOf('Open on CivicClerk')).toBeLessThan(markup.indexOf('<section'));
   });
 
   it('places the viewer after the title and directly after the summary section', () => {

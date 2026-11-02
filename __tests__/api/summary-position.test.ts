@@ -39,8 +39,9 @@ const COMPLETE_DOCUMENT: DocumentIdentification = {
   pdf_url: SIGNED_URL,
 };
 
-// The summary section opens directly after the title's closing tag.
-const SECTION_AFTER_TITLE = /<\/h1><section\b[^>]*><h2\b[^>]*>Summary<\/h2>/;
+// The summary section opens right after the title, with only the Open on
+// CivicClerk link (SRS-207.4) between them.
+const SECTION_AFTER_TITLE = /<\/h1><p><a\b[^>]*>Open on CivicClerk<\/a><\/p><section\b[^>]*><h2\b[^>]*>Summary<\/h2>/;
 
 // The end of the summary section: the summary text, its wrapper, the section close.
 const SECTION_END = `<p>${SUMMARY_TEXT}</p></div></section>`;

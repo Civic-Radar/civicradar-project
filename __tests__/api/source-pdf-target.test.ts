@@ -207,16 +207,21 @@ describe('View source PDF link target on the detail page (SRS-207.2)', () => {
     expect(link.rel.split(/\s+/)).toContain('noopener');
   });
 
-  it('never shows the CivicClerk source_url as any link target on the page', () => {
+  it('never shows the CivicClerk source_url as any link target on the page except Open on CivicClerk', () => {
     const markup = renderLoaded(COMPLETE_DOCUMENT);
     const targets = linkTargets(markup);
 
-    expect(targets.length).toBeGreaterThan(0);
-    for (const target of targets) {
+    // SRS-207.4: the Open on CivicClerk link is the one target allowed to point at source_url.
+    expect(targets.filter((target) => target === CIVICCLERK_URL)).toHaveLength(1);
+    expect(elementsIn(markup, 'a').filter((a) => a.href === CIVICCLERK_URL)).toHaveLength(1);
+    expect(markup).toMatch(new RegExp(`<a\\b[^>]*>Open on CivicClerk<\\/a>`));
+    const others = targets.filter((target) => target !== CIVICCLERK_URL);
+    expect(others.length).toBeGreaterThan(0);
+    for (const target of others) {
       expect(target).not.toContain(CIVICCLERK_URL);
       expect(target).not.toMatch(/civicclerk\.com/i);
     }
-    expect(markup).not.toContain(CIVICCLERK_URL);
+    expect(markup.split(CIVICCLERK_URL)).toHaveLength(2);
     expect(sourcePdfLink(markup).href).not.toBe(COMPLETE_DOCUMENT.source_url);
   });
 
@@ -253,6 +258,8 @@ describe('GET /api/documents/[id] stored copy link for View source PDF (SRS-207.
 
     expect(body.document.source_url).toBe(CIVICCLERK_URL);
     expect(sourcePdfLink(markup).href).toBe(body.document.pdf_url);
-    expect(markup).not.toContain(CIVICCLERK_URL);
+    // source_url appears once, as the Open on CivicClerk link (SRS-207.4), never as View source PDF.
+    expect(markup.split(CIVICCLERK_URL)).toHaveLength(2);
+    expect(markup).toContain(`href="${CIVICCLERK_URL}" target="_blank" rel="noopener noreferrer" class="text-accent hover:underline">Open on CivicClerk</a>`);
   });
 });

@@ -30,6 +30,13 @@ export default function DocumentDetailPage({ params }: { params: { id: string } 
               {state.document.title}
             </h1>
 
+            {/* SRS-207.4: the label is the exact SRS wording; towns that use another source would need that platform's name. */}
+            {typeof state.document.source_url === 'string' && /^https?:\/\//.test(state.document.source_url) ? (
+              <p>
+                <a href={state.document.source_url} target="_blank" rel="noopener noreferrer" className="text-accent hover:underline">Open on CivicClerk</a>
+              </p>
+            ) : null}
+
             <DocumentSummary text={state.document.summary_text} sourcePdfUrl={state.document.pdf_url} />
 
             {/* SRS-203.2 / SRS-205.1: the PDF stays inside the page, directly after the summary. */}
