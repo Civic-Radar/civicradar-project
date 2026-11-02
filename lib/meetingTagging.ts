@@ -3,7 +3,7 @@ import { tagAgendaText, type AgendaItemText, type CatalogTopic, type TopicTag } 
 
 export type ClassifyResult =
   | { status: 'classified'; tags: TopicTag[] } // tags may be empty: text exists but matches nothing
-  | { status: 'no_agenda_text' } // nothing saved; classification unchanged
+  | { status: 'no_agenda_text' } // marked Unavailable; any old tags were removed
   | { status: 'meeting_not_found' }
   | { status: 'agenda_changed' } // the agenda changed after it was read; nothing saved
   | { status: 'error' }; // a read or write failed; database text is never returned
@@ -30,9 +30,19 @@ export async function classifyMeetingTopics(supabase: SupabaseClient, meetingId:
   if (itemsError) return { status: 'error' };
 
   const agendaItems = (items ?? []) as AgendaItemText[];
-  // No agenda text: leave the classification as it is rather than record a
-  // false non-match (Unavailable is SRS-401.10).
+  // No agenda text: mark the meeting Unavailable rather than record a false
+  // non-match (SRS-401.10), but only if the agenda read above is still the
+  // meeting's current agenda (public.mark_meeting_unavailable in
+  // supabase/schema.sql).
   if (!agendaItems.some((item) => item.item_text !== null && item.item_text.trim() !== '')) {
+    const { data: marked, error: markError } = await supabase.rpc('mark_meeting_unavailable', {
+      p_meeting_id: meetingId,
+      p_agenda: agendaItems.map(({ agenda_item_id, item_text }) => ({ agenda_item_id, item_text })),
+    });
+    if (markError) return { status: 'error' };
+    if (marked === false) return { status: 'agenda_changed' };
+    if (marked !== true) return { status: 'error' };
+
     return { status: 'no_agenda_text' };
   }
 

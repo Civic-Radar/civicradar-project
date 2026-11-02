@@ -188,7 +188,7 @@ afterEach(() => {
 });
 
 describe('GET /api/documents/[id] PDF link (SRS-203.2)', () => {
-  it('returns the signed Storage link for a stored PDF, valid for 600 seconds', async () => {
+  it('returns the signed Storage link for a stored PDF, valid for 3600 seconds', async () => {
     storedRow(STORED_PDF_ROW);
 
     const response = await open();
@@ -198,7 +198,7 @@ describe('GET /api/documents/[id] PDF link (SRS-203.2)', () => {
     expect(body).toEqual({
       document: { ...IDENTIFICATION, summary_text: null, summary_generated_at: null, pdf_url: SIGNED_URL },
     });
-    expect(storage.calls).toEqual([{ bucket: 'documents', path: '1/1168.pdf', expiresIn: 600 }]);
+    expect(storage.calls).toEqual([{ bucket: 'documents', path: '1/1168.pdf', expiresIn: 3600 }]);
     // The link is the Storage copy, never the source's own address.
     expect(body.document.pdf_url).not.toBe(IDENTIFICATION.source_url);
   });
@@ -281,13 +281,22 @@ describe('Document detail page in-page PDF (SRS-203.2)', () => {
     expect(markup).not.toContain(NOT_AVAILABLE);
   });
 
-  it('opens no new tab: no target attribute and no link', () => {
+  it('opens no new tab from the viewer: only the two links have a target', () => {
     const markup = renderLoaded(loadedDocument(SIGNED_URL, 'First paragraph.'));
 
     expect(iframesIn(markup)[0]).not.toHaveProperty('target');
-    expect(markup).not.toContain('target=');
-    expect(markup).not.toContain('_blank');
-    expect(markup).not.toMatch(/<a\b/);
+    // Open on CivicClerk (SRS-207.4) and View source PDF (SRS-207.2) are the only elements with a target.
+    expect(markup.match(/<[^>]*\btarget=[^>]*>/g)).toEqual([
+      `<a href="${IDENTIFICATION.source_url}" target="_blank" rel="noopener noreferrer" class="text-accent hover:underline">`,
+      `<a href="${SIGNED_URL}" target="_blank" rel="noopener noreferrer" class="text-accent hover:underline">`,
+    ]);
+    expect(markup.split('_blank')).toHaveLength(3);
+    // The only links are Open on CivicClerk before the summary section and its View source PDF link (SRS-207.1).
+    expect(markup.match(/<a\b[^>]*>[\s\S]*?<\/a>/g)).toEqual([
+      `<a href="${IDENTIFICATION.source_url}" target="_blank" rel="noopener noreferrer" class="text-accent hover:underline">Open on CivicClerk</a>`,
+      `<a href="${SIGNED_URL}" target="_blank" rel="noopener noreferrer" class="text-accent hover:underline">View source PDF</a>`,
+    ]);
+    expect(markup.indexOf('Open on CivicClerk')).toBeLessThan(markup.indexOf('<section'));
   });
 
   it('places the viewer after the title and directly after the summary section', () => {
@@ -310,7 +319,12 @@ describe('Document detail page in-page PDF (SRS-203.2)', () => {
     const withoutPdf = renderLoaded(loadedDocument(null, 'First paragraph.'));
 
     const viewer = withPdf.match(/<iframe\b[^>]*><\/iframe>/)?.[0];
+    // The View source PDF link (SRS-207.1) also goes away with the PDF link.
+    const sourceLink = withPdf.match(/<p class="mt-5"><a\b[^>]*>View source PDF<\/a><\/p>/)?.[0];
     expect(viewer).toBeDefined();
-    expect(withoutPdf).toBe(withPdf.replace(viewer!, `<p class="text-fg-muted">${NOT_AVAILABLE}</p>`));
+    expect(sourceLink).toBeDefined();
+    expect(withoutPdf).toBe(
+      withPdf.replace(sourceLink!, '').replace(viewer!, `<p class="text-fg-muted">${NOT_AVAILABLE}</p>`),
+    );
   });
 });

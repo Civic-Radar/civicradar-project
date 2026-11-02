@@ -249,7 +249,7 @@ describe('Meeting document link (SRS-220.7)', () => {
     vi.clearAllMocks();
     vi.stubEnv('SUPABASE_SERVICE_ROLE_KEY', 'test-service-role-key');
     // Blank summary settings, so no summary job starts even if the shell sets them.
-    vi.stubEnv('ANTHROPIC_API_KEY', '');
+    vi.stubEnv('SUMMARY_API_KEY', '');
     vi.stubEnv('SUMMARY_MODEL', '');
 
     fake = createFakeSupabase();

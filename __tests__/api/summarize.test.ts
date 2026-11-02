@@ -60,7 +60,7 @@ describe('summarizeDocument (SRS-204.1, SRS-NFR-7)', () => {
         throw new Error('Network is disabled in tests');
       }),
     );
-    vi.stubEnv('ANTHROPIC_API_KEY', ANTHROPIC_KEY);
+    vi.stubEnv('SUMMARY_API_KEY', ANTHROPIC_KEY);
     vi.stubEnv('SUMMARY_MODEL', MODEL_NAME);
     for (const method of CONSOLE_METHODS) {
       vi.spyOn(console, method).mockImplementation(() => {});
@@ -181,7 +181,7 @@ describe('summarizeDocument (SRS-204.1, SRS-NFR-7)', () => {
     expect(await summarize()).toStrictEqual({ ok: false, reason: 'no_text' });
   });
 
-  it.each(['ANTHROPIC_API_KEY', 'SUMMARY_MODEL'])(
+  it.each(['SUMMARY_API_KEY', 'SUMMARY_MODEL'])(
     'throws before creating a client when %s is missing',
     async (name) => {
       vi.stubEnv(name, ' ');

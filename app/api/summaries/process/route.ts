@@ -1,23 +1,12 @@
-import { getSupabaseClient } from '../../../../lib/supabase';
-import { findInProgressAttempts, type InProgressAttempt } from '../../../../lib/summaries/attempts';
 import {
   getProcessSecret,
   isValidProcessSecret,
   SUMMARY_PROCESS_SECRET_HEADER,
 } from '../../../../lib/summaries/processSecret';
-import {
-  MAX_SUMMARIES_PER_PROCESS_CALL,
-  missingSummarySettings,
-  runSummaryJob,
-} from '../../../../lib/summaries/runSummaryJob';
+import { processPendingSummaries } from '../../../../lib/summaries/processPendingSummaries';
 
-function errorMessage(error: unknown): string {
-  return error instanceof Error ? error.message : 'Unexpected error';
-}
-
-// Picks up documents whose summary attempt is still In progress after the
-// stale window, so a missed trigger cannot strand a document (SRS-204.1).
-// Protected by the x-summary-process-secret header. Jobs run one at a time.
+// Manual trigger for the processing the summary scheduler also runs
+// (SRS-204.1). Protected by the x-summary-process-secret header.
 export async function POST(request: Request) {
   if (!getProcessSecret()) {
     return Response.json({ error: 'Summary processing is not configured.' }, { status: 500 });
@@ -27,39 +16,22 @@ export async function POST(request: Request) {
     return Response.json({ error: 'Unauthorized.' }, { status: 401 });
   }
 
-  const missing = missingSummarySettings();
-  if (missing.length > 0) {
+  const result = await processPendingSummaries();
+
+  if (result.kind === 'missing_settings') {
     return Response.json(
-      { error: `Summary processing is not configured: missing ${missing.join(', ')}` },
+      { error: `Summary processing is not configured: missing ${result.missing.join(', ')}` },
       { status: 500 },
     );
   }
 
-  const supabase = getSupabaseClient();
-
-  if (!supabase) {
+  if (result.kind === 'no_client') {
     return Response.json({ error: 'Supabase credentials are not configured.' }, { status: 500 });
   }
 
-  let attempts: InProgressAttempt[];
-  try {
-    attempts = await findInProgressAttempts(supabase, MAX_SUMMARIES_PER_PROCESS_CALL);
-  } catch (error: unknown) {
-    return Response.json({ error: errorMessage(error) }, { status: 500 });
+  if (result.kind === 'read_failed') {
+    return Response.json({ error: result.message }, { status: 500 });
   }
 
-  // Document ids whose job this call claimed and ran to an outcome.
-  const processed: number[] = [];
-  for (const attempt of attempts) {
-    try {
-      const outcome = await runSummaryJob(supabase, attempt);
-      if (outcome.kind !== 'skipped') {
-        processed.push(attempt.documentId);
-      }
-    } catch (error: unknown) {
-      console.error(`Summary job: document ${attempt.documentId} failed: ${errorMessage(error)}`);
-    }
-  }
-
-  return Response.json({ processed }, { status: 200 });
+  return Response.json({ processed: result.processed }, { status: 200 });
 }

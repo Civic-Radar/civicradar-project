@@ -3,14 +3,15 @@
 //  Completed, or Failed) while the user views an extraction request."
 //
 // GET /api/extractions/[id] -> one of the signed-in user's extractions, with its status,
-// plus the officials it found once it is Completed (SRS-302.1).
+// plus the officials it found once it is Completed (SRS-302.1), and the cause of
+// failure in plain words when it Failed for a known cause (SRS-307.2).
 //
 // SRS-310.2, AO, Ownership check: only the owner gets the extraction.
 //   200  the signed-in user's own extraction
 //   403  the extraction belongs to someone else (access denied; nothing about it is returned)
 //   404  no extraction with that id
 import { getSupabaseClient } from '../../../../lib/supabase';
-import { ACCESS_DENIED_MESSAGE } from '../../../../lib/extractions';
+import { ACCESS_DENIED_MESSAGE, failureCauseMessage } from '../../../../lib/extractions';
 
 // Always read the current row so a status change shows up on the next request.
 export const dynamic = 'force-dynamic';
@@ -65,7 +66,10 @@ export async function GET(request: Request, { params }: { params: { id: string }
     officials = data ?? [];
   }
 
-  return Response.json({ extraction, officials }, { status: 200 });
+  // SRS-307.2: a failed extraction also says why, when the cause is a known one.
+  const failure_message = extraction.status === 'Failed' ? failureCauseMessage(extraction.failure_cause) : null;
+
+  return Response.json({ extraction: { ...extraction, failure_message }, officials }, { status: 200 });
 }
 
 // SRS-305.4, AO, Permanent deletion.

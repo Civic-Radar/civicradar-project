@@ -14,7 +14,7 @@ import { summarizeDocument, type SummaryResult } from './summarize';
 export const MAX_SUMMARY_STARTS_PER_RUN = 5;
 export const MAX_SUMMARIES_PER_PROCESS_CALL = 5;
 
-const SUMMARY_SETTINGS = ['ANTHROPIC_API_KEY', 'SUMMARY_MODEL', 'SUPABASE_SERVICE_ROLE_KEY'] as const;
+const SUMMARY_SETTINGS = ['SUMMARY_API_KEY','SUMMARY_MODEL', 'SUPABASE_SERVICE_ROLE_KEY'] as const;
 
 // Names (never values) of the settings a summary job needs that are not set.
 // Checked once before any job starts, so a missing setting leaves attempts

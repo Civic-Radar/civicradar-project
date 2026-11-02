@@ -6,6 +6,8 @@
 //   301.3  the request control is disabled while nothing is selected
 //   301.4  confirming creates one extraction request linked to the user
 // Also shows SRS-301.6 (non-PDF message) and SRS-306.3 (no duplicate in-flight request).
+// SRS-301.7: once the daily extraction limit is reached, the message is shown and
+// the request control stays disabled.
 // Each request links to its own page, which shows its status (SRS-306.1).
 //
 // Documents are grouped by meeting, newest meeting first, with a search box.
@@ -53,6 +55,8 @@ export default function ExtractPage() {
 
   const [confirming, setConfirming] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  // SRS-301.7: the server refused a request because today's limit was reached.
+  const [limitReached, setLimitReached] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
 
@@ -114,7 +118,7 @@ export default function ExtractPage() {
     : false;
 
   // SRS-301.3: disabled while nothing is selected.
-  const requestDisabled = !selected || selectedInFlight || submitting;
+  const requestDisabled = !selected || selectedInFlight || submitting || limitReached;
 
   function selectDocument(id: number) {
     setSelectedId(id);
@@ -140,6 +144,7 @@ export default function ExtractPage() {
     setConfirming(false);
 
     if (!res.ok) {
+      if (res.status === 429) setLimitReached(true);
       setError(data.error || 'The extraction request could not be created.');
       return;
     }

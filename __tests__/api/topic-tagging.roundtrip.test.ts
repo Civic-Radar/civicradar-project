@@ -6,9 +6,9 @@ type TopicRow = { topic_id: number; name: string; removed_at: string | null };
 type TagRow = { meeting_id: number; topic_id: number; evidence_text: string };
 
 // An in-memory stand-in for the tables topic tagging uses and for the
-// replace_meeting_topics function, so tags saved by one request are visible to
-// the next. It models only the calls the code makes today and throws on
-// anything else.
+// replace_meeting_topics and mark_meeting_unavailable functions, so tags saved
+// by one request are visible to the next. It models only the calls the code
+// makes today and throws on anything else.
 const store = vi.hoisted(() => ({
   meetings: [] as MeetingRow[],
   agendaItems: [] as AgendaRow[],
@@ -76,12 +76,32 @@ vi.mock('../../lib/supabase', () => {
     return unsupported(table, query);
   }
 
+  // Same outcome as public.mark_meeting_unavailable in supabase/schema.sql.
+  function markUnavailable(meetingId: number, agenda: unknown) {
+    const meeting = store.meetings.find((row) => row.meeting_id === meetingId);
+    if (!meeting) return { data: null, error: { message: `Meeting ${meetingId} not found` } };
+
+    if (JSON.stringify(currentAgenda(meetingId)) !== JSON.stringify(agenda)) {
+      return { data: false, error: null };
+    }
+
+    store.tags = store.tags.filter((row) => row.meeting_id !== meetingId);
+    meeting.topic_classification = 'Unavailable';
+    return { data: true, error: null };
+  }
+
   // Same outcome as public.replace_meeting_topics in supabase/schema.sql.
   function rpc(name: string, args: { p_meeting_id: number; p_tags: unknown; p_agenda: unknown }) {
-    if (name !== 'replace_meeting_topics') throw new Error(`The stand-in does not model rpc ${name}`);
+    if (name !== 'replace_meeting_topics' && name !== 'mark_meeting_unavailable') {
+      throw new Error(`The stand-in does not model rpc ${name}`);
+    }
     const hook = store.beforeSave;
     store.beforeSave = null;
     hook?.();
+
+    if (name === 'mark_meeting_unavailable') {
+      return Promise.resolve(markUnavailable(args.p_meeting_id, args.p_agenda));
+    }
 
     const { p_meeting_id: meetingId, p_tags: tags, p_agenda: agenda } = args;
     if (!Array.isArray(tags)) return Promise.resolve({ data: null, error: { message: 'p_tags must be a JSON array' } });
@@ -162,6 +182,7 @@ beforeEach(() => {
   store.meetings = [
     { meeting_id: 1, topic_classification: 'Pending' }, // the Salem demo meeting
     { meeting_id: 2, topic_classification: 'Pending' },
+    { meeting_id: 3, topic_classification: 'Pending' }, // a generic title and no agenda items
   ];
   // Meeting 1's items match supabase/seed_topic_tagging_demo.sql; only item 2 discusses housing.
   store.agendaItems = [
@@ -244,5 +265,57 @@ describe('Topic tagging round trip (SRS-401.4)', () => {
       { meeting_id: 1, topic_id: 1, evidence_text: HOUSING_SENTENCE },
       { meeting_id: 1, topic_id: 2, evidence_text: 'Public hearing on the Bridge Street parking plan.' },
     ]);
+  });
+});
+
+describe('Unavailable classification round trip (SRS-401.10)', () => {
+  it('marks a meeting with a generic title and no agenda text Unavailable, not a confirmed non-match', async () => {
+    const response = await tag(3);
+
+    expect(response.status).toBe(200);
+    expect(await response.json()).toEqual({ meeting_id: 3, result: 'no_agenda_text', tags: [] });
+    expect(classification(3)).toBe('Unavailable');
+    expect(tagsFor(3)).toEqual([]);
+  });
+
+  it('removes the tags of a meeting whose agenda text goes away, and no other meeting changes', async () => {
+    await tag(1);
+    await tag(2);
+    store.agendaItems = store.agendaItems.map((item) => (item.meeting_id === 1 ? { ...item, item_text: null } : item));
+
+    const response = await tag(1);
+
+    expect(await response.json()).toEqual({ meeting_id: 1, result: 'no_agenda_text', tags: [] });
+    expect(classification(1)).toBe('Unavailable');
+    expect(tagsFor(1)).toEqual([]);
+    expect(classification(2)).toBe('Classified');
+  });
+
+  it('saves nothing when agenda text arrives during a run, and the next run classifies it', async () => {
+    store.beforeSave = () => {
+      store.agendaItems.push({ agenda_item_id: 5, meeting_id: 3, sort_order: 0, item_text: HOUSING_SENTENCE, removed_at: null });
+    };
+
+    const interrupted = await tag(3);
+
+    expect(interrupted.status).toBe(409);
+    expect(classification(3)).toBe('Pending');
+
+    const retry = await tag(3);
+
+    expect(retry.status).toBe(200);
+    expect(classification(3)).toBe('Classified');
+    expect(tagsFor(3)).toEqual([{ meeting_id: 3, topic_id: 1, evidence_text: HOUSING_SENTENCE }]);
+  });
+
+  it('classifies an Unavailable meeting once agenda text arrives', async () => {
+    await tag(3);
+    store.agendaItems.push({ agenda_item_id: 5, meeting_id: 3, sort_order: 0, item_text: HOUSING_SENTENCE, removed_at: null });
+
+    const response = await tag(3);
+
+    expect(response.status).toBe(200);
+    expect(classification(3)).toBe('Classified');
+    expect(tagsFor(3)).toEqual([{ meeting_id: 3, topic_id: 1, evidence_text: HOUSING_SENTENCE }]);
   });
 });

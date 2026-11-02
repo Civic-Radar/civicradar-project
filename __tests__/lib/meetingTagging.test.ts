@@ -109,14 +109,47 @@ describe('Save topic tags (SRS-401.4)', () => {
   it.each([
     ['no agenda items', []],
     ['only blank agenda text', [{ agenda_item_id: 1, item_text: '   ' }, { agenda_item_id: 2, item_text: null }]],
-  ])('saves nothing when the meeting has %s', async (_label, items) => {
+  ])('marks the meeting Unavailable when it has %s', async (_label, items) => {
     results['agenda_items.select'] = { data: items, error: null };
 
     const result = await classifyMeetingTopics(supabase, 1);
 
     expect(result).toEqual({ status: 'no_agenda_text' });
     expect(callsTo('topics')).toEqual([]);
-    expect(saves()).toEqual([]);
+    expect(saves()).toEqual([
+      {
+        table: 'rpc',
+        method: 'mark_meeting_unavailable',
+        args: [{ p_meeting_id: 1, p_agenda: items }],
+      },
+    ]);
+  });
+
+  it('reports that the agenda changed when marking Unavailable is refused', async () => {
+    results['agenda_items.select'] = { data: [], error: null };
+    results['rpc.mark_meeting_unavailable'] = { data: false, error: null };
+
+    const result = await classifyMeetingTopics(supabase, 1);
+
+    expect(result).toEqual({ status: 'agenda_changed' });
+  });
+
+  it('returns an error when marking Unavailable gives an unexpected answer', async () => {
+    results['agenda_items.select'] = { data: [], error: null };
+    results['rpc.mark_meeting_unavailable'] = { data: null, error: null };
+
+    const result = await classifyMeetingTopics(supabase, 1);
+
+    expect(result).toEqual({ status: 'error' });
+  });
+
+  it('returns an error, without the database text, when marking Unavailable fails', async () => {
+    results['agenda_items.select'] = { data: [], error: null };
+    results['rpc.mark_meeting_unavailable'] = { data: null, error: dbError };
+
+    const result = await classifyMeetingTopics(supabase, 1);
+
+    expect(result).toEqual({ status: 'error' });
   });
 
   it("reads only the meeting's agenda items that are not removed, in agenda order", async () => {

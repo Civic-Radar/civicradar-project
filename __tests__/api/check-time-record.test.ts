@@ -273,7 +273,7 @@ describe('Check time record (SRS-222.1)', () => {
     vi.clearAllMocks();
     vi.stubEnv('SUPABASE_SERVICE_ROLE_KEY', 'test-service-role-key');
     // Blank summary settings, so no summary job starts even if the shell sets them.
-    vi.stubEnv('ANTHROPIC_API_KEY', '');
+    vi.stubEnv('SUMMARY_API_KEY', '');
     vi.stubEnv('SUMMARY_MODEL', '');
     vi.spyOn(console, 'log').mockImplementation(() => {});
     vi.spyOn(console, 'error').mockImplementation(() => {});

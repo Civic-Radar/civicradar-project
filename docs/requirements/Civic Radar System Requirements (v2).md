@@ -64,6 +64,8 @@ Civic Radar is a browser-based platform that helps residents follow local govern
 
 **UR-101, KJ — Topic selection.** As a resident, I want to select the local issues that matter to me, such as housing, transportation, or school budgets, so that the platform surfaces the small number of government items that affect my life instead of everything my town discusses.
 
+**Topic source.** The topics a resident can choose from are the topic entries in the platform catalog. The catalog is not fixed in code: system administrators add, rename, and remove topics through catalog management (UR-104), and changes appear to residents without redeployment. Residents can only select from the catalog; they cannot create or edit topics. At initial deployment the catalog contains the starter topics listed in SRS-101.5.
+
 **SRS-101.1, KJ, Topic list display.** The system shall display every topic in the platform catalog when the resident opens the topic selection section.
 
 **Acceptance Criteria:** Given the catalog contains the topics Housing, Parking, and Budget, When the resident opens the topic selection section, Then all three topics are displayed.
@@ -85,6 +87,36 @@ Traces to: UR-101
 **SRS-101.4, KJ, Saved topic preferences.** The system shall store the resident's selected topics as their followed topics when the resident saves the topic selection section.
 
 **Acceptance Criteria:** Given the resident selects Housing and Parking and saves the page, When the resident signs out, signs back in, and opens the topic selection section, Then Housing and Parking are marked as selected.
+
+Traces to: UR-101
+
+**SRS-101.5, KJ, Initial topic catalog.** The system shall contain the following topics in the catalog at initial deployment: Housing, Transportation & Parking, School Budget, Zoning & Land Use, Public Safety, Parks & Recreation, Taxes & Municipal Budget, and Environment.
+
+**Acceptance Criteria:** Given a new deployment with no administrator changes, When the resident opens the topic selection section, Then exactly these eight topics are displayed.
+
+Traces to: UR-101
+
+**SRS-101.6, KJ, Topic description display.** The system shall display each topic's name and description on the topic selection section.
+
+**Acceptance Criteria:** Given Housing has the description "Affordable housing, rentals, and new residential development", When the resident opens the topic selection section, Then that description is displayed with Housing.
+
+Traces to: UR-101
+
+**SRS-101.7, KJ, Resident catalog restriction.** The system shall deny any request to add, rename, or remove a catalog topic from an account without the system administrator role.
+
+**Acceptance Criteria:** Given a signed-in resident, When the resident sends a request to add the topic "Snow Removal", Then the request is denied and the catalog is unchanged.
+
+Traces to: UR-101
+
+**SRS-101.8, KJ, Renamed topic retention.** The system shall keep a topic in each resident's followed topics when a system administrator renames that topic.
+
+**Acceptance Criteria:** Given the resident follows "Parks", When the administrator renames it to "Parks & Recreation", Then the resident's topic selection section shows "Parks & Recreation" as selected.
+
+Traces to: UR-101
+
+**SRS-101.9, KJ, Removed topic handling.** The system shall remove a topic from every resident's followed topics when a system administrator confirms removal of that topic from the catalog.
+
+**Acceptance Criteria:** Given the resident follows Housing and Parks, When the administrator removes Parks, Then the resident's followed topics contain only Housing.
 
 Traces to: UR-101
 
@@ -376,10 +408,12 @@ Traces to: UR-203
 
 **UR-204, MS — View Document Summary.** As a user, I want to view a document's AI-generated summary, so that I don't have to read the full PDF to understand it.
 
-**SRS-204.1, MS, Summary generation start.** The system shall start generating an AI summary of a document when retrieval of that document completes.
+**SRS-204.1, MS, Summary generation start.** The system shall start generating an AI summary of a document when retrieval of that document completes, and keep processing every document whose summary generation has not finished, without any user action.
 
-**Acceptance Criteria:** Given a new document is retrieved, When retrieval completes, Then a summary generation attempt for that document is recorded.
+**Acceptance Criteria:**
 
+•       Given a new document is retrieved, When retrieval completes, Then a summary generation attempt for that document is recorded.
+•       Given 12 new documents are retrieved and no user takes any action, When 60 minutes have passed, Then none of the 12 has an attempt that is still In progress.
 Traces to: UR-204
 
 **SRS-204.2, MS, Summary display.** The system shall display a document's summary on its detail page when the document's summary status is Complete.
@@ -448,9 +482,9 @@ Traces to: UR-207
 
 Traces to: UR-207
 
-**SRS-207.4, MS, Original CivicClerk link.** The system shall display an "Open on CivicClerk" link to the document's original CivicClerk page when a document detail page opens.
+**SRS-207.4, MS, Original CivicClerk link.** The system shall display an "Open on CivicClerk" link to the CivicClerk page of the meeting the document belongs to when a document detail page opens.
 
-**Acceptance Criteria:** Given document X's detail page is open, When the user selects "Open on CivicClerk", Then the browser opens the CivicClerk page for document X.
+**Acceptance Criteria:** Given document X's detail page is open, When the user selects "Open on CivicClerk", Then the browser opens the CivicClerk page of the meeting that document X belongs to.
 
 Traces to: UR-207
 
@@ -875,6 +909,12 @@ Traces to: UR-301
 **SRS-301.6, AO, Unsupported format message.** The system shall display "This file can't be extracted. Only PDF documents are supported." when an extraction request is rejected under SRS-301.5.
 
 **Acceptance Criteria:** Given an extraction request is rejected under SRS-301.5, When the rejection occurs, Then "This file can't be extracted. Only PDF documents are supported." is displayed.
+
+Traces to: UR-301
+
+**SRS-301.7, AO, Daily extraction limit.** The system shall refuse a new extraction request, and display "You've reached today's extraction limit. Please try again tomorrow.", when the signed-in user has already requested the daily limit of extractions (10 by default) that day.
+
+**Acceptance Criteria:** Given a user has requested 10 extractions today, When the user requests another, Then no extraction request is created and "You've reached today's extraction limit. Please try again tomorrow." is displayed.
 
 Traces to: UR-301
 
@@ -1939,12 +1979,14 @@ Every UR is expanded into at least one SRS requirement. Counts are in parenthese
 
 | UR | Title | Owner | SRS requirements | NFRs |
 | :---- | :---- | :---- | :---- | :---- |
-| UR-101 | Topic Selection | KJ | SRS-101.1 to SRS-101.4 (4) | — |
+| UR-101 | Topic Selection | KJ | SRS-101.1 to SRS-101.9 (9) | — |
 | UR-102 | Data Freshness | KJ | SRS-102.1 to SRS-102.3 (3) | — |
 | UR-103 | Organization Permissions | KJ | SRS-103.1 to SRS-103.4 (4) | — |
 | UR-104 | Platform Catalog Management | KJ | SRS-104.1 to SRS-104.6 (6) | — |
 | UR-105 | Account Activity History | KJ | SRS-105.1 to SRS-105.4 (4) | — |
 | UR-106 | Account Suspension | KJ | SRS-106.1 to SRS-106.4 (4) | — |
+| UR-107 | First-Time Setup | KJ | SRS-107.1 to SRS-107.4 (4) | — |
+| UR-108 | Shared Organization Follows | KJ | SRS-108.1 to SRS-108.4 (4) | — |
 | UR-201 | Document List View | MS | SRS-201.1 to SRS-201.4 (4) | SRS-NFR-5 |
 | UR-202 | Document Identification | MS | SRS-202.1 to SRS-202.5 (5) | — |
 | UR-203 | Open Document PDF | MS | SRS-203.1 to SRS-203.4 (4) | SRS-NFR-6 |
@@ -1967,7 +2009,7 @@ Every UR is expanded into at least one SRS requirement. Counts are in parenthese
 | UR-220 | Retrieve Meetings | MS | SRS-220.1 to SRS-220.10 (10) | — |
 | UR-221 | Keep Meeting Data Current | MS | SRS-221.1 to SRS-221.3 (3) | SRS-NFR-15 |
 | UR-222 | Report Source Check Status | MS | SRS-222.1 to SRS-222.3 (3) | — |
-| UR-301 | Request Contact Extraction | AO | SRS-301.1 to SRS-301.6 (6) | — |
+| UR-301 | Request Contact Extraction | AO | SRS-301.1 to SRS-301.7 (7) | — |
 | UR-302 | View Extracted Details | AO | SRS-302.1 to SRS-302.4 (4) | — |
 | UR-303 | Identify the Source Document | AO | SRS-303.1 to SRS-303.4 (4) | — |
 | UR-304 | View Saved Extraction | AO | SRS-304.1 to SRS-304.3 (3) | — |

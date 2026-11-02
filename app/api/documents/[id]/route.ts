@@ -6,8 +6,9 @@ export const dynamic = 'force-dynamic';
 
 const LOAD_ERROR = 'This document could not be loaded. Please try again.';
 
-// Lifetime of the signed link to the stored PDF, in seconds.
-const PDF_LINK_SECONDS = 600;
+// Lifetime of the signed link to the stored PDF, in seconds: one hour, so the
+// View source PDF link still opens after the page has been open a while (SRS-207.2).
+const PDF_LINK_SECONDS = 3600;
 
 // Digits only and a safe integer. "0" and "007" are valid ids (no document, and 7).
 function parseDocumentId(value: string): number | null {

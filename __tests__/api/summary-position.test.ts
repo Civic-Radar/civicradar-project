@@ -39,11 +39,15 @@ const COMPLETE_DOCUMENT: DocumentIdentification = {
   pdf_url: SIGNED_URL,
 };
 
-// The summary section opens directly after the title's closing tag.
-const SECTION_AFTER_TITLE = /<\/h1><section\b[^>]*><h2\b[^>]*>Summary<\/h2>/;
+// The summary section opens right after the title, with only the Open on
+// CivicClerk link (SRS-207.4) between them.
+const SECTION_AFTER_TITLE = /<\/h1><p><a\b[^>]*>Open on CivicClerk<\/a><\/p><section\b[^>]*><h2\b[^>]*>Summary<\/h2>/;
 
 // The end of the summary section: the summary text, its wrapper, the section close.
 const SECTION_END = `<p>${SUMMARY_TEXT}</p></div></section>`;
+
+// With a PDF link, the View source PDF link (SRS-207.1, new tab per SRS-207.2) closes the section instead.
+const SECTION_END_WITH_LINK = `<p>${SUMMARY_TEXT}</p></div><p class="mt-5"><a href="${SIGNED_URL}" target="_blank" rel="noopener noreferrer" class="text-accent hover:underline">View source PDF</a></p></section>`;
 
 // Vitest compiles this project's JSX to React.createElement, and the page does
 // not import React, so React is stubbed as a global for the render.
@@ -82,7 +86,7 @@ describe('Document detail page summary position (SRS-205.1)', () => {
 
     expect(markup.split('<section').length - 1).toBe(1);
     expect(markup).toMatch(SECTION_AFTER_TITLE);
-    expect(markup).toContain(`${SECTION_END}<iframe title="Document PDF"`);
+    expect(markup).toContain(`${SECTION_END_WITH_LINK}<iframe title="Document PDF"`);
     expect(markup.split('<iframe').length - 1).toBe(1);
     expect(markup).not.toContain(NOT_AVAILABLE);
   });
