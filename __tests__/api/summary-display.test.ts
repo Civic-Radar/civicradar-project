@@ -150,10 +150,13 @@ function callsTo(table: string, method: string) {
   return db.calls.filter((call) => call.table === table && call.method === method);
 }
 
-function loadedDocument(summary_text: string | null): DocumentIdentification {
+function loadedDocument(
+  summary_text: string | null,
+  summary_status: DocumentIdentification['summary_status'] = summary_text === null ? 'Pending' : 'Complete',
+): DocumentIdentification {
   return {
     ...IDENTIFICATION,
-    summary_status: summary_text === null ? 'Pending' : 'Complete',
+    summary_status,
     summary_text,
     summary_generated_at: summary_text === null ? null : GENERATED_AT,
     pdf_url: SIGNED_URL,
@@ -351,17 +354,23 @@ describe('Document detail page summary section (SRS-204.2)', () => {
     expect(markup.indexOf('</h1>')).toBeLessThan(markup.indexOf('<section'));
   });
 
-  // The API returns both summary fields null for Pending and Failed, so the page
-  // sees the same input for both.
-  it('renders no summary for a Pending or Failed document, only the identification', () => {
+  // The API returns both summary fields null for Pending and Failed; only the
+  // status tells them apart. Pending shows no section, Failed shows the
+  // Failed message in its place (SRS-210.2).
+  it('renders no summary for a Pending document and the Failed message for a Failed one, only the identification', () => {
     const withSummary = renderLoaded('First paragraph.\n\nSecond paragraph.');
     const markup = renderLoaded(null);
+    const failed = renderPage({ status: 'loaded', document: loadedDocument(null, 'Failed') });
 
     expect(markup).not.toContain('<section');
     expect(markup).not.toContain('Summary');
     expect(markup).toContain(`>${IDENTIFICATION.title}</h1>`);
     // The only difference from the Complete page is the summary section.
     expect(markup).toBe(withSummary.replace(summarySection(withSummary)!, ''));
+    expect(summarySection(failed)).toContain(
+      'A summary could not be generated for this document. You can still read the original PDF below.',
+    );
+    expect(failed.replace(summarySection(failed)!, '')).toBe(markup);
   });
 
   it.each([

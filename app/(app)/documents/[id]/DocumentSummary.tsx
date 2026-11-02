@@ -4,15 +4,29 @@ import Card from '../../../components/ui/Card';
 // as plain text, one paragraph per line; renders nothing when there is no text.
 // SRS-207.1: a View source PDF link follows the text when there is a PDF link.
 // SRS-207.2: the link opens that stored PDF in a new tab.
+// SRS-210.2: a Failed document with no text shows the Failed message instead.
 export default function DocumentSummary({
   text,
   sourcePdfUrl = null,
+  summaryStatus = null,
 }: {
   text: string | null;
   sourcePdfUrl?: string | null;
+  summaryStatus?: 'Pending' | 'Complete' | 'Failed' | null;
 }) {
   const paragraphs = (text ?? '').split(/[\r\n]+/).map((line) => line.trim()).filter(Boolean);
-  if (paragraphs.length === 0) return null;
+  if (paragraphs.length === 0) {
+    if (summaryStatus !== 'Failed') return null;
+    // No disclaimer and no View source PDF link: no summary is displayed, and
+    // the PDF viewer follows directly below.
+    return (
+      <Card as="section" aria-labelledby="summary-heading" className="break-words p-5 md:p-7">
+        <h2 id="summary-heading" className="text-lg font-semibold tracking-tight">Summary</h2>
+        {/* SRS-210.2: the message text must stay word for word. */}
+        <p className="mt-2 text-fg-muted">A summary could not be generated for this document. You can still read the original PDF below.</p>
+      </Card>
+    );
+  }
 
   return (
     <Card as="section" aria-labelledby="summary-heading" className="break-words p-5 md:p-7">
