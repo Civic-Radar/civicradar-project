@@ -1,22 +1,9 @@
 import { getAuthenticatedUser, getToken, type SupabaseClient } from '../../../../lib/residentAuth';
 import { downloadFile, fetchAgendaItems, fetchMeetingFiles, fetchMeetings } from '../../../../lib/sources/civicclerk';
 import { runTownRetrieval } from '../../../../lib/retrieval/runTownRetrieval';
-
-// Used when RETRIEVAL_MAX_PAGES is unset or invalid, so a missing setting can
-// never mean unlimited (SRS-220.1).
-const DEFAULT_MAX_PAGES = 2;
-const RETRIEVAL_MAX_PAGES_CEILING = 5;
+import { retrievalMaxPages } from '../../../../lib/retrieval/maxPages';
 
 const ADMIN_ROLE = 'System administrator';
-
-// The page bound for both source passes, read from the server setting only,
-// never from the request.
-function retrievalMaxPages(): number {
-  const setting = process.env.RETRIEVAL_MAX_PAGES?.trim() ?? '';
-  const value = /^\d+$/.test(setting) ? Number(setting) : 0;
-
-  return value < 1 ? DEFAULT_MAX_PAGES : Math.min(value, RETRIEVAL_MAX_PAGES_CEILING);
-}
 
 // Only the exact administrator role passes. A missing row or any other value
 // is not an administrator; null means the role could not be read.

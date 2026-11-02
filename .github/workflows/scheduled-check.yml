@@ -1,0 +1,61 @@
+name: Scheduled source check
+
+# The scheduled check (SRS-208.1). The site sleeps when idle, so the schedule
+# runs here: every 3 hours (UTC), which keeps a new document within the
+# 6 hours of SRS-NFR-9. It can also be started by hand from the Actions tab.
+on:
+  schedule:
+    - cron: '0 */3 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+# Never cancel a running check: a second one waits for it.
+concurrency:
+  group: ${{ github.workflow }}
+  cancel-in-progress: false
+
+jobs:
+  scheduled-check:
+    name: Check every town
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    env:
+      # The site address with no trailing slash, and the shared secret.
+      RETRIEVAL_SCHEDULE_URL: ${{ secrets.RETRIEVAL_SCHEDULE_URL }}
+      RETRIEVAL_SCHEDULE_SECRET: ${{ secrets.RETRIEVAL_SCHEDULE_SECRET }}
+    steps:
+      # Up to 10 tries, so a sleeping site has time to start.
+      - name: Wake the site
+        run: |
+          if [ -z "$RETRIEVAL_SCHEDULE_URL" ]; then
+            echo "The RETRIEVAL_SCHEDULE_URL repository secret is not set."
+            exit 1
+          fi
+          for try in 1 2 3 4 5 6 7 8 9 10; do
+            if curl --fail --silent --show-error --output /dev/null --max-time 60 "$RETRIEVAL_SCHEDULE_URL/login"; then
+              echo "The site answered on try $try."
+              exit 0
+            fi
+            if [ "$try" -lt 10 ]; then
+              sleep 15
+            fi
+          done
+          echo "The site did not answer after 10 tries."
+          exit 1
+
+      # Exactly one request and no retry: a retry after a timeout could start
+      # a second run while the first is still working. The response holds
+      # counts only.
+      - name: Run the scheduled check
+        run: |
+          if [ -z "$RETRIEVAL_SCHEDULE_SECRET" ]; then
+            echo "The RETRIEVAL_SCHEDULE_SECRET repository secret is not set."
+            exit 1
+          fi
+          curl --fail-with-body --silent --show-error --max-time 1800 \
+            --request POST \
+            --header "x-retrieval-schedule-secret: $RETRIEVAL_SCHEDULE_SECRET" \
+            "$RETRIEVAL_SCHEDULE_URL/api/retrieval/scheduled"
+          echo
