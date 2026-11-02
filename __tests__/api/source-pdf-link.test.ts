@@ -37,6 +37,7 @@ const COMPLETE_DOCUMENT: DocumentIdentification = {
   document_type: 'Packet',
   source_url: SOURCE_URL,
   retrieved_at: '2026-10-01T12:00:00+00:00',
+  summary_status: 'Complete',
   summary_text: SUMMARY_TEXT,
   summary_generated_at: '2026-10-02T08:30:00+00:00',
   pdf_url: SIGNED_URL,

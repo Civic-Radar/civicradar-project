@@ -6,7 +6,7 @@ import DocumentSummary from './DocumentSummary';
 import { useDocument } from './useDocument';
 
 // Document detail page. Identification, the stored PDF shown in the page, and
-// the summary (SRS-203.1, SRS-203.2, SRS-204.2).
+// the summary or the Failed message (SRS-203.1, SRS-203.2, SRS-204.2, SRS-210.2).
 export default function DocumentDetailPage({ params }: { params: { id: string } }) {
   const state = useDocument(params.id);
 
@@ -37,7 +37,11 @@ export default function DocumentDetailPage({ params }: { params: { id: string } 
               </p>
             ) : null}
 
-            <DocumentSummary text={state.document.summary_text} sourcePdfUrl={state.document.pdf_url} />
+            <DocumentSummary
+              text={state.document.summary_text}
+              sourcePdfUrl={state.document.pdf_url}
+              summaryStatus={state.document.summary_status}
+            />
 
             {/* SRS-203.2 / SRS-205.1: the PDF stays inside the page, directly after the summary. */}
             {state.document.pdf_url ? (

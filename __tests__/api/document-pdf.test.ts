@@ -123,6 +123,7 @@ function storedRow(row: Record<string, unknown> | null) {
 function loadedDocument(pdf_url: string | null, summary_text: string | null = null): DocumentIdentification {
   return {
     ...IDENTIFICATION,
+    summary_status: summary_text === null ? 'Pending' : 'Complete',
     summary_text,
     summary_generated_at: summary_text === null ? null : '2026-10-02T08:30:00+00:00',
     pdf_url,
@@ -196,7 +197,7 @@ describe('GET /api/documents/[id] PDF link (SRS-203.2)', () => {
 
     expect(response.status).toBe(200);
     expect(body).toEqual({
-      document: { ...IDENTIFICATION, summary_text: null, summary_generated_at: null, pdf_url: SIGNED_URL },
+      document: { ...IDENTIFICATION, summary_status: 'Pending', summary_text: null, summary_generated_at: null, pdf_url: SIGNED_URL },
     });
     expect(storage.calls).toEqual([{ bucket: 'documents', path: '1/1168.pdf', expiresIn: 3600 }]);
     // The link is the Storage copy, never the source's own address.
@@ -230,7 +231,7 @@ describe('GET /api/documents/[id] PDF link (SRS-203.2)', () => {
 
     expect(response.status).toBe(200);
     expect(JSON.parse(text)).toEqual({
-      document: { ...IDENTIFICATION, summary_text: null, summary_generated_at: null, pdf_url: null },
+      document: { ...IDENTIFICATION, summary_status: 'Pending', summary_text: null, summary_generated_at: null, pdf_url: null },
     });
     expect(text).not.toContain(STORAGE_ERROR.message);
     expect(storage.calls).toHaveLength(1);

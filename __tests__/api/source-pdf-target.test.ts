@@ -108,6 +108,7 @@ const STORED_ROW = {
 // A Complete document as the API returns it.
 const COMPLETE_DOCUMENT: DocumentIdentification = {
   ...IDENTIFICATION,
+  summary_status: 'Complete',
   summary_text: SUMMARY_TEXT,
   summary_generated_at: '2026-10-02T08:30:00+00:00',
   pdf_url: SIGNED_URL,
