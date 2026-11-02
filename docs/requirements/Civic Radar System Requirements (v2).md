@@ -482,9 +482,9 @@ Traces to: UR-207
 
 Traces to: UR-207
 
-**SRS-207.4, MS, Original CivicClerk link.** The system shall display an "Open on CivicClerk" link to the document's original CivicClerk page when a document detail page opens.
+**SRS-207.4, MS, Original CivicClerk link.** The system shall display an "Open on CivicClerk" link to the CivicClerk page of the meeting the document belongs to when a document detail page opens.
 
-**Acceptance Criteria:** Given document X's detail page is open, When the user selects "Open on CivicClerk", Then the browser opens the CivicClerk page for document X.
+**Acceptance Criteria:** Given document X's detail page is open, When the user selects "Open on CivicClerk", Then the browser opens the CivicClerk page of the meeting that document X belongs to.
 
 Traces to: UR-207
 
