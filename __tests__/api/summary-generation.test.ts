@@ -371,6 +371,11 @@ function createFakeSupabase() {
       throw new Error(`Unexpected table: ${table}`);
     },
     rpc: async (name: string, args: Row) => {
+      // A successful run ends by advancing the town's baselines (SRS-404.5),
+      // which this file does not test.
+      if (name === 'process_successful_check') {
+        return { data: null, error: null };
+      }
       events.push(`rpc ${name} ${args.p_attempt_id}`);
       rpcCalls.push({ name, args: { ...args } });
       if (name !== 'finish_summary_attempt') {
