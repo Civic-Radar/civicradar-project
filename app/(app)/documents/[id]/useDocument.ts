@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react';
 
-// Fields returned by GET /api/documents/[id] (SRS-203.1). The summary fields
-// (SRS-204.2) are null unless the document's summary is Complete. pdf_url
-// (SRS-203.2) is a short-lived link to the stored PDF, or null.
+// Fields returned by GET /api/documents/[id] (SRS-203.1). summary_status
+// (SRS-210.2) is the stored status. The summary fields (SRS-204.2) are null
+// unless the document's summary is Complete. pdf_url (SRS-203.2) is a
+// short-lived link to the stored PDF, or null.
 export type DocumentIdentification = {
   document_id: number;
   meeting_id: number;
@@ -11,6 +12,7 @@ export type DocumentIdentification = {
   document_type: string;
   source_url: string;
   retrieved_at: string;
+  summary_status: 'Pending' | 'Complete' | 'Failed';
   summary_text: string | null;
   summary_generated_at: string | null;
   pdf_url: string | null;

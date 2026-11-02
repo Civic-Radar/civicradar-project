@@ -61,7 +61,7 @@ const DOCUMENT = {
 };
 const PENDING_ROW = { ...DOCUMENT, summary_status: 'Pending', summary_text: null, summary_generated_at: null };
 // The row has no storage_path or mime_type, so no PDF link is made (SRS-203.2).
-const PENDING_RESPONSE = { ...DOCUMENT, summary_text: null, summary_generated_at: null, pdf_url: null };
+const PENDING_RESPONSE = { ...DOCUMENT, summary_status: 'Pending', summary_text: null, summary_generated_at: null, pdf_url: null };
 
 function open(id: string, token: string | null = 'valid-token', headers?: Record<string, string>) {
   const request = new Request(`http://localhost/api/documents/${id}`, {
@@ -112,6 +112,7 @@ describe('GET /api/documents/[id] (SRS-203.1)', () => {
       'retrieved_at',
       'source_url',
       'summary_generated_at',
+      'summary_status',
       'summary_text',
       'title',
       'town_id',
@@ -122,7 +123,7 @@ describe('GET /api/documents/[id] (SRS-203.1)', () => {
   it('reads only the identification columns of one document by numeric id', async () => {
     await open('7');
 
-    // summary_status, storage_path and mime_type are read but not returned.
+    // storage_path and mime_type are read but not returned (summary_status is returned, SRS-210.2).
     expect(callsTo('documents', 'select')).toEqual([
       { table: 'documents', method: 'select', args: [SELECTED_COLUMNS] },
     ]);

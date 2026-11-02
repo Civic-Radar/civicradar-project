@@ -39,9 +39,10 @@ async function storedPdfUrl(
 }
 
 // Returns one document's identification for its detail page (SRS-203.1),
-// plus its summary when Complete (SRS-204.2) and a short-lived link to its
-// stored PDF (SRS-203.2). Signed-in residents only. No status or stored-file
-// fields: storage_path and mime_type are read only to build the link.
+// plus its summary status (SRS-210.2), its summary when Complete (SRS-204.2)
+// and a short-lived link to its stored PDF (SRS-203.2). Signed-in residents
+// only. No stored-file fields: storage_path and mime_type are read only to
+// build the link.
 export async function GET(request: Request, { params }: { params: { id: string } }) {
   const token = getToken(request);
   if (!token) return Response.json({ error: 'Unauthorized' }, { status: 401 });
@@ -64,7 +65,8 @@ export async function GET(request: Request, { params }: { params: { id: string }
   if (error) return Response.json({ error: LOAD_ERROR }, { status: 500 });
   if (!document) return Response.json({ error: 'Document not found.' }, { status: 404 });
 
-  // Built field by field so summary_status and any other column never leak.
+  // Built field by field so no other column leaks. summary_status is Pending,
+  // Complete or Failed (table check), so the page can tell Failed from Pending.
   // The table checks guarantee Complete means the text and time are set.
   const complete = document.summary_status === 'Complete';
   const pdfUrl = await storedPdfUrl(supabase!, documentId, document.storage_path, document.mime_type);
@@ -77,6 +79,7 @@ export async function GET(request: Request, { params }: { params: { id: string }
       document_type: document.document_type,
       source_url: document.source_url,
       retrieved_at: document.retrieved_at,
+      summary_status: document.summary_status,
       summary_text: complete ? document.summary_text : null,
       summary_generated_at: complete ? document.summary_generated_at : null,
       pdf_url: pdfUrl,

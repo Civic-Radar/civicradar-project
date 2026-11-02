@@ -87,6 +87,7 @@ const RESPONSE_KEYS = [
   'retrieved_at',
   'source_url',
   'summary_generated_at',
+  'summary_status',
   'summary_text',
   'title',
   'town_id',
@@ -152,6 +153,7 @@ function callsTo(table: string, method: string) {
 function loadedDocument(summary_text: string | null): DocumentIdentification {
   return {
     ...IDENTIFICATION,
+    summary_status: summary_text === null ? 'Pending' : 'Complete',
     summary_text,
     summary_generated_at: summary_text === null ? null : GENERATED_AT,
     pdf_url: SIGNED_URL,
@@ -231,7 +233,7 @@ describe('GET /api/documents/[id] summary fields (SRS-204.2)', () => {
 
     expect(response.status).toBe(200);
     expect(body).toEqual({
-      document: { ...IDENTIFICATION, summary_text: STORED_TEXT, summary_generated_at: GENERATED_AT, pdf_url: SIGNED_URL },
+      document: { ...IDENTIFICATION, summary_status: 'Complete', summary_text: STORED_TEXT, summary_generated_at: GENERATED_AT, pdf_url: SIGNED_URL },
     });
     // No trimming and no escaping.
     expect(body.document.summary_text).toBe(STORED_TEXT);
@@ -241,7 +243,7 @@ describe('GET /api/documents/[id] summary fields (SRS-204.2)', () => {
   it.each([
     ['Pending', PENDING_ROW],
     ['Failed', FAILED_ROW],
-  ])('returns null text and timestamp, both keys present, for a %s document', async (_status, row) => {
+  ])('returns null text and timestamp, both keys present, for a %s document', async (status, row) => {
     storedRow(row);
 
     const response = await open();
@@ -250,7 +252,7 @@ describe('GET /api/documents/[id] summary fields (SRS-204.2)', () => {
 
     expect(response.status).toBe(200);
     expect(body).toEqual({
-      document: { ...IDENTIFICATION, summary_text: null, summary_generated_at: null, pdf_url: SIGNED_URL },
+      document: { ...IDENTIFICATION, summary_status: status, summary_text: null, summary_generated_at: null, pdf_url: SIGNED_URL },
     });
     expect(body.document).toHaveProperty('summary_text', null);
     expect(body.document).toHaveProperty('summary_generated_at', null);
@@ -263,7 +265,7 @@ describe('GET /api/documents/[id] summary fields (SRS-204.2)', () => {
   it.each([
     ['Pending', PENDING_ROW_WITH_TEXT],
     ['Failed', FAILED_ROW_WITH_TEXT],
-  ])('returns no summary for a %s row even when it carries text', async (_status, row) => {
+  ])('returns no summary for a %s row even when it carries text', async (status, row) => {
     storedRow(row);
 
     const response = await open();
@@ -271,7 +273,7 @@ describe('GET /api/documents/[id] summary fields (SRS-204.2)', () => {
 
     expect(response.status).toBe(200);
     expect(JSON.parse(text)).toEqual({
-      document: { ...IDENTIFICATION, summary_text: null, summary_generated_at: null, pdf_url: SIGNED_URL },
+      document: { ...IDENTIFICATION, summary_status: status, summary_text: null, summary_generated_at: null, pdf_url: SIGNED_URL },
     });
     expect(text).not.toContain('First paragraph.');
     expect(text).not.toContain(GENERATED_AT);
@@ -281,7 +283,7 @@ describe('GET /api/documents/[id] summary fields (SRS-204.2)', () => {
     ['Complete', COMPLETE_ROW],
     ['Pending', PENDING_ROW],
     ['Failed', FAILED_ROW],
-  ])('returns exactly the ten keys and never summary_status for a %s document', async (status, row) => {
+  ])('returns exactly the eleven keys, summary_status once as stored, for a %s document', async (status, row) => {
     storedRow(row);
 
     const response = await open();
@@ -290,9 +292,9 @@ describe('GET /api/documents/[id] summary fields (SRS-204.2)', () => {
 
     expect(Object.keys(body)).toEqual(['document']);
     expect(Object.keys(body.document).sort()).toEqual(RESPONSE_KEYS);
-    expect(body.document).not.toHaveProperty('summary_status');
-    expect(text).not.toContain('summary_status');
-    expect(text).not.toContain(status);
+    expect(body.document).toHaveProperty('summary_status', status);
+    expect(text.split('summary_status')).toHaveLength(2);
+    expect(text.split(status)).toHaveLength(2);
   });
 
   it('reads one document with the exact select string', async () => {
