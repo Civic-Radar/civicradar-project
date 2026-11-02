@@ -155,6 +155,17 @@ describe('GET /api/matching-meetings', () => {
     expect(await response.json()).toEqual({ meetings: [townAMeeting], status: 'Complete', failed_towns: [] });
   });
 
+  it('keeps zero meetings with a failed town Incomplete, distinct from a Complete empty result', async () => {
+    const brookline = { town_id: 2, name: 'Brookline' };
+    db.results.match_meetings_with_reasons = { data: [], error: null };
+    db.results.unsuccessful_check_towns = { data: [brookline], error: null };
+
+    const response = await GET(req());
+
+    expect(response.status).toBe(200);
+    expect(await response.json()).toEqual({ meetings: [], status: 'Incomplete', failed_towns: [brookline] });
+  });
+
   it('fails instead of calling the result Complete when the check status cannot be read', async () => {
     db.results.match_meetings_with_reasons = { data: [townAMeeting], error: null };
     db.results.unsuccessful_check_towns = { data: null, error: checkDbError };
