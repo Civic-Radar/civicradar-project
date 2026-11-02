@@ -5,21 +5,42 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 export const STALE_ATTEMPT_MINUTES = 15;
 
 // A summary_attempts row that is In progress. startedAt is the value as read,
-// used by claimAttempt to check nobody else claimed it since.
+// used by claimAttempt to check nobody else claimed it since. claimedAt is
+// null until a job first claims the attempt.
 export interface InProgressAttempt {
   attemptId: number;
   documentId: number;
   startedAt: string;
+  claimedAt: string | null;
 }
 
 interface AttemptRow {
   attempt_id: number;
   document_id: number;
   started_at: string;
+  claimed_at: string | null;
 }
 
+const ATTEMPT_COLUMNS = 'attempt_id, document_id, started_at, claimed_at';
+
 function toAttempt(row: AttemptRow): InProgressAttempt {
-  return { attemptId: row.attempt_id, documentId: row.document_id, startedAt: row.started_at };
+  return {
+    attemptId: row.attempt_id,
+    documentId: row.document_id,
+    startedAt: row.started_at,
+    claimedAt: row.claimed_at ?? null,
+  };
+}
+
+// True for an attempt a job claimed and did not finish: it was claimed and its
+// started_at (reset by each claim) is past the stale window (SRS-210.1). An
+// attempt never claimed is never abandoned.
+export function isAbandoned(attempt: InProgressAttempt): boolean {
+  const staleBefore = Date.now() - STALE_ATTEMPT_MINUTES * 60 * 1000;
+  // PostgREST returns microseconds; keep milliseconds so every engine parses it.
+  // An unreadable time is never abandoned, so the attempt runs normally.
+  const startedAt = Date.parse(attempt.startedAt.replace(/(\.\d{3})\d+/, '$1'));
+  return attempt.claimedAt !== null && startedAt < staleBefore;
 }
 
 // Records attempt 1 for a newly inserted document (SRS-204.1). outcome and
@@ -28,7 +49,7 @@ export async function insertFirstAttempt(supabase: SupabaseClient, documentId: n
   const { data, error } = await supabase
     .from('summary_attempts')
     .insert({ document_id: documentId, attempt_number: 1 })
-    .select('attempt_id, document_id, started_at')
+    .select(ATTEMPT_COLUMNS)
     .single();
 
   if (error) {
@@ -41,18 +62,20 @@ export async function insertFirstAttempt(supabase: SupabaseClient, documentId: n
 // Claims an attempt by compare-and-set on started_at: the update only matches
 // while the attempt is In progress and started_at is still the value read, so
 // of two overlapping callers only one gets the row back. The new started_at
-// also keeps it out of the stale window. Returns null when the claim is lost.
+// also keeps it out of the stale window, and claimed_at records that a job
+// took it. Returns null when the claim is lost.
 export async function claimAttempt(
   supabase: SupabaseClient,
   attempt: InProgressAttempt,
 ): Promise<InProgressAttempt | null> {
+  const now = new Date().toISOString();
   const { data, error } = await supabase
     .from('summary_attempts')
-    .update({ started_at: new Date().toISOString() })
+    .update({ started_at: now, claimed_at: now })
     .eq('attempt_id', attempt.attemptId)
     .eq('outcome', 'In progress')
     .eq('started_at', attempt.startedAt)
-    .select('attempt_id, document_id, started_at');
+    .select(ATTEMPT_COLUMNS);
 
   if (error) {
     throw new Error(`Could not claim summary attempt ${attempt.attemptId}: ${error.message}`);
@@ -62,13 +85,14 @@ export async function claimAttempt(
 }
 
 // Oldest In progress attempts that started before the stale window, at most
-// limit. Throws on any failed read.
+// limit, with claimed_at so the job can tell an abandoned attempt from one
+// never run. Throws on any failed read.
 export async function findInProgressAttempts(supabase: SupabaseClient, limit: number): Promise<InProgressAttempt[]> {
   const staleBefore = new Date(Date.now() - STALE_ATTEMPT_MINUTES * 60 * 1000).toISOString();
 
   const { data, error } = await supabase
     .from('summary_attempts')
-    .select('attempt_id, document_id, started_at')
+    .select(ATTEMPT_COLUMNS)
     .eq('outcome', 'In progress')
     .lt('started_at', staleBefore)
     .order('started_at', { ascending: true })
@@ -82,28 +106,60 @@ export async function findInProgressAttempts(supabase: SupabaseClient, limit: nu
   return (data ?? []).map(toAttempt);
 }
 
-// What finish_summary_attempt did: 'closed' changed rows, the others changed
-// nothing and say why.
-export type FinishResult = 'closed' | 'attempt_not_found' | 'attempt_not_in_progress' | 'document_not_pending';
+// The In progress attempt of a document. The unique index on running attempts
+// allows at most one. Throws on a failed read or when there is none.
+async function findRunningAttempt(supabase: SupabaseClient, documentId: number): Promise<InProgressAttempt> {
+  const { data, error } = await supabase
+    .from('summary_attempts')
+    .select(ATTEMPT_COLUMNS)
+    .eq('document_id', documentId)
+    .eq('outcome', 'In progress')
+    .maybeSingle();
+
+  if (error) {
+    throw new Error(`Could not read the next summary attempt for document ${documentId}: ${error.message}`);
+  }
+  if (!data) {
+    throw new Error(`Could not read the next summary attempt for document ${documentId}: none found`);
+  }
+  return toAttempt(data);
+}
+
+// What finish_summary_attempt did: 'closed' changed rows, retry closed the
+// attempt as Failed and recorded nextAttempt, 'failed' closed it as Failed
+// and set the document Failed, the others changed nothing and say why.
+export type FinishResult =
+  | 'closed'
+  | 'failed'
+  | 'attempt_not_found'
+  | 'attempt_not_in_progress'
+  | 'document_not_pending'
+  | { kind: 'retry'; nextAttempt: InProgressAttempt };
 
 export type AttemptFinish = { outcome: 'Succeeded'; summaryText: string } | { outcome: 'Failed' };
 
-const FINISH_RESULTS: readonly FinishResult[] = [
+const FINISH_RESULTS = [
   'closed',
+  'retry',
+  'failed',
   'attempt_not_found',
   'attempt_not_in_progress',
   'document_not_pending',
-];
+] as const;
 
 // Closes an attempt through the finish_summary_attempt SQL function, in one
 // transaction (SRS-204.1). Succeeded also stores the text and sets the document
-// Complete. Failed only closes the attempt (no retry, SRS-210.1). Throws on any
-// rpc error, never with error.details, which can hold the summary text.
+// Complete. Failed closes the attempt and, below 3 consecutive failures,
+// records the next attempt, which is read back as nextAttempt. At 3 it sets
+// the document Failed instead (SRS-210.1).
+// Throws on any rpc error, never with error.details, which can hold the
+// summary text.
 export async function finishAttempt(
   supabase: SupabaseClient,
-  attemptId: number,
+  attempt: Pick<InProgressAttempt, 'attemptId' | 'documentId'>,
   finish: AttemptFinish,
 ): Promise<FinishResult> {
+  const { attemptId } = attempt;
   const { data, error } = await supabase.rpc('finish_summary_attempt', {
     p_attempt_id: attemptId,
     p_outcome: finish.outcome,
@@ -119,5 +175,8 @@ export async function finishAttempt(
     throw new Error(`Could not finish summary attempt ${attemptId} as ${finish.outcome}: unexpected result`);
   }
 
+  if (data === 'retry') {
+    return { kind: 'retry', nextAttempt: await findRunningAttempt(supabase, attempt.documentId) };
+  }
   return data;
 }

@@ -8,6 +8,12 @@ export const SUMMARY_MAX_WORDS = 150;
 // counts toward max_tokens. A response that hits this cap is a failed attempt.
 export const SUMMARY_MAX_TOKENS = 4096;
 
+// One request waits at most 3 minutes and is retried once, so one attempt
+// takes at most about six minutes, well inside the 15-minute stale window
+// (SRS-210.1, SRS-NFR-8).
+export const SUMMARY_REQUEST_TIMEOUT_MS = 180_000;
+export const SUMMARY_MAX_RETRIES = 1;
+
 // Used verbatim (docs/marcos-handoff.md, "Summary prompt").
 export const SUMMARY_SYSTEM_PROMPT = `You write short summaries of official city and town meeting documents for residents who want to know what a document says without reading all of it.
 
@@ -84,7 +90,7 @@ export async function summarizeDocument(input: SummaryInput): Promise<SummaryRes
   const apiKey = requireEnv('SUMMARY_API_KEY');
   const model = requireEnv('SUMMARY_MODEL');
 
-  const client = new Anthropic({ apiKey });
+  const client = new Anthropic({ apiKey, timeout: SUMMARY_REQUEST_TIMEOUT_MS, maxRetries: SUMMARY_MAX_RETRIES });
 
   // No thinking parameter (adaptive by default) and low effort: the only
   // low-thinking setup both claude-haiku-5-5 and claude-sonnet-5-5 accept.

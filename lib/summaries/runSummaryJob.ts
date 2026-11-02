@@ -4,6 +4,7 @@ import {
   claimAttempt,
   finishAttempt,
   insertFirstAttempt,
+  isAbandoned,
   type FinishResult,
   type InProgressAttempt,
 } from './attempts';
@@ -13,6 +14,10 @@ import { summarizeDocument, type SummaryResult } from './summarize';
 // Cost caps: the most summary jobs one retrieval run or one process call starts.
 export const MAX_SUMMARY_STARTS_PER_RUN = 5;
 export const MAX_SUMMARIES_PER_PROCESS_CALL = 5;
+
+// The most attempts one runSummaryJob call runs for its document, the same as
+// the 3-attempt limit in finish_summary_attempt (SRS-210.1).
+export const MAX_ATTEMPTS_PER_JOB = 3;
 
 const SUMMARY_SETTINGS = ['SUMMARY_API_KEY','SUMMARY_MODEL', 'SUPABASE_SERVICE_ROLE_KEY'] as const;
 
@@ -29,13 +34,14 @@ type ProducedSummary =
       kind: 'failed';
       attemptId: number;
       documentId: number;
-      stage: 'read' | 'summarize';
+      stage: 'read' | 'summarize' | 'timeout';
       reason: string;
       message?: string;
     };
 
 // finish is what finish_summary_attempt did with the result: 'closed' stored
-// it, anything else changed nothing.
+// it, retry closed a failure and recorded the next attempt, anything else
+// changed nothing.
 export type SummaryJobOutcome =
   | { kind: 'skipped'; documentId: number; reason: 'not_claimed' | 'not_pending' }
   | (ProducedSummary & { finish: FinishResult });
@@ -133,6 +139,10 @@ async function produceSummary(
   };
 }
 
+function finishLabel(finish: FinishResult): string {
+  return typeof finish === 'string' ? finish : finish.kind;
+}
+
 // Never logs the summary text or the file.
 function logOutcome(outcome: SummaryJobOutcome): void {
   if (outcome.kind === 'skipped') {
@@ -144,29 +154,54 @@ function logOutcome(outcome: SummaryJobOutcome): void {
     if (outcome.finish === 'closed') {
       console.log(`${where} succeeded (${outcome.wordCount} words), stored, status Complete`);
     } else {
-      console.error(`${where} succeeded (${outcome.wordCount} words), not stored: ${outcome.finish}`);
+      console.error(`${where} succeeded (${outcome.wordCount} words), not stored: ${finishLabel(outcome.finish)}`);
     }
     return;
   }
 
   const detail = outcome.message ? `: ${outcome.message}` : '';
-  const closed = outcome.finish === 'closed' ? 'attempt closed as Failed' : `attempt not closed: ${outcome.finish}`;
+  let closed: string;
+  if (outcome.finish === 'closed' || outcome.finish === 'failed') {
+    closed = 'attempt closed as Failed';
+  } else if (typeof outcome.finish !== 'string') {
+    closed = `attempt closed as Failed, next attempt ${outcome.finish.nextAttempt.attemptId} recorded`;
+  } else {
+    closed = `attempt not closed: ${outcome.finish}`;
+  }
   console.error(`${where} failed at ${outcome.stage}: ${outcome.reason}${detail}, ${closed}`);
+  if (outcome.finish === 'failed') {
+    console.error(`Summary job: document ${outcome.documentId} status Failed after ${MAX_ATTEMPTS_PER_JOB} failed attempts`);
+  }
 }
 
 // Claims an In progress attempt, loads its document and town name, reads the
 // stored PDF, summarizes it and finishes the attempt (SRS-204.1): a summary is
-// stored and the attempt closed as Succeeded, any failure closes it as Failed
-// with no retry (SRS-210.1). A lost claim or a document that is no longer
-// Pending is skipped. A failed database read or finish throws and leaves the
-// attempt In progress for POST /api/summaries/process.
-export async function runSummaryJob(
-  supabase: SupabaseClient,
-  attempt: InProgressAttempt,
-): Promise<SummaryJobOutcome> {
+// stored and the attempt closed as Succeeded, any failure closes it as Failed.
+// An abandoned attempt (claimed before by a job that did not finish) is closed
+// as Failed at stage timeout without running, so it counts as a failure
+// (SRS-210.1, SRS-NFR-8). A lost claim or a document that is no longer Pending
+// is skipped. A failed database read or finish throws and leaves the attempt
+// In progress for POST /api/summaries/process, which times it out later.
+async function runAttempt(supabase: SupabaseClient, attempt: InProgressAttempt): Promise<SummaryJobOutcome> {
+  // Decided on the values as read, before this claim sets claimed_at.
+  const abandoned = isAbandoned(attempt);
   const claimed = await claimAttempt(supabase, attempt);
   if (!claimed) {
     return { kind: 'skipped', documentId: attempt.documentId, reason: 'not_claimed' };
+  }
+
+  if (abandoned) {
+    const finish = await finishAttempt(supabase, attempt, { outcome: 'Failed' });
+    const outcome: SummaryJobOutcome = {
+      kind: 'failed',
+      attemptId: attempt.attemptId,
+      documentId: attempt.documentId,
+      stage: 'timeout',
+      reason: 'not_finished',
+      finish,
+    };
+    logOutcome(outcome);
+    return outcome;
   }
 
   const document = await loadDocument(supabase, attempt.documentId);
@@ -178,12 +213,30 @@ export async function runSummaryJob(
   const produced = await produceSummary(supabase, attempt.attemptId, document, townName);
   const finish = await finishAttempt(
     supabase,
-    produced.attemptId,
+    attempt,
     produced.kind === 'succeeded' ? { outcome: 'Succeeded', summaryText: produced.text } : { outcome: 'Failed' },
   );
 
   const outcome: SummaryJobOutcome = { ...produced, finish };
   logOutcome(outcome);
+  return outcome;
+}
+
+// Runs an attempt and, while a failure records the next attempt, runs that one
+// right away (SRS-210.1), at most MAX_ATTEMPTS_PER_JOB attempts in all. Stops
+// on any other result. Returns the last attempt's outcome. A throw leaves the
+// current attempt In progress for POST /api/summaries/process.
+export async function runSummaryJob(
+  supabase: SupabaseClient,
+  attempt: InProgressAttempt,
+): Promise<SummaryJobOutcome> {
+  let outcome = await runAttempt(supabase, attempt);
+  for (let runs = 1; runs < MAX_ATTEMPTS_PER_JOB; runs++) {
+    if (outcome.kind !== 'failed' || typeof outcome.finish === 'string') {
+      break;
+    }
+    outcome = await runAttempt(supabase, outcome.finish.nextAttempt);
+  }
   return outcome;
 }
 

@@ -93,7 +93,7 @@ describe('summarizeDocument (SRS-204.1, SRS-NFR-7)', () => {
 
     await summarize();
 
-    expect(sdk.clientOptions).toEqual([{ apiKey: ANTHROPIC_KEY }]);
+    expect(sdk.clientOptions).toEqual([{ apiKey: ANTHROPIC_KEY, timeout: 180_000, maxRetries: 1 }]);
     expect(sdk.create).toHaveBeenCalledTimes(1);
     // toEqual on the whole request: no thinking, temperature or other settings.
     expect(sdk.create.mock.calls[0]).toEqual([
