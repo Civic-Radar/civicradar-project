@@ -102,10 +102,11 @@ async function findRunningAttempt(supabase: SupabaseClient, documentId: number):
 }
 
 // What finish_summary_attempt did: 'closed' changed rows, retry closed the
-// attempt as Failed and recorded nextAttempt, the others changed nothing and
-// say why.
+// attempt as Failed and recorded nextAttempt, 'failed' closed it as Failed
+// and set the document Failed, the others changed nothing and say why.
 export type FinishResult =
   | 'closed'
+  | 'failed'
   | 'attempt_not_found'
   | 'attempt_not_in_progress'
   | 'document_not_pending'
@@ -116,6 +117,7 @@ export type AttemptFinish = { outcome: 'Succeeded'; summaryText: string } | { ou
 const FINISH_RESULTS = [
   'closed',
   'retry',
+  'failed',
   'attempt_not_found',
   'attempt_not_in_progress',
   'document_not_pending',
@@ -124,7 +126,8 @@ const FINISH_RESULTS = [
 // Closes an attempt through the finish_summary_attempt SQL function, in one
 // transaction (SRS-204.1). Succeeded also stores the text and sets the document
 // Complete. Failed closes the attempt and, below 3 consecutive failures,
-// records the next attempt, which is read back as nextAttempt (SRS-210.1).
+// records the next attempt, which is read back as nextAttempt. At 3 it sets
+// the document Failed instead (SRS-210.1).
 // Throws on any rpc error, never with error.details, which can hold the
 // summary text.
 export async function finishAttempt(

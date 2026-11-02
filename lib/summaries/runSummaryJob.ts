@@ -160,7 +160,7 @@ function logOutcome(outcome: SummaryJobOutcome): void {
 
   const detail = outcome.message ? `: ${outcome.message}` : '';
   let closed: string;
-  if (outcome.finish === 'closed') {
+  if (outcome.finish === 'closed' || outcome.finish === 'failed') {
     closed = 'attempt closed as Failed';
   } else if (typeof outcome.finish !== 'string') {
     closed = `attempt closed as Failed, next attempt ${outcome.finish.nextAttempt.attemptId} recorded`;
@@ -168,6 +168,9 @@ function logOutcome(outcome: SummaryJobOutcome): void {
     closed = `attempt not closed: ${outcome.finish}`;
   }
   console.error(`${where} failed at ${outcome.stage}: ${outcome.reason}${detail}, ${closed}`);
+  if (outcome.finish === 'failed') {
+    console.error(`Summary job: document ${outcome.documentId} status Failed after ${MAX_ATTEMPTS_PER_JOB} failed attempts`);
+  }
 }
 
 // Claims an In progress attempt, loads its document and town name, reads the

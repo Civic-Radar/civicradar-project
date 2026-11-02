@@ -246,6 +246,9 @@ function createFakeSupabase() {
           outcome: 'In progress',
         });
         result = 'retry';
+      } else {
+        doc.summary_status = 'Failed';
+        result = 'failed';
       }
     }
 
@@ -662,13 +665,15 @@ describe('Summary generation start (SRS-204.1)', () => {
     expect(attempts.map((row) => row.outcome)).toEqual(['Failed', 'Failed', 'Failed']);
     expect(attempts.every((row) => row.ended_at !== null)).toBe(true);
 
+    // Failed after the third consecutive failure (SRS-210.1), still with no text.
     expect(documentRow(fake, 31)).toMatchObject({
-      summary_status: 'Pending',
+      summary_status: 'Failed',
       summary_text: null,
       summary_generated_at: null,
     });
 
     expect(consoleOutput()).toContain('failed at summarize: over_word_limit, attempt closed as Failed');
+    expect(consoleOutput()).toContain('document 31 status Failed after 3 failed attempts');
   });
 
   it('records no attempt for a file that already has a documents row', async () => {
@@ -797,7 +802,7 @@ describe('Summary generation start (SRS-204.1)', () => {
       [1, 2, 3].map((id) => ({ p_attempt_id: id, p_outcome: 'Failed', p_summary_text: null })),
     );
     expect(attemptsFor(fake, 31)).toEqual([1, 2, 3].map(() => expect.objectContaining({ outcome: 'Failed' })));
-    expect(documentRow(fake, 31)).toMatchObject({ summary_status: 'Pending', summary_text: null });
+    expect(documentRow(fake, 31)).toMatchObject({ summary_status: 'Failed', summary_text: null });
 
     expect(consoleOutput()).toContain(
       'failed at summarize: error: Claude API request failed (500), attempt closed as Failed',
@@ -819,7 +824,7 @@ describe('Summary generation start (SRS-204.1)', () => {
       [1, 2, 3].map((id) => ({ p_attempt_id: id, p_outcome: 'Failed', p_summary_text: null })),
     );
     expect(attemptsFor(fake, 31)).toEqual([1, 2, 3].map(() => expect.objectContaining({ outcome: 'Failed' })));
-    expect(documentRow(fake, 31)).toMatchObject({ summary_status: 'Pending', summary_text: null });
+    expect(documentRow(fake, 31)).toMatchObject({ summary_status: 'Failed', summary_text: null });
 
     expect(consoleOutput()).toContain('failed at read: missing, attempt closed as Failed');
   });

@@ -538,11 +538,12 @@ where
 --          Complete. Failed closes the attempt and counts the consecutive
 --          Failed attempts (those after the latest Succeeded one). Below 3
 --          it records the next attempt as In progress and returns 'retry'.
---          At 3 it records no further attempt and returns 'closed'.
+--          At 3 (or when attempt 3 is already used) it records no further
+--          attempt, sets the document Failed and returns 'failed'.
 --          Changes nothing unless the attempt is still
 --          In progress and its document is still Pending, and returns why:
---          'closed', 'retry', 'attempt_not_found', 'attempt_not_in_progress'
---          or 'document_not_pending'. ended_at and summary_generated_at use
+--          'closed', 'retry', 'failed', 'attempt_not_found',
+--          'attempt_not_in_progress' or 'document_not_pending'. ended_at and summary_generated_at use
 --          greatest() so clock skew cannot break the table checks.
 -- Supabase: not in database/schema.sql; called by lib/summaries/attempts.ts
 --           through supabase.rpc. Run this block alone in the SQL Editor.
@@ -644,7 +645,12 @@ BEGIN
     RETURN 'retry';
   END IF;
 
-  RETURN 'closed';
+  -- No attempt is left: the summary has failed (SRS-210.1). summary_text stays null.
+  UPDATE documents
+     SET summary_status = 'Failed'
+   WHERE document_id = v_document_id;
+
+  RETURN 'failed';
 END;
 $$;
 
