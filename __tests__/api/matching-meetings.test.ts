@@ -31,6 +31,7 @@ import { getSupabaseClient } from '../../lib/supabase';
 const townAMeeting = { meeting_id: 1, town_id: 1, title: 'Town A Council' };
 const townBMeeting = { meeting_id: 2, town_id: 2, title: 'Town B Planning Board' };
 const dbError = { message: 'function match_meetings_with_reasons(uuid) does not exist (42883)' };
+const checkDbError = { message: 'function unsuccessful_check_towns(uuid) does not exist (42883)' };
 
 function req(token: string | null = 'valid-token', url = 'http://localhost/api/matching-meetings') {
   return new Request(url, { headers: token ? { authorization: `Bearer ${token}` } : {} });
@@ -73,7 +74,10 @@ describe('GET /api/matching-meetings', () => {
   it('matches for the resident in the token, ignoring a user id in the URL', async () => {
     await GET(req('valid-token', 'http://localhost/api/matching-meetings?userId=someone-else'));
 
-    expect(db.rpcCalls).toEqual([{ name: 'match_meetings_with_reasons', args: { p_user_id: 'user-123' } }]);
+    expect(db.rpcCalls).toEqual([
+      { name: 'match_meetings_with_reasons', args: { p_user_id: 'user-123' } },
+      { name: 'unsuccessful_check_towns', args: { p_user_id: 'user-123' } },
+    ]);
   });
 
   it('returns the matching meetings', async () => {
@@ -82,7 +86,7 @@ describe('GET /api/matching-meetings', () => {
     const response = await GET(req());
 
     expect(response.status).toBe(200);
-    expect(await response.json()).toEqual({ meetings: [townAMeeting, townBMeeting] });
+    expect(await response.json()).toEqual({ meetings: [townAMeeting, townBMeeting], status: 'Complete', failed_towns: [] });
   });
 
   it('returns each meeting with its matching reason unchanged', async () => {
@@ -107,7 +111,7 @@ describe('GET /api/matching-meetings', () => {
     const response = await GET(req());
 
     expect(response.status).toBe(200);
-    expect(await response.json()).toEqual({ meetings: [salemHousing, followedOnly] });
+    expect(await response.json()).toEqual({ meetings: [salemHousing, followedOnly], status: 'Complete', failed_towns: [] });
   });
 
   it('returns an empty list when nothing matches', async () => {
@@ -116,7 +120,7 @@ describe('GET /api/matching-meetings', () => {
     const response = await GET(req());
 
     expect(response.status).toBe(200);
-    expect(await response.json()).toEqual({ meetings: [] });
+    expect(await response.json()).toEqual({ meetings: [], status: 'Complete', failed_towns: [] });
   });
 
   it('returns a fixed message, not the database error, when matching fails', async () => {
@@ -128,5 +132,38 @@ describe('GET /api/matching-meetings', () => {
     expect(response.status).toBe(500);
     expect(JSON.parse(text)).toEqual({ error: 'Your matching meetings could not be loaded. Please try again.' });
     expect(text).not.toContain(dbError.message);
+  });
+
+  it('is Incomplete and lists the failed towns, keeping the other meetings', async () => {
+    const brookline = { town_id: 2, name: 'Brookline' };
+    db.results.match_meetings_with_reasons = { data: [townAMeeting], error: null };
+    db.results.unsuccessful_check_towns = { data: [brookline], error: null };
+
+    const response = await GET(req());
+
+    expect(response.status).toBe(200);
+    expect(await response.json()).toEqual({ meetings: [townAMeeting], status: 'Incomplete', failed_towns: [brookline] });
+  });
+
+  it('is Complete when every followed town checked successfully', async () => {
+    db.results.match_meetings_with_reasons = { data: [townAMeeting], error: null };
+    db.results.unsuccessful_check_towns = { data: [], error: null };
+
+    const response = await GET(req());
+
+    expect(response.status).toBe(200);
+    expect(await response.json()).toEqual({ meetings: [townAMeeting], status: 'Complete', failed_towns: [] });
+  });
+
+  it('fails instead of calling the result Complete when the check status cannot be read', async () => {
+    db.results.match_meetings_with_reasons = { data: [townAMeeting], error: null };
+    db.results.unsuccessful_check_towns = { data: null, error: checkDbError };
+
+    const response = await GET(req());
+    const text = await response.text();
+
+    expect(response.status).toBe(500);
+    expect(JSON.parse(text)).toEqual({ error: 'Your matching meetings could not be loaded. Please try again.' });
+    expect(text).not.toContain(checkDbError.message);
   });
 });

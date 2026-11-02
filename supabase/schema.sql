@@ -8,7 +8,7 @@
 --   Part 4  avatars bucket     - public storage bucket for profile pictures
 --
 -- Part 2 is generated from database/schema.sql (the portable PostgreSQL script,
--- which is the source of truth). Only ten things differ, and each is marked
+-- which is the source of truth). Only eleven things differ, and each is marked
 -- "Supabase:" inline:
 --
 --   1. is_valid_time_zone() is created as public.is_valid_time_zone() with a
@@ -47,6 +47,10 @@
 --      Unavailable and removes its topic tags in one transaction, unless the
 --      meeting's agenda changed after it was read (SRS-401.10). Only the
 --      service role may run it.
+--  11. public.unsuccessful_check_towns() lists the user's followed towns whose
+--      most recent finished check was not successful, or that have no
+--      finished check, so the matching result can be marked Incomplete
+--      (SRS-401.11). Only the service role may run it.
 -- =============================================================================
 -- =============================================================================
 -- PART 1. Profile table (used by app/api/profile)
@@ -152,6 +156,8 @@ drop function IF exists public.replace_meeting_topics (BIGINT, JSONB, JSONB) CAS
 drop function IF exists public.mark_meeting_unavailable (BIGINT, JSONB) CASCADE;
 
 drop function IF exists public.match_meetings_with_reasons (UUID) CASCADE;
+
+drop function IF exists public.unsuccessful_check_towns (UUID) CASCADE;
 
 drop function IF exists public.create_meeting_baseline () CASCADE;
 
@@ -933,6 +939,51 @@ $$;
 revoke all on function public.match_meetings_with_reasons (UUID) from public, anon, authenticated;
 
 grant execute on function public.match_meetings_with_reasons (UUID) to service_role;
+
+-- Function: unsuccessful_check_towns
+-- Reviewed by: EG (Erick Gonzalez)
+-- Supports: SRS-401.11, SRS-401.3, SRS-501.4
+-- Purpose: Returns the user's followed, non-removed towns whose most recent
+--          finished check was not successful, each as a JSON object holding
+--          town_id and name, sorted by name. The most recent finished check is
+--          the ended one that started last; a check still running is not
+--          counted until it ends. A check is successful when it has ended and
+--          none of its source_check_collections rows is 'Failed' (Definition
+--          10). A town with no finished check is returned too, because there
+--          is no successful check to show for it. An empty result means every
+--          required check was successful.
+-- Supabase: not in database/schema.sql; called by the matching API route.
+create function public.unsuccessful_check_towns (p_user_id UUID) RETURNS SETOF JSONB LANGUAGE sql STABLE SECURITY INVOKER
+set
+  search_path = pg_catalog,
+  public -- Supabase: pin the search path (linter 0011)
+  as $$
+  SELECT jsonb_build_object('town_id', t.town_id, 'name', t.name)
+  FROM user_followed_towns uft
+  JOIN towns t ON t.town_id = uft.town_id AND t.removed_at IS NULL
+  LEFT JOIN LATERAL (
+    SELECT sc.check_id
+    FROM source_checks sc
+    WHERE sc.town_id = t.town_id AND sc.ended_at IS NOT NULL
+    ORDER BY sc.started_at DESC, sc.check_id DESC
+    LIMIT 1
+  ) latest ON true
+  WHERE uft.user_id = p_user_id
+    AND (
+      latest.check_id IS NULL
+      OR EXISTS (
+        SELECT 1
+        FROM source_check_collections cc
+        WHERE cc.check_id = latest.check_id AND cc.result = 'Failed'
+      )
+    )
+  ORDER BY t.name, t.town_id;
+$$;
+
+-- Supabase: only the API routes (service role) may run it, never the anon key.
+revoke all on function public.unsuccessful_check_towns (UUID) from public, anon, authenticated;
+
+grant execute on function public.unsuccessful_check_towns (UUID) to service_role;
 
 -- Table: meeting_updates
 -- Reviewed by: EG (Erick Gonzalez)
