@@ -4,6 +4,7 @@ import {
   claimAttempt,
   finishAttempt,
   insertFirstAttempt,
+  isAbandoned,
   type FinishResult,
   type InProgressAttempt,
 } from './attempts';
@@ -33,7 +34,7 @@ type ProducedSummary =
       kind: 'failed';
       attemptId: number;
       documentId: number;
-      stage: 'read' | 'summarize';
+      stage: 'read' | 'summarize' | 'timeout';
       reason: string;
       message?: string;
     };
@@ -176,13 +177,31 @@ function logOutcome(outcome: SummaryJobOutcome): void {
 // Claims an In progress attempt, loads its document and town name, reads the
 // stored PDF, summarizes it and finishes the attempt (SRS-204.1): a summary is
 // stored and the attempt closed as Succeeded, any failure closes it as Failed.
-// A lost claim or a document that is no longer Pending is skipped. A failed
-// database read or finish throws and leaves the attempt In progress for
-// POST /api/summaries/process.
+// An abandoned attempt (claimed before by a job that did not finish) is closed
+// as Failed at stage timeout without running, so it counts as a failure
+// (SRS-210.1, SRS-NFR-8). A lost claim or a document that is no longer Pending
+// is skipped. A failed database read or finish throws and leaves the attempt
+// In progress for POST /api/summaries/process, which times it out later.
 async function runAttempt(supabase: SupabaseClient, attempt: InProgressAttempt): Promise<SummaryJobOutcome> {
+  // Decided on the values as read, before this claim sets claimed_at.
+  const abandoned = isAbandoned(attempt);
   const claimed = await claimAttempt(supabase, attempt);
   if (!claimed) {
     return { kind: 'skipped', documentId: attempt.documentId, reason: 'not_claimed' };
+  }
+
+  if (abandoned) {
+    const finish = await finishAttempt(supabase, attempt, { outcome: 'Failed' });
+    const outcome: SummaryJobOutcome = {
+      kind: 'failed',
+      attemptId: attempt.attemptId,
+      documentId: attempt.documentId,
+      stage: 'timeout',
+      reason: 'not_finished',
+      finish,
+    };
+    logOutcome(outcome);
+    return outcome;
   }
 
   const document = await loadDocument(supabase, attempt.documentId);

@@ -243,6 +243,7 @@ function createFakeSupabase() {
           attempt_number: nextNumber,
           started_at: now,
           ended_at: null,
+          claimed_at: null,
           outcome: 'In progress',
         });
         result = 'retry';
@@ -362,6 +363,7 @@ function createFakeSupabase() {
                   outcome: 'In progress',
                   started_at: dbNow(),
                   ended_at: null,
+                  claimed_at: null,
                   ...row,
                   attempt_id: nextAttemptId++,
                 };
@@ -371,6 +373,7 @@ function createFakeSupabase() {
             }),
           }),
           // Compare-and-set claim: update(...).eq(...).eq(...).eq(...).select(...).
+          // values carries started_at and claimed_at.
           update: (values: Row) => {
             const filters: [string, unknown][] = [];
             const builder = {

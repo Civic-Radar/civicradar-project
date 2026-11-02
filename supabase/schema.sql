@@ -515,6 +515,10 @@ create table summary_attempts (
   attempt_number SMALLINT not null check (attempt_number between 1 and 3),
   started_at TIMESTAMPTZ not null default now(),
   ended_at TIMESTAMPTZ,
+  -- Set each time a job claims the attempt, null until then. A stale attempt
+  -- with claimed_at set was claimed by a job that did not finish, so it times
+  -- out as Failed (SRS-210.1, SRS-NFR-8). One still null was never run.
+  claimed_at TIMESTAMPTZ,
   outcome VARCHAR(12) not null default 'In progress' check (outcome in ('In progress', 'Succeeded', 'Failed')),
   unique (document_id, attempt_number),
   check ((outcome = 'In progress') = (ended_at is null)),
