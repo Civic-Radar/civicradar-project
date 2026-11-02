@@ -82,28 +82,57 @@ export async function findInProgressAttempts(supabase: SupabaseClient, limit: nu
   return (data ?? []).map(toAttempt);
 }
 
-// What finish_summary_attempt did: 'closed' changed rows, the others changed
-// nothing and say why.
-export type FinishResult = 'closed' | 'attempt_not_found' | 'attempt_not_in_progress' | 'document_not_pending';
+// The In progress attempt of a document. The unique index on running attempts
+// allows at most one. Throws on a failed read or when there is none.
+async function findRunningAttempt(supabase: SupabaseClient, documentId: number): Promise<InProgressAttempt> {
+  const { data, error } = await supabase
+    .from('summary_attempts')
+    .select('attempt_id, document_id, started_at')
+    .eq('document_id', documentId)
+    .eq('outcome', 'In progress')
+    .maybeSingle();
+
+  if (error) {
+    throw new Error(`Could not read the next summary attempt for document ${documentId}: ${error.message}`);
+  }
+  if (!data) {
+    throw new Error(`Could not read the next summary attempt for document ${documentId}: none found`);
+  }
+  return toAttempt(data);
+}
+
+// What finish_summary_attempt did: 'closed' changed rows, retry closed the
+// attempt as Failed and recorded nextAttempt, the others changed nothing and
+// say why.
+export type FinishResult =
+  | 'closed'
+  | 'attempt_not_found'
+  | 'attempt_not_in_progress'
+  | 'document_not_pending'
+  | { kind: 'retry'; nextAttempt: InProgressAttempt };
 
 export type AttemptFinish = { outcome: 'Succeeded'; summaryText: string } | { outcome: 'Failed' };
 
-const FINISH_RESULTS: readonly FinishResult[] = [
+const FINISH_RESULTS = [
   'closed',
+  'retry',
   'attempt_not_found',
   'attempt_not_in_progress',
   'document_not_pending',
-];
+] as const;
 
 // Closes an attempt through the finish_summary_attempt SQL function, in one
 // transaction (SRS-204.1). Succeeded also stores the text and sets the document
-// Complete. Failed only closes the attempt (no retry, SRS-210.1). Throws on any
-// rpc error, never with error.details, which can hold the summary text.
+// Complete. Failed closes the attempt and, below 3 consecutive failures,
+// records the next attempt, which is read back as nextAttempt (SRS-210.1).
+// Throws on any rpc error, never with error.details, which can hold the
+// summary text.
 export async function finishAttempt(
   supabase: SupabaseClient,
-  attemptId: number,
+  attempt: Pick<InProgressAttempt, 'attemptId' | 'documentId'>,
   finish: AttemptFinish,
 ): Promise<FinishResult> {
+  const { attemptId } = attempt;
   const { data, error } = await supabase.rpc('finish_summary_attempt', {
     p_attempt_id: attemptId,
     p_outcome: finish.outcome,
@@ -119,5 +148,8 @@ export async function finishAttempt(
     throw new Error(`Could not finish summary attempt ${attemptId} as ${finish.outcome}: unexpected result`);
   }
 
+  if (data === 'retry') {
+    return { kind: 'retry', nextAttempt: await findRunningAttempt(supabase, attempt.documentId) };
+  }
   return data;
 }

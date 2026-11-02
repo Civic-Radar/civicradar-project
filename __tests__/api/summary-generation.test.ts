@@ -179,8 +179,12 @@ function createFakeSupabase() {
       if (attempt.ended_at !== null && toMs(attempt.ended_at) < toMs(attempt.started_at)) {
         return 'attempts: ended before started';
       }
-      if ((attempt.attempt_number as number) < 1) return 'attempts: attempt_number';
+      const attemptNumber = attempt.attempt_number as number;
+      if (attemptNumber < 1 || attemptNumber > 3) return 'attempts: attempt_number';
     }
+    // The unique index on running attempts: one per document.
+    const running = attempts.filter((row) => row.outcome === 'In progress').map((row) => row.document_id);
+    if (new Set(running).size !== running.length) return 'attempts: two In progress';
     return null;
   }
 
@@ -212,22 +216,47 @@ function createFakeSupabase() {
 
     const savedAttempt = { ...attempt };
     const savedDoc = { ...doc };
+    const savedCount = attempts.length;
     const now = dbNow();
     attempt.outcome = outcome;
     attempt.ended_at = toMs(now) >= toMs(attempt.started_at) ? now : attempt.started_at;
+    let result = 'closed';
     if (outcome === 'Succeeded') {
       doc.summary_text = text;
       doc.summary_generated_at = toMs(now) >= toMs(doc.retrieved_at) ? now : doc.retrieved_at;
       doc.summary_status = 'Complete';
+    } else {
+      // Consecutive failures: Failed attempts after the latest Succeeded one.
+      const own = attempts.filter((row) => row.document_id === doc.document_id);
+      const lastSucceeded = Math.max(
+        0,
+        ...own.filter((row) => row.outcome === 'Succeeded').map((row) => row.attempt_number as number),
+      );
+      const failures = own.filter(
+        (row) => row.outcome === 'Failed' && (row.attempt_number as number) > lastSucceeded,
+      ).length;
+      const nextNumber = Math.max(...own.map((row) => row.attempt_number as number)) + 1;
+      if (failures < 3 && nextNumber <= 3) {
+        attempts.push({
+          attempt_id: nextAttemptId++,
+          document_id: doc.document_id,
+          attempt_number: nextNumber,
+          started_at: now,
+          ended_at: null,
+          outcome: 'In progress',
+        });
+        result = 'retry';
+      }
     }
 
     const broken = brokenCheck();
     if (broken) {
+      attempts.length = savedCount;
       Object.assign(attempt, savedAttempt);
       Object.assign(doc, savedDoc);
       return pgError('23514', `new row violates check constraint (${broken})`);
     }
-    return { data: 'closed', error: null };
+    return { data: result, error: null };
   }
 
   const client = {
@@ -315,8 +344,16 @@ function createFakeSupabase() {
                 ) {
                   return pgError('23505', 'duplicate key value violates unique constraint');
                 }
-                if ((row.attempt_number as number) < 1) {
+                if ((row.attempt_number as number) < 1 || (row.attempt_number as number) > 3) {
                   return pgError('23514', 'new row violates check constraint');
+                }
+                // The unique index on running attempts.
+                if (
+                  attempts.some(
+                    (existing) => existing.document_id === row.document_id && existing.outcome === 'In progress',
+                  )
+                ) {
+                  return pgError('23505', 'duplicate key value violates unique constraint');
                 }
                 const stored = {
                   outcome: 'In progress',
@@ -348,6 +385,8 @@ function createFakeSupabase() {
             };
             return builder;
           },
+          // The next attempt read after finish_summary_attempt returns retry.
+          select: (columns: string) => query(attempts, columns),
         };
       }
 
@@ -610,14 +649,18 @@ describe('Summary generation start (SRS-204.1)', () => {
     listFiles([FILE_1166]);
 
     expect((await runRetrieval()).status).toBe(200);
-    await vi.waitFor(() => expect(fake.rpcCalls).toHaveLength(1));
+    await vi.waitFor(() => expect(fake.rpcCalls).toHaveLength(3));
+    await flushJobs();
 
-    expect(fake.rpcCalls[0].args).toEqual({ p_attempt_id: 1, p_outcome: 'Failed', p_summary_text: null });
+    // Each failure records the next attempt, up to 3 (SRS-210.1).
+    expect(fake.rpcCalls.map((call) => call.args)).toEqual(
+      [1, 2, 3].map((id) => ({ p_attempt_id: id, p_outcome: 'Failed', p_summary_text: null })),
+    );
 
     const attempts = attemptsFor(fake, 31);
-    expect(attempts).toHaveLength(1);
-    expect(attempts[0].outcome).toBe('Failed');
-    expect(attempts[0].ended_at).not.toBeNull();
+    expect(attempts).toHaveLength(3);
+    expect(attempts.map((row) => row.outcome)).toEqual(['Failed', 'Failed', 'Failed']);
+    expect(attempts.every((row) => row.ended_at !== null)).toBe(true);
 
     expect(documentRow(fake, 31)).toMatchObject({
       summary_status: 'Pending',
@@ -747,10 +790,13 @@ describe('Summary generation start (SRS-204.1)', () => {
     listFiles([FILE_1166]);
 
     expect((await runRetrieval()).status).toBe(200);
-    await vi.waitFor(() => expect(fake.rpcCalls).toHaveLength(1));
+    await vi.waitFor(() => expect(fake.rpcCalls).toHaveLength(3));
+    await flushJobs();
 
-    expect(fake.rpcCalls[0].args).toEqual({ p_attempt_id: 1, p_outcome: 'Failed', p_summary_text: null });
-    expect(attemptsFor(fake, 31)).toEqual([expect.objectContaining({ outcome: 'Failed' })]);
+    expect(fake.rpcCalls.map((call) => call.args)).toEqual(
+      [1, 2, 3].map((id) => ({ p_attempt_id: id, p_outcome: 'Failed', p_summary_text: null })),
+    );
+    expect(attemptsFor(fake, 31)).toEqual([1, 2, 3].map(() => expect.objectContaining({ outcome: 'Failed' })));
     expect(documentRow(fake, 31)).toMatchObject({ summary_status: 'Pending', summary_text: null });
 
     expect(consoleOutput()).toContain(
@@ -764,12 +810,15 @@ describe('Summary generation start (SRS-204.1)', () => {
     listFiles([FILE_1166]);
 
     expect((await runRetrieval()).status).toBe(200);
-    await vi.waitFor(() => expect(fake.rpcCalls).toHaveLength(1));
+    await vi.waitFor(() => expect(fake.rpcCalls).toHaveLength(3));
+    await flushJobs();
 
     expect(fake.events).toContain('storage.download documents/1/1166.pdf');
     expect(summarizeDocument).not.toHaveBeenCalled();
-    expect(fake.rpcCalls[0].args).toEqual({ p_attempt_id: 1, p_outcome: 'Failed', p_summary_text: null });
-    expect(attemptsFor(fake, 31)).toEqual([expect.objectContaining({ outcome: 'Failed' })]);
+    expect(fake.rpcCalls.map((call) => call.args)).toEqual(
+      [1, 2, 3].map((id) => ({ p_attempt_id: id, p_outcome: 'Failed', p_summary_text: null })),
+    );
+    expect(attemptsFor(fake, 31)).toEqual([1, 2, 3].map(() => expect.objectContaining({ outcome: 'Failed' })));
     expect(documentRow(fake, 31)).toMatchObject({ summary_status: 'Pending', summary_text: null });
 
     expect(consoleOutput()).toContain('failed at read: missing, attempt closed as Failed');
