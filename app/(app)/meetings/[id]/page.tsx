@@ -246,7 +246,9 @@ function MeetingOverview({ meeting, documents, followedTownIds, followedTopics }
 
   return (
     <>
-      <header className="flex flex-wrap items-end justify-between gap-6 border-b border-line pb-8">
+      {/* From md up, two columns: the title column takes the remaining width and the
+          actions keep their own width, bottom-aligned, whatever the title's length. */}
+      <header className="flex flex-col gap-6 border-b border-line pb-8 md:grid md:grid-cols-[minmax(0,1fr)_auto] md:items-end">
         <div className="min-w-0">
           {meeting.town_name ? (
             <span className="inline-flex rounded-md border border-line bg-card px-2.5 py-1 text-sm font-medium text-fg">
@@ -261,7 +263,7 @@ function MeetingOverview({ meeting, documents, followedTownIds, followedTopics }
             <TextOrNotProvided value={meeting.town_name} />
           </p>
         </div>
-        <div className="flex flex-wrap items-start gap-3">
+        <div className="flex flex-wrap items-start gap-3 md:shrink-0 md:flex-nowrap">
           {/* Follow and Unfollow (SRS-404.1, SRS-404.2) are unchanged. */}
           <div className={`${styles.headerActions} ${FOLLOW_ACTIONS}`}>
             <FollowMeetingButton meetingId={meeting.meeting_id} />

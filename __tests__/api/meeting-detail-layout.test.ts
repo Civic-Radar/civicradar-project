@@ -162,6 +162,43 @@ function followActions(markup: string): { classes: string[]; inner: string } {
   return { classes, inner: match?.[2] ?? '' };
 }
 
+// The header's class list, the title column's and the actions column's.
+function headerLayout(markup: string): { header: string[]; title: string[]; actions: string[] } {
+  const match = markup.match(/<header class="([^"]*)"><div class="([^"]*)">[\s\S]*?<\/p><\/div><div class="([^"]*)">/);
+  const unescape = (value: string | undefined) =>
+    (value ?? '').replace(/&amp;/g, '&').replace(/&gt;/g, '>').split(' ');
+  return { header: unescape(match?.[1]), title: unescape(match?.[2]), actions: unescape(match?.[3]) };
+}
+
+describe('The header actions stay in place for every title', () => {
+  const LONG_TITLE =
+    'Housing Advisory Board Hearing and Meeting on the Zoning Amendments for the Village Square Districts and Related Matters';
+
+  it('renders the same header, title column and actions classes for a short and a very long title', () => {
+    const short = headerLayout(render({ meeting: meeting({ title: 'Select Board Regular Meeting' }) }));
+    const long = headerLayout(render({ meeting: meeting({ title: LONG_TITLE }) }));
+
+    expect(short.header.length).toBeGreaterThan(1);
+    expect(long).toEqual(short);
+    expect(followActions(render({ meeting: meeting({ title: LONG_TITLE }) })).classes)
+      .toEqual(followActions(render()).classes);
+  });
+
+  it('uses a two-column grid from md up, with a min-w-0 title column', () => {
+    const { header, title } = headerLayout(render());
+
+    expect(header).toEqual(expect.arrayContaining(['flex', 'flex-col', 'md:grid', 'md:grid-cols-[minmax(0,1fr)_auto]', 'md:items-end']));
+    expect(header).not.toContain('flex-wrap');
+    expect(title).toContain('min-w-0');
+  });
+
+  it('keeps the actions column from shrinking or wrapping from md up, and lets it wrap below md', () => {
+    const { actions } = headerLayout(render());
+
+    expect(actions).toEqual(expect.arrayContaining(['flex', 'flex-wrap', 'md:shrink-0', 'md:flex-nowrap']));
+  });
+});
+
 describe('Following a meeting does not move the header', () => {
   it('gives the actions wrapper the same classes whether the meeting is followed or not', () => {
     const notFollowed = followActions(render());
