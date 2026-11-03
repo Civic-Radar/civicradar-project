@@ -1,4 +1,5 @@
 import { DM_Sans, DM_Serif_Display } from 'next/font/google';
+import ElectionBanner from './components/ElectionBanner';
 import './globals.css';
 
 // Body font; the fallback stack lives in globals.css.
@@ -20,7 +21,11 @@ export const metadata = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en" className={`${dmSans.variable} ${dmSerifDisplay.variable}`}>
-      <body>{children}</body>
+      <body>
+        {/* Election Day reminder across the top of every page; shows only around Election Day. */}
+        <ElectionBanner />
+        {children}
+      </body>
     </html>
   );
 }
