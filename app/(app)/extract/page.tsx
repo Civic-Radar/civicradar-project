@@ -457,7 +457,7 @@ export default function ExtractPage() {
         </section>
 
         <p className="text-sm text-fg-muted">
-          Back to <Link href="/" className="text-accent hover:underline">home</Link>
+          Back to <Link href="/dashboard" className="text-accent hover:underline">dashboard</Link>
         </p>
       </div>
     </main>

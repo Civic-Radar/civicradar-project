@@ -13,6 +13,7 @@ import {
   Settings,
   CircleUserRound,
   RefreshCw,
+  LogOut,
   Menu,
   X,
 } from "lucide-react";
@@ -77,6 +78,34 @@ function Brand({ onNavigate }: { onNavigate?: () => void }) {
       </span>
       <span className="font-display text-2xl leading-tight tracking-[-0.04em]">Civic Radar</span>
     </Link>
+  );
+}
+
+// Logging out forgets the saved sign-in token and returns to the landing page.
+// A full page load (not a client-side route change) so nothing from the signed-in
+// session stays in memory, and Back doesn't return to the signed-in page.
+function LogOutButton({ onNavigate }: { onNavigate?: () => void }) {
+  function logOut() {
+    try {
+      localStorage.removeItem("access_token");
+    } catch {
+      // Storage can be blocked; there is nothing saved to remove then.
+    }
+    onNavigate?.();
+    window.location.replace("/");
+  }
+
+  return (
+    <div className="relative z-10 mt-3 border-t border-sidebar-active pt-3">
+      <button
+        type="button"
+        onClick={logOut}
+        className="flex min-h-12 w-full items-center gap-3 rounded-md p-3 text-left text-sm font-medium text-sidebar-muted transition-colors hover:bg-sidebar-active hover:text-on-dark focus:outline-none focus-visible:ring-2 focus-visible:ring-on-dark"
+      >
+        <LogOut className="h-5 w-5 shrink-0" strokeWidth={1.7} aria-hidden="true" />
+        <span>Log out</span>
+      </button>
+    </div>
   );
 }
 
@@ -175,6 +204,7 @@ export default function Sidebar() {
             <nav aria-label="Main navigation" className="relative z-10">
               <NavLinks pathname={pathname} onNavigate={() => setOpen(false)} />
             </nav>
+            <LogOutButton onNavigate={() => setOpen(false)} />
             <SidebarBranch />
           </div>
         </div>
@@ -188,6 +218,7 @@ export default function Sidebar() {
         <nav aria-label="Main navigation" className="relative z-10">
           <NavLinks pathname={pathname} />
         </nav>
+        <LogOutButton />
         {/* A faint branch with swaying leaves at the bottom, behind the menu. */}
         <SidebarBranch />
       </aside>

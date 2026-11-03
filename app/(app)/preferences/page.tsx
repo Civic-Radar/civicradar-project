@@ -15,7 +15,7 @@ export default function PreferencesPage() {
         </div>
 
         <p className="mt-8 text-sm text-fg-muted">
-          Back to <Link href="/" className="text-accent hover:underline">home</Link>
+          Back to <Link href="/dashboard" className="text-accent hover:underline">dashboard</Link>
         </p>
       </section>
     </main>
