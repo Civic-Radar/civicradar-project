@@ -278,16 +278,15 @@ describe('Document detail page Failed message (SRS-210.2)', () => {
     expect(summarySection(markup)).toContain(DISCLAIMER);
   });
 
-  it('leaves a Pending document unchanged: no summary section and no message', () => {
+  it('shows no Failed message for a Pending document: its section holds the Pending message instead', () => {
     const pending = renderLoaded(PENDING_DOCUMENT);
     const failed = renderLoaded(FAILED_DOCUMENT);
 
-    expect(pending).not.toContain('<section');
-    expect(pending).not.toContain('Summary');
+    expect(paragraphsIn(summarySection(pending) ?? '')).toEqual(['Summary pending']);
     expect(pending).not.toContain(FAILED_MESSAGE);
-    expect(pending).toMatch(/<\/p><iframe\b/);
-    // The Failed page is the Pending page plus the summary section.
-    expect(failed.replace(summarySection(failed)!, '')).toBe(pending);
+    expect(pending).toMatch(/<\/section><iframe\b/);
+    // The Failed page is the Pending page with the Failed message in place of the Pending message (SRS-206.1).
+    expect(failed).toBe(pending.replace('>Summary pending</p>', `>${FAILED_MESSAGE}</p>`));
   });
 
   it('shows the message for the Failed document the route returns', async () => {

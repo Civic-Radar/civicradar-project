@@ -355,22 +355,22 @@ describe('Document detail page summary section (SRS-204.2)', () => {
   });
 
   // The API returns both summary fields null for Pending and Failed; only the
-  // status tells them apart. Pending shows no section, Failed shows the
-  // Failed message in its place (SRS-210.2).
-  it('renders no summary for a Pending document and the Failed message for a Failed one, only the identification', () => {
+  // status tells them apart. Pending shows the Pending message (SRS-206.1),
+  // Failed shows the Failed message (SRS-210.2), each in the summary section.
+  it('renders the Pending message for a Pending document and the Failed message for a Failed one, only the identification', () => {
     const withSummary = renderLoaded('First paragraph.\n\nSecond paragraph.');
     const markup = renderLoaded(null);
     const failed = renderPage({ status: 'loaded', document: loadedDocument(null, 'Failed') });
 
-    expect(markup).not.toContain('<section');
-    expect(markup).not.toContain('Summary');
+    expect(summarySection(markup)).toMatch(/<h2\b[^>]*>Summary<\/h2><p\b[^>]*>Summary pending<\/p><\/section>$/);
+    expect(summaryParagraphs(markup)).toEqual([]);
     expect(markup).toContain(`>${IDENTIFICATION.title}</h1>`);
     // The only difference from the Complete page is the summary section.
-    expect(markup).toBe(withSummary.replace(summarySection(withSummary)!, ''));
+    expect(markup.replace(summarySection(markup)!, '')).toBe(withSummary.replace(summarySection(withSummary)!, ''));
     expect(summarySection(failed)).toContain(
       'A summary could not be generated for this document. You can still read the original PDF below.',
     );
-    expect(failed.replace(summarySection(failed)!, '')).toBe(markup);
+    expect(failed.replace(summarySection(failed)!, '')).toBe(markup.replace(summarySection(markup)!, ''));
   });
 
   it.each([
@@ -383,7 +383,9 @@ describe('Document detail page summary section (SRS-204.2)', () => {
 
     expect(markup).not.toContain('<section');
     expect(markup).not.toContain('Summary');
-    expect(markup).toBe(renderLoaded(null));
+    // The same page as a document with no text, apart from its Pending section (SRS-206.1).
+    const noText = renderLoaded(null);
+    expect(markup).toBe(noText.replace(summarySection(noText)!, ''));
   });
 
   it.each([
