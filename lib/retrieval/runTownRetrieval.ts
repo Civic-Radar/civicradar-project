@@ -1,13 +1,24 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
-import type { MeetingFilesListing, MeetingListing, SourceAgendaItem, SourceMeeting } from '../sources/types';
+import type {
+  ListingWindow,
+  MeetingFilesListing,
+  MeetingListing,
+  SourceAgendaItem,
+  SourceMeeting,
+} from '../sources/types';
 import { loadMeetings, retrieveDocuments, type DownloadFile, type RetrieveDocumentsResult } from './retrieveDocuments';
+import { retrievalWindow } from './retrievalWindow';
 import { saveAgendaItems } from './saveAgendaItems';
 import { saveMeetings, type RetrievalTown } from './saveMeetings';
 
 // The source client's functions, passed in so this file stays source-agnostic.
 export interface RetrievalSource {
-  fetchMeetings: (sourceAccountId: string, maxPages: number) => Promise<MeetingListing>;
-  fetchMeetingFiles: (sourceAccountId: string, maxPages: number) => Promise<MeetingFilesListing>;
+  fetchMeetings: (sourceAccountId: string, maxPages: number, window?: ListingWindow) => Promise<MeetingListing>;
+  fetchMeetingFiles: (
+    sourceAccountId: string,
+    maxPages: number,
+    window?: ListingWindow,
+  ) => Promise<MeetingFilesListing>;
   fetchAgendaItems: (sourceAccountId: string, agendaRef: string) => Promise<SourceAgendaItem[]>;
   downloadFile: DownloadFile;
 }
@@ -20,7 +31,7 @@ export type RetrievalRunTown = RetrievalTown & {
 
 export interface RetrievalOptions {
   maxPages: number; // the page bound for both source passes (SRS-220.1)
-  now?: () => Date; // the clock for the check's ended_at, so tests can fix it
+  now?: () => Date; // the clock for the retrieval window and the check's ended_at, so tests can fix it
 }
 
 // What the route turns into its response. error is the response's message.
@@ -177,7 +188,8 @@ async function processSuccessfulCheck(supabase: SupabaseClient, townId: number, 
 // a scheduler can call later. It opens the town's check row before the first
 // source read, then retrieves the town's meetings and saves them (SRS-220.3),
 // then stores each file listed under them as a document (SRS-208.2). Both
-// passes read at most the page bound. The meetings and files from every page
+// passes list only the same retrieval window around now and read at most the
+// page bound. The meetings and files from every page
 // read are kept, even when a later page fails, and complete is true only when
 // both passes read the whole list (SRS-220.1). Nothing is written for the
 // flag yet (SRS-222.2). However the run ends, the check row is closed
@@ -202,6 +214,8 @@ export async function runTownRetrieval(
   }
 
   const { maxPages, now = () => new Date() } = options;
+  // Worked out once, so both passes list the same meetings (SRS-220.1).
+  const listingWindow = retrievalWindow(now());
   let newMeetings = 0;
   // Set only when the document pass finished, so any earlier exit leaves
   // changes_found false.
@@ -215,7 +229,7 @@ export async function runTownRetrieval(
     // A failed fetch is never "no meetings": any client error stops the run.
     let meetingListing: MeetingListing;
     try {
-      meetingListing = await source.fetchMeetings(town.source_account_id, maxPages);
+      meetingListing = await source.fetchMeetings(town.source_account_id, maxPages, listingWindow);
     } catch (error: unknown) {
       return { ok: false, status: 502, error: errorMessage(error) };
     }
@@ -240,7 +254,7 @@ export async function runTownRetrieval(
     // A failed listing is never "no files". Details stay in the server log.
     let fileListing: MeetingFilesListing;
     try {
-      fileListing = await source.fetchMeetingFiles(town.source_account_id, maxPages);
+      fileListing = await source.fetchMeetingFiles(town.source_account_id, maxPages, listingWindow);
     } catch (error: unknown) {
       console.error(`Document retrieval: town ${town.town_id} file listing failed: ${errorMessage(error)}`);
       return { ok: false, status: 502, error: `Saved ${saved} meetings, but listing their documents failed.` };

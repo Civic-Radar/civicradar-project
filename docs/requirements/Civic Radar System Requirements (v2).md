@@ -744,9 +744,9 @@ Traces to: UR-219
 
 **UR-220, MS — Retrieve meetings.** As a user, I want Civic Radar to collect each meeting's time, place, attendance details, and published files, so that meeting pages and alerts show accurate information.
 
-**SRS-220.1, MS, Complete meeting retrieval.** The system shall read every page of a supported town's meeting list before recording that town's meeting collection as complete when a scheduled check runs.
+**SRS-220.1, MS, Complete meeting retrieval.** The system shall read every page of a supported town's meeting list that falls within a retrieval window, from 90 days before today to 30 days after today unless the administrator sets a shorter window, before recording that town's meeting collection as complete when a scheduled check runs.
 
-**Acceptance Criteria:** Given Salem's meeting list spans 2 pages, When a scheduled check runs, Then meetings from both pages are stored and the meeting collection is recorded as Complete only after page 2 is read.
+**Acceptance Criteria:** Given Brookline's meeting list has 3 meetings inside the window and 100 meetings after it, When a scheduled check runs, Then the 3 meetings are stored, the 100 later meetings are not read, and the meeting collection is recorded as Complete only after the last page of the window is read.
 
 Traces to: UR-220
 
