@@ -17,6 +17,7 @@ import {
   X,
 } from "lucide-react";
 import { useIsAdministrator } from "../admin/retrieval/useIsAdministrator";
+import SidebarBranch from "./art/SidebarBranch";
 
 // `also` lists other pages that belong to the same item, so it stays highlighted
 // on them (Contacts has tabs for its pages; see app/components/ContactsTabs.tsx).
@@ -171,21 +172,24 @@ export default function Sidebar() {
                 <X className="h-6 w-6" aria-hidden="true" />
               </button>
             </div>
-            <nav aria-label="Main navigation">
+            <nav aria-label="Main navigation" className="relative z-10">
               <NavLinks pathname={pathname} onNavigate={() => setOpen(false)} />
             </nav>
+            <SidebarBranch />
           </div>
         </div>
       ) : null}
 
       {/* 768px and wider: the fixed sidebar. */}
-      <aside className="hidden w-60 shrink-0 bg-sidebar px-4 pb-4 pt-8 text-on-dark md:sticky md:top-0 md:flex md:h-screen md:flex-col md:overflow-y-auto">
-        <div className="mb-12">
+      <aside className="relative hidden w-60 shrink-0 bg-sidebar px-4 pb-4 pt-8 text-on-dark md:sticky md:top-0 md:flex md:h-screen md:flex-col md:overflow-y-auto">
+        <div className="relative z-10 mb-12">
           <Brand />
         </div>
-        <nav aria-label="Main navigation">
+        <nav aria-label="Main navigation" className="relative z-10">
           <NavLinks pathname={pathname} />
         </nav>
+        {/* A faint branch with swaying leaves at the bottom, behind the menu. */}
+        <SidebarBranch />
       </aside>
     </>
   );

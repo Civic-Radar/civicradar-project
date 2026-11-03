@@ -2,7 +2,8 @@
 
 import Link from 'next/link';
 import { useState } from 'react';
-import { ArrowUpRight, SearchX } from 'lucide-react';
+import { ArrowUpRight } from 'lucide-react';
+import EmptyArt from '../../components/art/EmptyArt';
 import Badge, { type BadgeTone } from '../../components/ui/Badge';
 import { hrefWithQuery, matchRanges, searchTerms, type SearchResult, type SearchResultType } from '../../../lib/search';
 
@@ -39,8 +40,9 @@ export default function SearchResults({ results, query = '' }: { results: Search
   if (results.length === 0) {
     return (
       <div className="mt-8 flex flex-col items-center gap-3 px-6 py-14 text-center text-fg-muted">
-        <SearchX aria-hidden="true" className="h-8 w-8 text-accent" />
-        <p className="text-base font-semibold">{NO_RESULTS}</p>
+        <EmptyArt scene="board" />
+        <p className="text-base font-semibold text-fg">{NO_RESULTS}</p>
+        <p className="max-w-sm text-sm">Try fewer words, or check the spelling.</p>
       </div>
     );
   }

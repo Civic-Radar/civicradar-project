@@ -1,5 +1,6 @@
 'use client';
 
+import LeafLoader from '../../../components/art/LeafLoader';
 import Alert from '../../../components/ui/Alert';
 import SignedOutNotice from '../../../components/ui/SignedOutNotice';
 import DocumentSummary from './DocumentSummary';
@@ -14,7 +15,7 @@ export default function DocumentDetailPage({ params }: { params: { id: string } 
     <main className="min-w-0 flex-1 p-4 text-fg sm:p-8">
       <div className="mx-auto max-w-[960px]">
         {state.status === 'loading' ? (
-          <p className="text-fg-subtle">Loading…</p>
+          <LeafLoader />
         ) : state.status === 'signedOut' ? (
           <SignedOutNotice message="You must be logged in to view this document." />
         ) : state.status === 'notFound' ? (

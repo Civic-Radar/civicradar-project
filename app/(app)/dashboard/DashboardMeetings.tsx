@@ -2,7 +2,9 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { ArrowUpRight, BookOpen, Clock3, MapPin } from "lucide-react";
+import { ArrowUpRight, Clock3, MapPin } from "lucide-react";
+import EmptyArt from "../../components/art/EmptyArt";
+import LeafLoader from "../../components/art/LeafLoader";
 import Badge from "../../components/ui/Badge";
 import { cardClasses } from "../../components/ui/Card";
 import SignedOutNotice from "../../components/ui/SignedOutNotice";
@@ -85,11 +87,7 @@ export default function DashboardMeetings() {
   }
 
   if (status === "loading") {
-    return (
-      <p role="status" className="text-sm text-fg-muted">
-        Loading meetings…
-      </p>
-    );
+    return <LeafLoader label="Loading meetings…" />;
   }
 
   if (status === "signedOut") {
@@ -106,11 +104,17 @@ export default function DashboardMeetings() {
 
   if (meetings.length === 0) {
     return (
-      <div className="flex min-h-[260px] flex-col items-center justify-center gap-4 px-6 py-16 text-center text-fg-muted">
-        <BookOpen aria-hidden="true" className="h-[30px] w-[30px] text-accent" />
-        <p className="text-base font-semibold">
+      <div className="flex min-h-[260px] flex-col items-center justify-center gap-3 px-6 py-12 text-center text-fg-muted">
+        <EmptyArt scene="tree" />
+        <p className="text-base font-semibold text-fg">
           No matching meetings found.
         </p>
+        <p className="max-w-sm text-sm">
+          Follow a town or topic and its upcoming meetings will show up here.
+        </p>
+        <Link href="/preferences" className="mt-1 text-sm font-semibold text-accent hover:underline">
+          Choose towns and topics
+        </Link>
       </div>
     );
   }

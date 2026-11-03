@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { FileText } from 'lucide-react';
+import LeafLoader from '../../components/art/LeafLoader';
 import Alert from '../../components/ui/Alert';
 import PageShell from '../../components/ui/PageShell';
 import SignedOutNotice from '../../components/ui/SignedOutNotice';
@@ -14,7 +15,7 @@ export default function DocumentsPage() {
   return (
     <PageShell title="Documents">
       {state.status === 'loading' ? (
-        <p className="mt-8 text-fg-subtle">Loading…</p>
+        <LeafLoader className="mt-8" />
       ) : state.status === 'signedOut' ? (
         <SignedOutNotice className="mt-8" message="You must be logged in to view your documents." />
       ) : state.status === 'loadFailed' ? (

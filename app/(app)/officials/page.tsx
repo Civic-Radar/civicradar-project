@@ -12,6 +12,7 @@
 import Link from 'next/link';
 import { BookUser } from 'lucide-react';
 import ContactsTabs from '../../components/ContactsTabs';
+import LeafLoader from '../../components/art/LeafLoader';
 import { useEffect, useState } from 'react';
 import { alertClasses } from '../../components/ui/Alert';
 import { cardClasses } from '../../components/ui/Card';
@@ -49,7 +50,7 @@ export default function OfficialsPage() {
   if (loading) {
     return (
       <main className="min-w-0 flex-1 p-4 text-fg sm:p-8">
-        <p className="text-fg-muted">Loading…</p>
+        <LeafLoader />
       </main>
     );
   }

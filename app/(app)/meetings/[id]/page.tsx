@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { FileText } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import styles from '../meetings.module.css';
+import LeafLoader from '../../../components/art/LeafLoader';
 import FollowMeetingButton from './FollowMeetingButton';
 
 type MeetingDetails = {
@@ -171,7 +172,7 @@ export default function MeetingDetailsPage({ params }: { params: { id: string } 
         </p>
 
         {loading ? (
-          <p className={styles.muted}>Loading meeting...</p>
+          <LeafLoader label="Loading meeting..." />
         ) : notFound ? (
           <h1 className={styles.heading}>Meeting not found</h1>
         ) : loadError ? (

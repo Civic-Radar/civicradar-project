@@ -7,6 +7,8 @@ import { useEffect, useRef } from 'react';
 // of the leaves from Marcos's falling-leaves concept, with rooftops behind.
 // The lines draw in on load, the canopies sway, and leaves drift down.
 // Reduced motion shows the finished picture, standing still.
+// variant "hero" sits to the right of the landing page text; "panel" is
+// centered in its box (the sign-in and sign-up pages).
 
 // Leaf colors from the falling-leaves concept.
 const LEAF_LIGHT = '#4fa65c';
@@ -79,10 +81,17 @@ function buildTree(r: () => number, x0: number, y0: number, len: number, depth: 
   return { segs, twigs };
 }
 
-function buildScene(W: number, H: number) {
+type Variant = 'hero' | 'panel';
+
+function buildScene(W: number, H: number, variant: Variant = 'hero') {
   const narrow = W < 900;
-  const k = narrow ? Math.min(H / 600, W / 430) * 0.8 : Math.min(H / 560, W / 1050) * 0.86;
-  const cx = narrow ? W * 0.55 : W * 0.76;
+  const k =
+    variant === 'panel'
+      ? Math.min(H / 520, W / 640)
+      : narrow
+        ? Math.min(H / 600, W / 430) * 0.8
+        : Math.min(H / 560, W / 1050) * 0.86;
+  const cx = variant === 'panel' ? W / 2 : narrow ? W * 0.55 : W * 0.76;
   const ground = H * 0.94;
   const r = seeded(21);
 
@@ -142,7 +151,9 @@ function buildScene(W: number, H: number) {
   return { k, cx, ground, lines, roofs, trees, canopy, flag: { x: cx, y: colTop - 92 * k } };
 }
 
-export default function TownSquare() {
+const HERO_CLASSES = 'pointer-events-none absolute inset-0 z-0 h-full w-full opacity-40 lg:opacity-100';
+
+export default function TownSquare({ variant = 'hero', className = HERO_CLASSES }: { variant?: Variant; className?: string }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
   useEffect(() => {
@@ -268,7 +279,7 @@ export default function TownSquare() {
       canvas.width = Math.round(W * dpr);
       canvas.height = Math.round(H * dpr);
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-      scene = buildScene(W, H);
+      scene = buildScene(W, H, variant);
       falling = [];
       if (still.matches) {
         draw(0, true);
@@ -298,13 +309,7 @@ export default function TownSquare() {
       observer.disconnect();
       still.removeEventListener('change', setup);
     };
-  }, []);
+  }, [variant]);
 
-  return (
-    <canvas
-      ref={canvasRef}
-      aria-hidden="true"
-      className="pointer-events-none absolute inset-0 z-0 h-full w-full opacity-40 lg:opacity-100"
-    />
-  );
+  return <canvas ref={canvasRef} aria-hidden="true" className={className} />;
 }
