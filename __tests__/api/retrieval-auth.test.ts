@@ -289,8 +289,8 @@ describe('Retrieval access control', () => {
     expect(response.status).toBe(200);
     expect(await response.json()).toEqual({ saved: 1, complete: true });
     expect(fake.tables[0]).toBe('user_accounts');
-    expect(fetchMeetings).toHaveBeenCalledWith('salemma', expect.any(Number));
-    expect(fetchMeetingFiles).toHaveBeenCalledWith('salemma', expect.any(Number));
+    expect(fetchMeetings).toHaveBeenCalledWith('salemma', expect.any(Number), expect.any(Object));
+    expect(fetchMeetingFiles).toHaveBeenCalledWith('salemma', expect.any(Number), expect.any(Object));
     expect(fake.meetingUpserts).toEqual([expect.objectContaining({ town_id: SALEM_TOWN_ID, source_meeting_id: '1192' })]);
   });
 });

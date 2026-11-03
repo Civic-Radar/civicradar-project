@@ -318,7 +318,9 @@ Copy-Item .env.example .env.local
 | Summaries | `SUMMARY_PROCESS_SECRET` | Required to use `/api/summaries/process` | Shared secret for the `x-summary-process-secret` header |
 | Extraction | `ANTHROPIC_MODEL` | Optional | Claude model ID for extraction. Defaults to `claude-haiku-5-5`. |
 | Tagging | `TOPIC_TAGGING_SECRET` | Required to use `/api/topic-tagging` | Shared secret for the `x-topic-tagging-secret` header |
-| Retrieval | `RETRIEVAL_MAX_PAGES` | Optional | Source pages read per run. Defaults to 2, capped at 5. |
+| Retrieval | `RETRIEVAL_MAX_PAGES` | Optional | Source pages read per pass. Defaults to 20, and can only lower it (a value that is not a whole number from 1 to 20 gives 20). |
+| Retrieval | `RETRIEVAL_WINDOW_DAYS_BACK` | Optional | Days before today the retrieval window starts. Defaults to 90 (a value that is not a whole number from 0 to 365 gives 90). |
+| Retrieval | `RETRIEVAL_WINDOW_DAYS_AHEAD` | Optional | Days after today the retrieval window ends. Defaults to 30 (a value that is not a whole number from 0 to 365 gives 30). |
 
 In Supabase, the URL is under **Project Settings → General** (build it from the project ID), and the keys are under **Project Settings → API Keys**.
 

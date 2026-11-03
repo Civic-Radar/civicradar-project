@@ -322,8 +322,8 @@ describe('Complete meeting retrieval (SRS-220.1)', () => {
       expect(response.status).toBe(200);
       expect(await response.json()).toEqual({ saved: 15, complete: true });
       expect(storedIds()).toEqual([...PAGE_1_IDS, ...PAGE_2_IDS]);
-      expect(fetchMeetings).toHaveBeenCalledWith('salemma', 2);
-      expect(fetchMeetingFiles).toHaveBeenCalledWith('salemma', 2);
+      expect(fetchMeetings).toHaveBeenCalledWith('salemma', 2, { from: expect.any(String), to: expect.any(String) });
+      expect(fetchMeetingFiles).toHaveBeenCalledWith('salemma', 2, { from: expect.any(String), to: expect.any(String) });
       expect(console.log).toHaveBeenCalledWith(
         'Meeting retrieval: town 1 read 2 meeting pages and 2 file pages, bound 2, complete true',
       );
@@ -358,8 +358,11 @@ describe('Complete meeting retrieval (SRS-220.1)', () => {
 
         expect(response.status).toBe(200);
         expect((await response.json()).complete).toBe(false);
-        expect(fetchMeetings).toHaveBeenCalledWith('salemma', 1);
-        expect(fetchMeetingFiles).toHaveBeenCalledWith('salemma', 1);
+        expect(fetchMeetings).toHaveBeenCalledWith('salemma', 1, { from: expect.any(String), to: expect.any(String) });
+        expect(fetchMeetingFiles).toHaveBeenCalledWith('salemma', 1, {
+          from: expect.any(String),
+          to: expect.any(String),
+        });
       },
     );
   });

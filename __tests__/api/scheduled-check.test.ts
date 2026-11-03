@@ -574,8 +574,8 @@ describe('Scheduled source check (SRS-208.1)', () => {
   describe('page bound', () => {
     it.each([
       ['3', 3],
-      ['', 2],
-      ['99', 5],
+      ['', 20],
+      ['99', 20],
     ] as const)('uses RETRIEVAL_MAX_PAGES %j as the bound %i', async (setting, bound) => {
       vi.stubEnv('RETRIEVAL_MAX_PAGES', setting);
       useFake();
