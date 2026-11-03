@@ -1,3 +1,4 @@
+import SearchHighlight from "../components/SearchHighlight";
 import Sidebar from "../components/Sidebar";
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
@@ -6,7 +7,10 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     <div className="flex min-h-screen flex-col bg-surface md:flex-row">
       <Sidebar />
 
-      <div className="mx-auto w-full min-w-0 max-w-[1480px] flex-1">{children}</div>
+      <div className="mx-auto w-full min-w-0 max-w-[1480px] flex-1">
+        {/* Highlights searched words when a page is opened from Search. */}
+        <SearchHighlight>{children}</SearchHighlight>
+      </div>
     </div>
   );
 }
