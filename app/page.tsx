@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { BellRing, CalendarDays, FileText, Landmark } from "lucide-react";
 import { buttonClasses } from "./components/ui/Button";
+import TownSquare from "./components/TownSquare";
 
 const features = [
   {
@@ -36,15 +37,18 @@ export default function Home() {
           </Link>
         </header>
 
-        <section className="py-10 md:py-16">
-          <h1 className="max-w-3xl font-display text-5xl font-normal leading-tight tracking-tight lg:text-6xl xl:text-7xl">
+        <section className="relative py-10 md:py-16 lg:min-h-[500px]">
+          {/* Town square art behind the hero text; faded on narrower screens. */}
+          <TownSquare />
+
+          <h1 className="relative z-10 max-w-3xl font-display text-5xl font-normal leading-tight tracking-tight lg:text-6xl xl:text-7xl">
             Know what your local government is deciding.
           </h1>
-          <p className="mt-6 max-w-2xl text-lg leading-[1.9] text-fg-muted">
+          <p className="relative z-10 mt-6 max-w-2xl text-lg leading-[1.9] text-fg-muted">
             Civic Radar keeps track of town meetings and published documents so you don&apos;t have to check every portal
             yourself.
           </p>
-          <div className="mt-8 flex flex-wrap gap-3">
+          <div className="relative z-10 mt-8 flex flex-wrap gap-3">
             <Link href="/register" className={buttonClasses({ variant: "primary", className: "px-6" })}>
               Create an account
             </Link>
