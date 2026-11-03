@@ -27,7 +27,7 @@ export async function GET(request: Request) {
 
   const { data: documents, error } = await supabase!
     .from('documents')
-    .select('document_id, title, town_id, meeting_id, retrieved_at, summary_status')
+    .select('document_id, title, town_id, meeting_id, retrieved_at, summary_status, document_type')
     .in('town_id', townIds)
     .order('retrieved_at', { ascending: false })
     .order('document_id', { ascending: false });
@@ -45,9 +45,28 @@ export async function GET(request: Request) {
   const townNames = new Map(
     ((towns ?? []) as { town_id: number; name: string | null }[]).map((row) => [row.town_id, row.name]),
   );
-  const entries = ((documents ?? []) as { town_id: number }[]).map((row) => ({
+
+  // Each entry's meeting start time for its date, from one read for all listed meetings.
+  const documentRows = (documents ?? []) as { town_id: number; meeting_id: number }[];
+  const meetingIds = Array.from(new Set(documentRows.map((row) => row.meeting_id)));
+  const meetingStarts = new Map<number, string | null>();
+  if (meetingIds.length > 0) {
+    const { data: meetings, error: meetingsError } = await supabase!
+      .from('meetings')
+      .select('meeting_id, start_at')
+      .in('meeting_id', meetingIds);
+
+    if (meetingsError) return Response.json({ error: LOAD_ERROR }, { status: 500 });
+
+    for (const row of (meetings ?? []) as { meeting_id: number; start_at: string | null }[]) {
+      meetingStarts.set(row.meeting_id, row.start_at);
+    }
+  }
+
+  const entries = documentRows.map((row) => ({
     ...row,
     town_name: townNames.get(row.town_id) ?? null,
+    meeting_start_at: meetingStarts.get(row.meeting_id) ?? null,
   }));
 
   return Response.json({ documents: entries }, { status: 200 });

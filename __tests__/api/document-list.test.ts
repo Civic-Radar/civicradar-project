@@ -3,7 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 type Stored = Record<string, string | number | null>;
 type Call = { table: string; method: string; args: unknown[] };
 
-// An in-memory stand-in for the three tables the route reads, so the route's own
+// An in-memory stand-in for the four tables the route reads, so the route's own
 // select, eq, in and order calls decide what comes back. It models only those
 // calls and throws on anything else, and it is stricter than PostgREST on
 // purpose (see the guard rails at the bottom of this file).
@@ -11,6 +11,7 @@ const db = vi.hoisted(() => ({
   follows: [] as Stored[],
   documents: [] as Stored[],
   towns: [] as Stored[],
+  meetings: [] as Stored[],
   calls: [] as Call[],
   failures: {} as Record<string, { message: string }>,
 }));
@@ -26,6 +27,10 @@ vi.mock('../../lib/supabase', () => {
     towns: [
       'town_id', 'name', 'source_account_id', 'meeting_time_zone', 'provides_agenda_items',
       'provides_recordings', 'publishes_vote_records', 'removed_at',
+    ],
+    meetings: [
+      'meeting_id', 'town_id', 'source_meeting_id', 'title', 'body_id', 'source_body_name', 'source_start_time',
+      'start_at', 'location', 'online_link', 'source_url',
     ],
   };
 
@@ -73,7 +78,11 @@ vi.mock('../../lib/supabase', () => {
     const unknown = query.columns.find((column) => !COLUMNS[query.table].includes(column));
     if (unknown) return { data: null, error: { message: `column ${query.table}.${unknown} does not exist` } };
 
-    const source = query.table === 'documents' ? db.documents : query.table === 'towns' ? db.towns : db.follows;
+    const source =
+      query.table === 'documents' ? db.documents
+        : query.table === 'towns' ? db.towns
+          : query.table === 'meetings' ? db.meetings
+            : db.follows;
     const rows = source
       .filter((row) =>
         query.filters.every((filter) =>
@@ -182,8 +191,12 @@ const OTHER_USER = 'user-456'; // token "other-token", follows Brookline only
 const BOTH_USER = 'user-789'; // token "both-token", follows both towns
 
 const SELECTED_FOLLOWS = 'town_id';
-const SELECTED_DOCUMENTS = 'document_id, title, town_id, meeting_id, retrieved_at, summary_status';
-const RETURNED_KEYS = ['document_id', 'meeting_id', 'retrieved_at', 'summary_status', 'title', 'town_id', 'town_name'];
+const SELECTED_DOCUMENTS = 'document_id, title, town_id, meeting_id, retrieved_at, summary_status, document_type';
+const SELECTED_MEETINGS = 'meeting_id, start_at';
+const RETURNED_KEYS = [
+  'document_id', 'document_type', 'meeting_id', 'meeting_start_at', 'retrieved_at', 'summary_status', 'title',
+  'town_id', 'town_name',
+];
 const TOWN_NAMES: Record<number, string> = { [SALEM]: 'Town A', [BROOKLINE]: 'Town B' };
 const LOAD_ERROR = 'Documents could not be loaded. Please try again.';
 const dbError = { message: 'relation "documents" does not exist (42P01)' };
@@ -232,12 +245,25 @@ function town(townId: number): Stored {
   return { town_id: townId, name: TOWN_NAMES[townId], source_account_id: `account-${townId}`, removed_at: null };
 }
 
-// What the list returns for a document: the six selected columns plus its town's name.
+// Each document's meeting (meeting_id 1000 + document_id). Meeting 1105 has no parsed
+// start time and meeting 1203 is not stored, so both entries get meeting_start_at null.
+const STORED_MEETINGS: Stored[] = STORED.filter((row) => row.document_id !== 203).map((row) => ({
+  meeting_id: row.meeting_id,
+  town_id: row.town_id,
+  title: `Meeting ${row.meeting_id}`,
+  start_at: row.document_id === 105 ? null : `2026-09-${String(row.document_id).slice(1)}T16:00:00+00:00`,
+}));
+
+// What the list returns for a document: the seven selected columns plus its town's name and meeting start.
 function listed(id: number) {
   const row = STORED.find((stored) => stored.document_id === id);
   if (!row) throw new Error(`No fixture document ${id}`);
-  const { document_id, title, town_id, meeting_id, retrieved_at, summary_status } = row;
-  return { document_id, title, town_id, meeting_id, retrieved_at, summary_status, town_name: TOWN_NAMES[town_id as number] };
+  const { document_id, title, town_id, meeting_id, retrieved_at, summary_status, document_type } = row;
+  const meeting_start_at = STORED_MEETINGS.find((meeting) => meeting.meeting_id === meeting_id)?.start_at ?? null;
+  return {
+    document_id, title, town_id, meeting_id, retrieved_at, summary_status, document_type,
+    town_name: TOWN_NAMES[town_id as number], meeting_start_at,
+  };
 }
 
 function follow(userId: string, ...townIds: number[]) {
@@ -273,6 +299,7 @@ beforeEach(() => {
   db.failures = {};
   db.documents = STORED.map((row) => ({ ...row }));
   db.towns = [town(SALEM), town(BROOKLINE)];
+  db.meetings = STORED_MEETINGS.map((row) => ({ ...row }));
   db.follows = [];
   // Other residents' follows are always stored, so a read that ignored the user would leak.
   follow(OTHER_USER, BROOKLINE);
@@ -349,7 +376,7 @@ describe('GET /api/documents: which documents are listed (SRS-201.1)', () => {
 });
 
 describe('GET /api/documents: what the route asks the database', () => {
-  it('reads the followed towns, then one filtered and ordered documents query, then the town names, with no writes', async () => {
+  it('reads the followed towns, then one filtered and ordered documents query, then the town names, then the meeting starts, with no writes', async () => {
     follow(USER, SALEM, BROOKLINE);
 
     await list();
@@ -363,10 +390,36 @@ describe('GET /api/documents: what the route asks the database', () => {
       'documents.order',
       'towns.select',
       'towns.in',
+      'meetings.select',
+      'meetings.in',
     ]);
     expect(callsTo('user_followed_towns', 'select')[0].args).toEqual([SELECTED_FOLLOWS]);
     expect(callsTo('user_followed_towns', 'eq')[0].args).toEqual(['user_id', USER]);
     expect(callsTo('documents', 'select')[0].args).toEqual([SELECTED_DOCUMENTS]);
+    expect(callsTo('meetings', 'select')[0].args).toEqual([SELECTED_MEETINGS]);
+  });
+
+  it('reads meeting starts once, for exactly the listed documents\' meetings', async () => {
+    follow(USER, SALEM);
+
+    await list();
+
+    expect(callsTo('meetings', 'in')).toEqual([
+      { table: 'meetings', method: 'in', args: ['meeting_id', TOWN_A_IDS.map((id) => 1000 + id)] },
+    ]);
+  });
+
+  it('gives meeting_start_at null when the meeting has no start time or is not found', async () => {
+    follow(USER, SALEM, BROOKLINE);
+
+    const body = await (await list()).json();
+    const starts = Object.fromEntries(
+      body.documents.map((row: { document_id: number; meeting_start_at: string | null }) => [row.document_id, row.meeting_start_at]),
+    );
+
+    expect(starts[105]).toBeNull();
+    expect(starts[203]).toBeNull();
+    expect(starts[101]).toBe('2026-09-01T16:00:00+00:00');
   });
 
   it('filters documents by the followed town ids', async () => {
@@ -398,7 +451,7 @@ describe('GET /api/documents: what the route asks the database', () => {
     expect(ids.slice(1, 4)).toEqual([201, 104, 102]);
   });
 
-  it('returns exactly the six selected keys and town_name on each row and nothing else', async () => {
+  it('returns exactly the seven selected keys, town_name and meeting_start_at on each row and nothing else', async () => {
     follow(USER, SALEM, BROOKLINE);
 
     const body = await (await list()).json();
@@ -494,16 +547,29 @@ describe('GET /api/documents: read errors', () => {
     expect(callsTo('user_followed_towns', 'select')).toHaveLength(1);
     expect(callsTo('documents', 'select')).toHaveLength(1);
   });
+
+  it('returns a fixed message, not the database error, when the meeting starts read fails', async () => {
+    follow(USER, SALEM);
+    db.failures.meetings = dbError;
+
+    const response = await list();
+    const text = await response.text();
+
+    expect(response.status).toBe(500);
+    expect(JSON.parse(text)).toEqual({ error: LOAD_ERROR });
+    expect(text).not.toContain(dbError.message);
+    expect(callsTo('meetings', 'select')).toHaveLength(1);
+  });
 });
 
 // The stand-in refuses what the route must not do. These prove the guards are live,
-// so a later change to the route (a write, limit/range pagination, a meetings read,
-// an unordered or empty-list query) fails a test and needs a deliberate update.
+// so a later change to the route (a write, limit/range pagination, a read of another
+// table, an unordered or empty-list query) fails a test and needs a deliberate update.
 describe('stand-in guard rails', () => {
   const client = () => getSupabaseClient()!;
 
   it('refuses a table the route does not read', () => {
-    expect(() => client().from('meetings')).toThrow(/no table meetings/);
+    expect(() => client().from('summary_attempts')).toThrow(/no table summary_attempts/);
   });
 
   it.each(['insert', 'update', 'upsert', 'delete', 'limit', 'range'])('refuses .%s()', (method) => {

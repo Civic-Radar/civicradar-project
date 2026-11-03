@@ -22,11 +22,28 @@ import DocumentsPage from '../../app/(app)/documents/page';
 const TOWN_A = 1;
 const PENDING_BADGE = 'Summary pending';
 const FAILED_BADGE = 'Summary failed';
-const PENDING_SPAN = `<span class="text-fg-muted">${PENDING_BADGE}</span>`;
+const READY_BADGE = 'Summary ready';
+// The Badge component's pill classes (app/components/ui/Badge.tsx), then the tone.
+const PILL = 'inline-flex w-fit items-center gap-1 whitespace-nowrap rounded-md px-2 py-1 text-xs font-medium leading-tight';
+const PENDING_SPAN = `<span class="${PILL} bg-warning/10 text-warning">${PENDING_BADGE}</span>`;
+const FAILED_SPAN = `<span class="${PILL} bg-danger-wash text-danger-soft">${FAILED_BADGE}</span>`;
 type SummaryStatus = DocumentListEntry['summary_status'];
 
 function entry(document_id: number, title: string, summary_status: SummaryStatus, town_name: string | null = 'Town A'): DocumentListEntry {
-  return { document_id, title, town_id: TOWN_A, meeting_id: 9, retrieved_at: '2026-10-01T12:00:00+00:00', summary_status, town_name };
+  return {
+    document_id, title, town_id: TOWN_A, meeting_id: 9, retrieved_at: '2026-10-01T12:00:00+00:00', summary_status,
+    document_type: 'Agenda', town_name, meeting_start_at: '2026-10-01T16:00:00+00:00',
+  };
+}
+
+// The entry's details line under the title: "<Type> · <town> · <date>".
+function detailsLine(markup: string): string | undefined {
+  return markup.match(/<p class="mt-1 text-sm text-fg-muted">([\s\S]*?)<\/p>/)?.[1];
+}
+
+// The entry with its status pill removed.
+function withoutPill(markup: string): string {
+  return markup.replace(/<span class="inline-flex w-fit[^"]*">[\s\S]*?<\/span>/, '');
 }
 
 // Vitest compiles this project's JSX to React.createElement, and the page does
@@ -70,20 +87,21 @@ describe('Documents page: Summary pending badge (SRS-206.2)', () => {
     expect(item).not.toContain('text-danger');
   });
 
-  it('places the badge right after the town tag, in the same tag area', () => {
+  it('places the badge on the same row as the town tag', () => {
     const [item] = listItems(renderLoaded([entry(7, 'Agenda', 'Pending')]));
 
-    expect(item).toContain(`<span class="text-fg-muted">Town A</span> ${PENDING_SPAN}`);
     const area = item.match(/<div class="flex min-w-0 flex-1[^"]*">([\s\S]*)<\/div>/)?.[1] ?? '';
-    expect(area).toContain('Town A');
-    expect(area).toContain(PENDING_BADGE);
+    expect(detailsLine(area)).toContain('Town A');
+    expect(area).toContain(PENDING_SPAN);
+    expect(area.indexOf(PENDING_SPAN)).toBeGreaterThan(area.indexOf('Town A'));
   });
 
-  it('shows no badge on a Complete entry', () => {
+  it('shows the Summary ready badge, and neither the pending nor the failed one, on a Complete entry', () => {
     const [item] = listItems(renderLoaded([entry(7, 'Agenda', 'Complete')]));
 
     expect(item).not.toContain(PENDING_BADGE);
     expect(item).not.toContain(FAILED_BADGE);
+    expect(count(item, READY_BADGE)).toBe(1);
   });
 
   it('shows only the Summary failed badge on a Failed entry', () => {
@@ -91,7 +109,7 @@ describe('Documents page: Summary pending badge (SRS-206.2)', () => {
 
     expect(item).not.toContain(PENDING_BADGE);
     expect(count(item, FAILED_BADGE)).toBe(1);
-    expect(item).toContain(`<span class="text-danger">${FAILED_BADGE}</span>`);
+    expect(item).toContain(FAILED_SPAN);
   });
 
   it('shows each badge only on its own entries in a mixed list', () => {
@@ -120,7 +138,7 @@ describe('Documents page: Summary pending badge (SRS-206.2)', () => {
 
     expect(anchorsIn(pending)).toEqual([{ href: '/documents/7', text: 'Agenda' }]);
     expect(anchorsIn(pending)).toEqual(anchorsIn(complete));
-    expect(pending).toContain('<span class="text-fg-muted">Town A</span>');
-    expect(pending.replace(` ${PENDING_SPAN}`, '')).toBe(complete);
+    expect(detailsLine(pending)).toBe('Agenda · Town A · 10/01/2026');
+    expect(withoutPill(pending)).toBe(withoutPill(complete));
   });
 });

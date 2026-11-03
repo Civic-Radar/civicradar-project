@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 
 // Fields returned by GET /api/documents (SRS-201.1, town_name SRS-212.1,
-// summary_status SRS-210.3).
+// summary_status SRS-210.3, document_type and meeting_start_at for the entry's details line).
 export type DocumentListEntry = {
   document_id: number;
   title: string;
@@ -9,7 +9,9 @@ export type DocumentListEntry = {
   meeting_id: number;
   retrieved_at: string;
   summary_status: 'Pending' | 'Complete' | 'Failed';
+  document_type: 'Agenda' | 'Packet' | 'Minutes' | 'Other';
   town_name: string | null;
+  meeting_start_at: string | null;
 };
 
 export type DocumentsState =
