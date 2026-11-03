@@ -1495,6 +1495,12 @@ Traces to: UR-407
 
 Traces to: UR-407
 
+**SRS-407.6, EG, No email to an unverified address.** The system shall not submit an individual email or weekly digest to a resident whose email address has not been verified.
+
+**Acceptance Criteria:** Given a resident whose email address has not been verified, When an alert qualifies for an individual email or the weekly digest is due, Then no email is submitted to that address and the resident's in-app alerts are still created.
+
+Traces to: UR-407
+
 ## **UR-408 — Get a Weekly Meeting Summary**
 
 **UR-408, EG — Get a weekly meeting summary.** As a resident, I want one weekly email in my chosen time zone summarizing relevant meetings across my followed towns and meetings I follow directly, with a clear message when no eligible updates were found or the check could not be completed, so that I can review upcoming meetings and new materials without checking the site every day.
@@ -2032,7 +2038,7 @@ Every UR is expanded into at least one SRS requirement. Counts are in parenthese
 | UR-404 | Follow a Specific Meeting | EG | SRS-404.1 to SRS-404.10 (8) | — |
 | UR-405 | Avoid Duplicate Alerts | EG | SRS-405.1 to SRS-405.5 (5) | — |
 | UR-406 | Choose When I Receive Emails | EG | SRS-406.1 to SRS-406.3 (3) | SRS-NFR-2 |
-| UR-407 | Pause or Stop Emails | EG | SRS-407.1 to SRS-407.5 (5) | — |
+| UR-407 | Pause or Stop Emails | EG | SRS-407.1 to SRS-407.6 (6) | — |
 | UR-408 | Get a Weekly Meeting Summary | EG | SRS-408.1 to SRS-408.12 (12) | SRS-NFR-3 |
 | UR-501 | Local Government Dashboard | YA | SRS-501.1 to SRS-501.6 (6) | — |
 | UR-502 | Meeting Details | YA | SRS-502.1 to SRS-502.9 (9) | — |
