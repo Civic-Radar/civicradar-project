@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { X } from 'lucide-react';
+import { Vote, X } from 'lucide-react';
 import { ELECTION, electionReminder, type ElectionReminder } from '../../lib/electionReminder';
 
 // Remembered per visitor, per election, so a hidden reminder stays hidden.
@@ -10,22 +10,24 @@ const DISMISS_KEY = `civic-radar:election-reminder-hidden:${ELECTION.date}`;
 /**
  * A slim band at the top of every page around Election Day: the date,
  * poll hours, and a link to the state's official elections page. It works out
- * the day in the browser, so it appears and disappears on its own, and the ✕
- * hides it for that visitor on every page.
+ * the day in the browser, so it appears and disappears on its own. The ✕
+ * hides it for that visitor on every page and leaves a small "Election Day"
+ * button in the bottom corner that brings it back.
  */
 export default function ElectionBanner() {
   const [reminder, setReminder] = useState<ElectionReminder | null>(null);
+  const [hidden, setHidden] = useState(false);
 
   useEffect(() => {
-    let hidden = false;
     try {
-      hidden = window.localStorage.getItem(DISMISS_KEY) === '1';
+      setHidden(window.localStorage.getItem(DISMISS_KEY) === '1');
     } catch {
       // Storage can be blocked; the reminder just shows.
     }
-    if (!hidden) setReminder(electionReminder(new Date()));
+    setReminder(electionReminder(new Date()));
   }, []);
 
+  // Outside the reminder window there is nothing to show or bring back.
   if (!reminder) return null;
 
   function hide() {
@@ -34,7 +36,31 @@ export default function ElectionBanner() {
     } catch {
       // Hidden for this visit only.
     }
-    setReminder(null);
+    setHidden(true);
+  }
+
+  function show() {
+    try {
+      window.localStorage.removeItem(DISMISS_KEY);
+    } catch {
+      // Nothing saved to remove.
+    }
+    setHidden(false);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+
+  if (hidden) {
+    return (
+      <button
+        type="button"
+        onClick={show}
+        aria-label="Show Election Day reminder"
+        className="fixed bottom-[max(1rem,env(safe-area-inset-bottom))] right-[max(1rem,env(safe-area-inset-right))] z-30 flex min-h-11 items-center gap-2 rounded-full border border-lime/60 bg-accent-strong px-4 text-sm font-semibold text-on-dark shadow-lg transition hover:bg-accent focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+      >
+        <Vote className="h-4 w-4" aria-hidden="true" />
+        Election Day
+      </button>
+    );
   }
 
   return (
