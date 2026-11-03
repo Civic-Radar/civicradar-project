@@ -316,42 +316,42 @@ export default function ExtractPage() {
                                 role="radio"
                                 aria-checked={isSelected}
                                 onClick={() => selectDocument(doc.document_id)}
-                                className={`flex w-full items-center gap-3 rounded-md border px-3 py-2.5 text-left transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent ${
+                                className={`group flex w-full items-center gap-3 rounded-md border px-3 py-2.5 text-left transition duration-200 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent ${
                                   isSelected
                                     ? 'border-accent bg-accent-wash'
-                                    : 'border-line bg-card hover:border-line-strong hover:bg-raised'
+                                    : 'border-line bg-card hover:border-line-strong hover:bg-raised hover:shadow-sm'
                                 }`}
                               >
                                 <span aria-hidden="true" className="grid h-4 w-4 shrink-0 place-items-center rounded-full border border-line-strong bg-card">
                                   <span className={`h-2 w-2 rounded-full ${isSelected ? 'bg-accent' : 'bg-transparent'}`} />
                                 </span>
-                                {/* Compact row: title on the left, type and format on the right */}
-                                {/* The document type as a coloured badge with its own icon */}
-                                {(() => {
-                                  const look = TYPE_LOOK[doc.document_type] ?? TYPE_LOOK.Other;
-                                  const Icon = look.icon;
-                                  return (
-                                    <span className={badgeClasses(look.tone, 'inline-flex shrink-0 items-center gap-1')}>
-                                      <Icon aria-hidden="true" className="h-3.5 w-3.5" />
-                                      {documentTypeLabel(doc.document_type)}
-                                    </span>
-                                  );
-                                })()}
+                                {/* Compact row: title on the left, version, type and format on the right */}
+                                <span
+                                  className={`min-w-0 flex-1 truncate text-sm transition-transform duration-200 group-hover:translate-x-1 ${versions.get(doc.document_id) === 'earlier' ? 'text-fg-subtle' : 'text-fg-muted'}`}
+                                  title={doc.title}
+                                >
+                                  {withoutDates(doc.title)}
+                                </span>
                                 {versions.get(doc.document_id) === 'latest' ? (
                                   <span className={badgeClasses('success', 'shrink-0')}>Latest</span>
                                 ) : versions.get(doc.document_id) === 'earlier' ? (
                                   <span className={badgeClasses('neutral', 'shrink-0')}>Earlier version</span>
                                 ) : null}
-                                <span
-                                  className={`min-w-0 flex-1 truncate text-sm ${versions.get(doc.document_id) === 'earlier' ? 'text-fg-subtle' : 'text-fg-muted'}`}
-                                  title={doc.title}
-                                >
-                                  {withoutDates(doc.title)}
-                                </span>
                                 {isSelected ? (
                                   <span className={badgeClasses('success', 'shrink-0')}>Selected</span>
                                 ) : null}
-                                <span className="shrink-0 whitespace-nowrap text-xs text-fg-muted">
+                                {/* The document type as a coloured badge with its own icon, same width on every row */}
+                                {(() => {
+                                  const look = TYPE_LOOK[doc.document_type] ?? TYPE_LOOK.Other;
+                                  const Icon = look.icon;
+                                  return (
+                                    <span className={badgeClasses(look.tone, 'inline-flex w-[7.5rem] shrink-0 items-center justify-center gap-1')}>
+                                      <Icon aria-hidden="true" className="h-3.5 w-3.5" />
+                                      {documentTypeLabel(doc.document_type)}
+                                    </span>
+                                  );
+                                })()}
+                                <span className="w-[5.5rem] shrink-0 whitespace-nowrap text-right text-xs text-fg-muted">
                                   {doc.file_size_bytes ? `${formatFileSize(doc.file_size_bytes)} · ` : ''}{isPdf ? 'PDF' : 'Not a PDF'}
                                 </span>
                               </button>
