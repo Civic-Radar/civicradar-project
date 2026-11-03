@@ -8,11 +8,16 @@
 // never read.
 import { getSupabaseClient } from '../../../lib/supabase';
 import { buildOfficialsList, type ExtractionWithOfficials } from '../../../lib/officialsList';
+import { readableDocumentName } from '../../../lib/extractions';
 
 export const dynamic = 'force-dynamic';
 
 const COLUMNS =
-  'extraction_id, completed_at, document_id, source_document_title, document:documents(town_id), officials:extracted_officials(full_name, title, role, email, phone)';
+  'extraction_id, completed_at, document_id, source_document_title, document:documents(town_id, title, document_type, meeting:meetings(title, start_at)), officials:extracted_officials(full_name, title, role, email, phone)';
+
+type ExtractionRow = ExtractionWithOfficials & {
+  document: { town_id: number; title: string; document_type: string; meeting: { title: string; start_at: string } | null } | null;
+};
 
 function getToken(request: Request): string | null {
   const auth = request.headers.get('Authorization');
@@ -37,16 +42,32 @@ export async function GET(request: Request) {
     .order('completed_at', { ascending: true });
   if (error) return Response.json({ error: 'Could not load the officials.' }, { status: 500 });
 
-  const officials = buildOfficialsList((data ?? []) as unknown as ExtractionWithOfficials[]);
+  const rows = (data ?? []) as unknown as ExtractionRow[];
+  const officials = buildOfficialsList(rows);
 
   // Task 311.1-8: each official's town name, so the page can split the list by city.
   // documents has no foreign key to towns, so the names are read separately.
   const townIds = [...new Set(officials.map((o) => o.town_id).filter((id): id is number => id !== null))];
+  const names = new Map<number, string>();
   if (townIds.length > 0) {
     const { data: towns, error: townsError } = await supabase.from('towns').select('town_id, name').in('town_id', townIds);
     if (townsError) return Response.json({ error: 'Could not load the officials.' }, { status: 500 });
-    const names = new Map(((towns ?? []) as { town_id: number; name: string }[]).map((t) => [t.town_id, t.name]));
+    for (const t of (towns ?? []) as { town_id: number; name: string }[]) names.set(t.town_id, t.name);
     for (const official of officials) if (official.town_id !== null) official.town_name = names.get(official.town_id);
+  }
+
+  // Every "Found in" document by its readable name, also for extractions saved
+  // before new requests stored that name.
+  const readable = new Map<number, string>();
+  for (const row of rows) {
+    if (row.document_id !== null && row.document) {
+      readable.set(row.document_id, readableDocumentName({ ...row.document, town_name: names.get(row.document.town_id) }));
+    }
+  }
+  for (const official of officials) {
+    for (const source of official.sources) {
+      if (source.document_id !== null) source.title = readable.get(source.document_id) ?? source.title;
+    }
   }
 
   return Response.json({ officials }, { status: 200 });
