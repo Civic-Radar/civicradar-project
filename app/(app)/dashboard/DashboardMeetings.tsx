@@ -11,7 +11,7 @@ import SignedOutNotice from "../../components/ui/SignedOutNotice";
 import { upcomingMeetings } from "../../../lib/dashboardMeetings";
 
 // One meeting from GET /api/matching-meetings (only the fields shown here).
-type Meeting = {
+export type Meeting = {
   meeting_id: number;
   title: string | null;
   start_at: string | null;
@@ -21,6 +21,9 @@ type Meeting = {
   matched_topics: { topic: string; evidence_text: string }[];
   followed_directly: boolean;
 };
+
+// A followed town whose latest source check did not succeed (SRS-401.11).
+export type FailedTown = { town_id: number; name: string };
 
 type Status = "loading" | "signedOut" | "error" | "ready";
 
@@ -54,6 +57,7 @@ function formatMeetingTime(
 export default function DashboardMeetings() {
   const [status, setStatus] = useState<Status>("loading");
   const [meetings, setMeetings] = useState<Meeting[]>([]);
+  const [failedTowns, setFailedTowns] = useState<FailedTown[]>([]);
 
   useEffect(() => {
     const token = localStorage.getItem("access_token");
@@ -80,6 +84,8 @@ export default function DashboardMeetings() {
         return;
       }
       setMeetings(upcomingMeetings(data.meetings as Meeting[]));
+      // An Incomplete result lists the towns that could not be checked.
+      setFailedTowns(data.status === "Incomplete" && Array.isArray(data.failed_towns) ? data.failed_towns : []);
       setStatus("ready");
     } catch {
       setStatus("error");
@@ -102,23 +108,56 @@ export default function DashboardMeetings() {
     );
   }
 
-  if (meetings.length === 0) {
-    return (
-      <div className="flex min-h-[260px] flex-col items-center justify-center gap-3 px-6 py-12 text-center text-fg-muted">
-        <EmptyArt scene="tree" />
-        <p className="text-base font-semibold text-fg">
-          No matching meetings found.
-        </p>
-        <p className="max-w-sm text-sm">
-          Follow a town or topic and its upcoming meetings will show up here.
-        </p>
-        <Link href="/preferences" className="mt-1 text-sm font-semibold text-accent hover:underline">
-          Choose towns and topics
-        </Link>
-      </div>
-    );
-  }
+  return <MeetingResults meetings={meetings} failedTowns={failedTowns} />;
+}
 
+/**
+ * The loaded dashboard.
+ * SRS-501.4: in an Incomplete result, "Could not check the source" appears next
+ * to each town that could not be checked, above the meetings that were found.
+ * SRS-501.5: a Complete result with no meetings shows "No matching meetings
+ * found." and no incomplete label.
+ */
+export function MeetingResults({ meetings, failedTowns }: { meetings: Meeting[]; failedTowns: FailedTown[] }) {
+  const incomplete = failedTowns.length > 0;
+
+  return (
+    <>
+      {incomplete ? (
+        <div className="mb-5 rounded-md border border-line bg-card px-5 py-4 text-sm">
+          <p className="text-fg-muted">Some of your towns could not be checked, so their newest meetings may be missing.</p>
+          <ul aria-label="Towns that could not be checked" className="mt-3 flex flex-col gap-2">
+            {failedTowns.map((town) => (
+              <li key={town.town_id} className="flex flex-wrap items-center gap-2">
+                <span className="font-semibold text-fg">{town.name}</span>
+                <Badge tone="warning">Could not check the source</Badge>
+              </li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
+
+      {meetings.length > 0 ? (
+        <MeetingCards meetings={meetings} />
+      ) : incomplete ? null : (
+        <div className="flex min-h-[260px] flex-col items-center justify-center gap-3 px-6 py-12 text-center text-fg-muted">
+          <EmptyArt scene="tree" />
+          <p className="text-base font-semibold text-fg">
+            No matching meetings found.
+          </p>
+          <p className="max-w-sm text-sm">
+            Follow a town or topic and its upcoming meetings will show up here.
+          </p>
+          <Link href="/preferences" className="mt-1 text-sm font-semibold text-accent hover:underline">
+            Choose towns and topics
+          </Link>
+        </div>
+      )}
+    </>
+  );
+}
+
+function MeetingCards({ meetings }: { meetings: Meeting[] }) {
   return (
     <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
       {meetings.map((meeting) => (
