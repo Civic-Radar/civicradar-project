@@ -15,7 +15,7 @@
 // limit of extractions (10 by default, EXTRACTION_DAILY_LIMIT), another request
 // answers 429 with the SRS message and nothing is created.
 import { getSupabaseClient } from '../../../lib/supabase';
-import { ALREADY_IN_PROGRESS_MESSAGE, DAILY_LIMIT_MESSAGE, UNSUPPORTED_FORMAT_MESSAGE } from '../../../lib/extractions';
+import { ALREADY_IN_PROGRESS_MESSAGE, DAILY_LIMIT_MESSAGE, UNSUPPORTED_FORMAT_MESSAGE, readableDocumentName } from '../../../lib/extractions';
 import { dailyExtractionLimit, extractionRequestsToday } from '../../../lib/extraction/dailyLimit';
 
 const EXTRACTION_COLUMNS = 'extraction_id, user_id, document_id, source_document_title, status, requested_at, completed_at';
@@ -56,12 +56,23 @@ export async function POST(request: Request) {
   // Look up the selected document.
   const { data: document, error: documentError } = await supabase!
     .from('documents')
-    .select('document_id, title, mime_type')
+    .select('document_id, title, mime_type, document_type, town_id, meeting:meetings(title, start_at)')
     .eq('document_id', documentId)
     .maybeSingle();
 
   if (documentError) return Response.json({ error: 'Could not load the selected document.' }, { status: 500 });
   if (!document) return Response.json({ error: 'The selected document was not found.' }, { status: 404 });
+
+  // Fix: the extraction keeps a readable name for its document ("Brookline ·
+  // Bicycle Advisory Committee Meeting · Oct 28, 2026 · Agenda"), shown on the
+  // Saved and Officials tabs, instead of the file's name ("Agenda V2").
+  const meeting = (document as unknown as { meeting: { title: string; start_at: string } | null }).meeting ?? null;
+  let townName: string | null = null;
+  if (meeting && document.town_id) {
+    const { data: town } = await supabase!.from('towns').select('name').eq('town_id', document.town_id).maybeSingle();
+    townName = town?.name ?? null;
+  }
+  const sourceTitle = readableDocumentName({ ...document, town_name: townName, meeting }).slice(0, 500);
 
   // SRS-301.5 / SRS-301.6: only PDFs can be extracted. No request is created.
   if (document.mime_type !== 'application/pdf') {
@@ -90,7 +101,7 @@ export async function POST(request: Request) {
     .insert({
       user_id: user.id,
       document_id: document.document_id,
-      source_document_title: document.title,
+      source_document_title: sourceTitle,
       status: 'Queued',
     })
     .select(EXTRACTION_COLUMNS)

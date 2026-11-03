@@ -145,7 +145,97 @@ export type ExtractableDocument = {
   retrieved_at: string;
   // The meeting the document belongs to, for grouping on the extraction page.
   meeting: { meeting_id: number; title: string; start_at: string } | null;
+  // The stored file's size, shown in the list so long packets stand out.
+  file_size_bytes?: number;
+  // The document's town, shown with its meeting and used by the town tabs.
+  town_id: number;
+  town_name?: string;
 };
+
+// Fix: readable document names. Towns upload files with names like "Agenda V2" or
+// "10.28.26 SC Packet"; these name a document by what it is instead.
+const DOCUMENT_TYPE_LABELS: Record<string, string> = { Agenda: 'Agenda', Packet: 'Agenda packet', Minutes: 'Minutes', Other: 'Document' };
+
+// Fix: when a town posts a corrected document it marks the title "AMENDED"
+// (or "REVISED", "UPDATED") and keeps the original too. Within one meeting and
+// one document type, the marked one is the latest and the others are earlier
+// versions. Nothing is guessed when no title in the group is marked.
+const AMENDED = /\b(amended|revised|updated)\b/i;
+
+export function isAmendedTitle(title: string): boolean {
+  return AMENDED.test(title);
+}
+
+export type VersionLabel = 'latest' | 'earlier';
+
+export function versionLabels(
+  documents: { document_id: number; title: string; document_type: string; meeting: { meeting_id: number } | null }[],
+): Map<number, VersionLabel> {
+  const groups = new Map<string, typeof documents>();
+  for (const doc of documents) {
+    if (!doc.meeting) continue;
+    const key = `${doc.meeting.meeting_id}|${doc.document_type}`;
+    groups.set(key, [...(groups.get(key) ?? []), doc]);
+  }
+  const labels = new Map<number, VersionLabel>();
+  for (const group of groups.values()) {
+    const amended = group.filter((d) => isAmendedTitle(d.title));
+    if (amended.length === 0 || amended.length === group.length) continue;
+    for (const doc of group) labels.set(doc.document_id, isAmendedTitle(doc.title) ? 'latest' : 'earlier');
+  }
+  return labels;
+}
+
+// Fix: in the extraction list the meeting heading already shows the date, so a
+// date inside a document or meeting name is only repeated. These remove it:
+// "Monday October 19, 2026", "October 22, 2026", "10.28.26", "10/27/2026",
+// "2026 10 21", "2026-10-21". A name that would be left empty is kept as is.
+const MONTHS = 'January|February|March|April|May|June|July|August|September|October|November|December|Jan|Feb|Mar|Apr|Jun|Jul|Aug|Sep|Sept|Oct|Nov|Dec';
+const DATE_PATTERNS = [
+  new RegExp(`\\b(?:(?:Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday),?\\s+)?(?:${MONTHS})\\.?\\s+\\d{1,2}(?:st|nd|rd|th)?,?\\s+\\d{4}\\b`, 'gi'),
+  /\b\d{1,2}[./-]\d{1,2}[./-](?:\d{4}|\d{2})\b/g,
+  /\b\d{4}[ .-]\d{1,2}[ .-]\d{1,2}\b/g,
+];
+
+export function withoutDates(name: string): string {
+  let out = name;
+  for (const pattern of DATE_PATTERNS) out = out.replace(pattern, ' ');
+  out = out
+    .replace(/\s{2,}/g, ' ')
+    .replace(/\s*,\s*(?=[–—-]\s)/g, ' ') // "Meeting, - Rev 2" -> "Meeting - Rev 2"
+    .replace(/\s+,/g, ',') // "Packet II , x" -> "Packet II, x"
+    .replace(/[\s,;–—-]+$/, '') // a separator left dangling at the end
+    .replace(/^[\s,;–—-]+/, '') // or at the start
+    .trim();
+  return out || name;
+}
+
+// "120 KB", "6.7 MB" — a file's size in the units people read.
+export function formatFileSize(bytes: number): string {
+  if (bytes < 1024 * 1024) return `${Math.max(1, Math.round(bytes / 1024))} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+
+export function documentTypeLabel(type: string): string {
+  return DOCUMENT_TYPE_LABELS[type] ?? 'Document';
+}
+
+// "Brookline · Bicycle Advisory Committee Meeting · Oct 28, 2026 · Agenda". The
+// date is left out when the meeting title already has a year in it. Without a
+// meeting, the original file name is kept.
+export function readableDocumentName(document: {
+  title: string;
+  document_type: string;
+  town_name?: string | null;
+  meeting: { title: string; start_at: string } | null;
+}): string {
+  if (!document.meeting) return document.title;
+  const meetingTitle = document.meeting.title.trim();
+  const date = /\b(19|20)\d\d\b/.test(meetingTitle)
+    ? null
+    : new Date(document.meeting.start_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'America/New_York' });
+  return [document.town_name, meetingTitle, date, documentTypeLabel(document.document_type)].filter(Boolean).join(' · ');
+}
 
 // SRS-301.8 — a document can be extracted once its meeting has started. A
 // document with no meeting (or no start time) can't be placed in time, so it isn't listed.
@@ -164,6 +254,8 @@ export function sortDocuments(documents: ExtractableDocument[]): ExtractableDocu
       (b.meeting?.start_at ?? '').localeCompare(a.meeting?.start_at ?? '') ||
       (a.meeting?.meeting_id ?? 0) - (b.meeting?.meeting_id ?? 0) ||
       (DOCUMENT_TYPE_ORDER[a.document_type] ?? 9) - (DOCUMENT_TYPE_ORDER[b.document_type] ?? 9) ||
+      // An amended version comes before the original it corrects.
+      Number(isAmendedTitle(b.title)) - Number(isAmendedTitle(a.title)) ||
       a.title.localeCompare(b.title),
   );
 }

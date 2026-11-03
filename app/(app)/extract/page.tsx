@@ -15,7 +15,7 @@
 // Documents are grouped by meeting, newest meeting first, with a search box.
 // Only the most recent meetings are shown until the user asks for more.
 
-import { BookOpen, Search } from 'lucide-react';
+import { BookOpen, ClipboardList, File, FileText, Files, Search } from 'lucide-react';
 import Link from 'next/link';
 import ContactsTabs from '../../components/ContactsTabs';
 import { useEffect, useState } from 'react';
@@ -23,12 +23,21 @@ import { alertClasses } from '../../components/ui/Alert';
 import { badgeClasses } from '../../components/ui/Badge';
 import { buttonClasses } from '../../components/ui/Button';
 import { cardClasses } from '../../components/ui/Card';
-import { STATUS_STYLES, formatDateTime, formatMeetingDate } from '../../../lib/extractions';
+import { DAILY_LIMIT_MESSAGE, STATUS_STYLES, documentTypeLabel, formatDateTime, formatFileSize, formatMeetingDate, readableDocumentName, versionLabels, withoutDates } from '../../../lib/extractions';
 import type { ExtractableDocument, Extraction } from '../../../lib/extractions';
 
 const MEETINGS_PER_PAGE = 8;
 
-type MeetingGroup = { key: string; title: string; startAt: string | null; documents: ExtractableDocument[] };
+// Fix: each document type gets its own badge colour and icon, so agendas,
+// packets, and minutes are easy to tell apart in the list.
+const TYPE_LOOK: Record<string, { tone: 'info' | 'warning' | 'success' | 'neutral'; icon: typeof FileText }> = {
+  Agenda: { tone: 'info', icon: FileText },
+  Packet: { tone: 'warning', icon: Files },
+  Minutes: { tone: 'success', icon: ClipboardList },
+  Other: { tone: 'neutral', icon: File },
+};
+
+type MeetingGroup = { key: string; title: string; townName: string | null; startAt: string | null; documents: ExtractableDocument[] };
 
 // Groups the (already sorted) documents by meeting, keeping their order.
 function groupByMeeting(documents: ExtractableDocument[]): MeetingGroup[] {
@@ -37,7 +46,13 @@ function groupByMeeting(documents: ExtractableDocument[]): MeetingGroup[] {
     const key = doc.meeting ? String(doc.meeting.meeting_id) : 'none';
     let group = groups.get(key);
     if (!group) {
-      group = { key, title: doc.meeting?.title.trim() || 'Other documents', startAt: doc.meeting?.start_at ?? null, documents: [] };
+      group = {
+        key,
+        title: doc.meeting?.title.trim() || 'Other documents',
+        townName: doc.town_name ?? null,
+        startAt: doc.meeting?.start_at ?? null,
+        documents: [],
+      };
       groups.set(key, group);
     }
     group.documents.push(doc);
@@ -52,6 +67,9 @@ export default function ExtractPage() {
   const [documents, setDocuments] = useState<ExtractableDocument[]>([]);
   // SRS-301.8: false when the user follows no town, so there is nothing to list.
   const [followsAnyTown, setFollowsAnyTown] = useState(true);
+  // The followed towns, and the town tab chosen ('all' shows every followed town).
+  const [towns, setTowns] = useState<{ town_id: number; name: string }[]>([]);
+  const [townTab, setTownTab] = useState<number | 'all'>('all');
   const [extractions, setExtractions] = useState<Extraction[]>([]);
   const [selectedId, setSelectedId] = useState<number | null>(null);
   const [query, setQuery] = useState('');
@@ -92,6 +110,7 @@ export default function ExtractPage() {
 
     setDocuments(docsData.documents);
     setFollowsAnyTown(docsData.followsAnyTown !== false);
+    setTowns(docsData.towns ?? []);
     setExtractions(extData.extractions);
   }
 
@@ -106,12 +125,15 @@ export default function ExtractPage() {
   // Search matches the document title or its meeting's title, ignoring case.
   // While searching, every matching meeting is shown.
   const search = query.trim().toLowerCase();
+  const inTown = townTab === 'all' ? documents : documents.filter((d) => d.town_id === townTab);
   const matching = search
-    ? documents.filter(
+    ? inTown.filter(
         (d) => d.title.toLowerCase().includes(search) || (d.meeting?.title.toLowerCase().includes(search) ?? false),
       )
-    : documents;
+    : inTown;
   const groups = groupByMeeting(matching);
+  // Fix: which documents are the latest (amended) version and which are earlier ones.
+  const versions = versionLabels(documents);
   const shownGroups = search ? groups : groups.slice(0, meetingsShown);
   const hiddenMeetings = groups.length - shownGroups.length;
 
@@ -229,6 +251,29 @@ export default function ExtractPage() {
             </div>
           ) : (
             <>
+              {/* One tab per followed town, when there is more than one */}
+              {towns.length > 1 ? (
+                <div role="tablist" aria-label="Towns" className="mt-4 flex flex-wrap gap-2">
+                  {[{ town_id: 'all' as const, name: 'All towns' }, ...towns].map((town) => {
+                    const active = townTab === town.town_id;
+                    return (
+                      <button
+                        key={town.town_id}
+                        type="button"
+                        role="tab"
+                        aria-selected={active}
+                        onClick={() => { setTownTab(town.town_id); setMeetingsShown(MEETINGS_PER_PAGE); }}
+                        className={`inline-flex min-h-9 items-center rounded-md border px-3 py-1.5 text-xs font-semibold transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent ${
+                          active ? 'border-accent bg-accent-wash text-fg' : 'border-line bg-card text-fg-muted hover:border-line-strong hover:bg-raised'
+                        }`}
+                      >
+                        {town.name}
+                      </button>
+                    );
+                  })}
+                </div>
+              ) : null}
+
               <label htmlFor="document-search" className="sr-only">Search documents</label>
               <div className="mt-4 flex items-center gap-2 rounded-md border border-line bg-card pl-4 transition focus-within:border-accent focus-within:outline focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-accent">
                 <Search aria-hidden="true" className="h-[17px] w-[17px] shrink-0 text-fg-subtle" />
@@ -252,14 +297,15 @@ export default function ExtractPage() {
                   <p className="max-w-[450px] text-sm font-semibold leading-relaxed">No documents match &ldquo;{query.trim()}&rdquo;.</p>
                 </div>
               ) : (
-                <div className="mt-4 space-y-6" role="radiogroup" aria-label="Documents">
+                <div className="mt-4 space-y-5" role="radiogroup" aria-label="Documents">
                   {shownGroups.map((group) => (
                     <section key={group.key} aria-label={group.title}>
                       <h3 className="text-sm font-semibold text-fg">
-                        {group.title}
+                        {group.townName ? <span className="text-accent">{group.townName} · </span> : null}
+                        {group.startAt ? withoutDates(group.title) : group.title}
                         {group.startAt ? <span className="font-normal text-fg-muted"> · {formatMeetingDate(group.startAt)}</span> : null}
                       </h3>
-                      <ul className="mt-3 space-y-3">
+                      <ul className="mt-2 space-y-1.5">
                         {group.documents.map((doc) => {
                           const isSelected = doc.document_id === selectedId;
                           const isPdf = doc.mime_type === 'application/pdf';
@@ -270,25 +316,43 @@ export default function ExtractPage() {
                                 role="radio"
                                 aria-checked={isSelected}
                                 onClick={() => selectDocument(doc.document_id)}
-                                className={`flex w-full items-start gap-3 rounded-md border p-4 text-left transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent ${
+                                className={`flex w-full items-center gap-3 rounded-md border px-3 py-2.5 text-left transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent ${
                                   isSelected
                                     ? 'border-accent bg-accent-wash'
                                     : 'border-line bg-card hover:border-line-strong hover:bg-raised'
                                 }`}
                               >
-                                <span aria-hidden="true" className="mt-0.5 grid h-4 w-4 shrink-0 place-items-center rounded-full border border-line-strong bg-card">
+                                <span aria-hidden="true" className="grid h-4 w-4 shrink-0 place-items-center rounded-full border border-line-strong bg-card">
                                   <span className={`h-2 w-2 rounded-full ${isSelected ? 'bg-accent' : 'bg-transparent'}`} />
                                 </span>
-                                <span className="min-w-0 flex-1">
-                                  <span className="flex items-start justify-between gap-3">
-                                    <span className="break-words text-sm font-medium">{doc.title}</span>
-                                    {isSelected ? (
-                                      <span className={badgeClasses('success', 'shrink-0')}>Selected</span>
-                                    ) : null}
-                                  </span>
-                                  <span className="mt-2 block text-xs leading-relaxed text-fg-muted">
-                                    {doc.document_type} · {isPdf ? 'PDF' : 'Not a PDF'}
-                                  </span>
+                                {/* Compact row: title on the left, type and format on the right */}
+                                {/* The document type as a coloured badge with its own icon */}
+                                {(() => {
+                                  const look = TYPE_LOOK[doc.document_type] ?? TYPE_LOOK.Other;
+                                  const Icon = look.icon;
+                                  return (
+                                    <span className={badgeClasses(look.tone, 'inline-flex shrink-0 items-center gap-1')}>
+                                      <Icon aria-hidden="true" className="h-3.5 w-3.5" />
+                                      {documentTypeLabel(doc.document_type)}
+                                    </span>
+                                  );
+                                })()}
+                                {versions.get(doc.document_id) === 'latest' ? (
+                                  <span className={badgeClasses('success', 'shrink-0')}>Latest</span>
+                                ) : versions.get(doc.document_id) === 'earlier' ? (
+                                  <span className={badgeClasses('neutral', 'shrink-0')}>Earlier version</span>
+                                ) : null}
+                                <span
+                                  className={`min-w-0 flex-1 truncate text-sm ${versions.get(doc.document_id) === 'earlier' ? 'text-fg-subtle' : 'text-fg-muted'}`}
+                                  title={doc.title}
+                                >
+                                  {withoutDates(doc.title)}
+                                </span>
+                                {isSelected ? (
+                                  <span className={badgeClasses('success', 'shrink-0')}>Selected</span>
+                                ) : null}
+                                <span className="shrink-0 whitespace-nowrap text-xs text-fg-muted">
+                                  {doc.file_size_bytes ? `${formatFileSize(doc.file_size_bytes)} · ` : ''}{isPdf ? 'PDF' : 'Not a PDF'}
                                 </span>
                               </button>
                             </li>
@@ -319,16 +383,20 @@ export default function ExtractPage() {
 
           <p className="mt-4 text-xs font-semibold uppercase tracking-[0.1em] text-fg-muted">Selected document:</p>
           <p className="mt-3 break-words text-sm font-medium" data-testid="selected-title">
-            {selected ? selected.title : <span className="font-normal text-fg-subtle">None selected</span>}
+            {selected ? readableDocumentName(selected) : <span className="font-normal text-fg-subtle">None selected</span>}
           </p>
 
           {selectedInFlight ? (
             <p className="mt-3 text-sm text-warning">An extraction for this document is already in progress.</p>
           ) : null}
+          {/* SRS-301.7: also next to the button, which may be far below the message at the top. */}
+          {limitReached ? (
+            <p className="mt-3 text-sm text-danger">{DAILY_LIMIT_MESSAGE}</p>
+          ) : null}
 
           {confirming && selected ? (
             <div className="mt-5 rounded-md border border-line bg-raised p-5">
-              <p className="break-words text-sm leading-relaxed text-fg-muted">Extract officials and contact information from <strong className="font-semibold text-fg">{selected.title}</strong>?</p>
+              <p className="break-words text-sm leading-relaxed text-fg-muted">Extract officials and contact information from <strong className="font-semibold text-fg">{readableDocumentName(selected)}</strong>?</p>
               <div className="mt-5 flex flex-wrap gap-3">
                 <button
                   type="button"

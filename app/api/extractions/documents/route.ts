@@ -44,15 +44,24 @@ export async function GET(request: Request) {
 
   const { data, error } = await supabase
     .from('documents')
-    .select('document_id, title, document_type, mime_type, retrieved_at, meeting:meetings(meeting_id, title, start_at)')
+    .select('document_id, title, document_type, mime_type, file_size_bytes, retrieved_at, town_id, meeting:meetings(meeting_id, title, start_at)')
     .in('town_id', townIds)
     .limit(MAX_DOCUMENTS);
 
   if (error) return Response.json({ error: 'Could not load documents.' }, { status: 500 });
 
+  // The followed towns' names, for the town on each meeting and the town tabs.
+  // documents has no foreign key to towns, so the names are read separately.
+  const { data: townRows, error: townsError } = await supabase.from('towns').select('town_id, name').in('town_id', townIds);
+  if (townsError) return Response.json({ error: 'Could not load documents.' }, { status: 500 });
+  const towns = ((townRows ?? []) as { town_id: number; name: string }[]).sort((a, b) => a.name.localeCompare(b.name));
+  const townNames = new Map(towns.map((t) => [t.town_id, t.name]));
+
   const now = new Date();
   const documents = sortDocuments(
-    ((data ?? []) as unknown as ExtractableDocument[]).filter((document) => hasMeetingTakenPlace(document, now)),
+    ((data ?? []) as unknown as ExtractableDocument[])
+      .filter((document) => hasMeetingTakenPlace(document, now))
+      .map((document) => ({ ...document, town_name: townNames.get(document.town_id) })),
   );
-  return Response.json({ documents, followsAnyTown: true }, { status: 200 });
+  return Response.json({ documents, towns, followsAnyTown: true }, { status: 200 });
 }
