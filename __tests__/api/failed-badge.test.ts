@@ -249,11 +249,20 @@ describe('Documents page: Summary failed badge (SRS-210.3)', () => {
     expect(item).not.toContain(PENDING_BADGE);
   });
 
-  it.each<SummaryStatus>(['Complete', 'Pending'])('shows no badge on a %s entry', (status) => {
-    const [item] = listItems(renderLoaded([entry(7, 'Agenda', status)]));
+  it('shows no badge on a Complete entry', () => {
+    const [item] = listItems(renderLoaded([entry(7, 'Agenda', 'Complete')]));
 
     expect(item).not.toContain(FAILED_BADGE);
     expect(item).not.toContain(PENDING_BADGE);
+    expect(item).not.toContain('text-danger');
+  });
+
+  // Pending entries carry their own Summary pending badge (SRS-206.2), never the failed one.
+  it('shows no Summary failed badge on a Pending entry, only its own Summary pending badge', () => {
+    const [item] = listItems(renderLoaded([entry(7, 'Agenda', 'Pending')]));
+
+    expect(item).not.toContain(FAILED_BADGE);
+    expect(count(item, PENDING_BADGE)).toBe(1);
     expect(item).not.toContain('text-danger');
   });
 
