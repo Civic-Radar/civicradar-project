@@ -3,7 +3,7 @@ import { useEffect, useState } from 'react';
 // Towns returned by GET /api/meetings, which already leaves out removed towns.
 export type MeetingTown = { town_id: number; name: string; meeting_time_zone: string };
 
-// Fields returned by GET /api/meetings (SRS-220.3).
+// Fields returned by GET /api/meetings (SRS-220.3); document_count is the number of linked documents.
 export type Meeting = {
   meeting_id: number;
   town_id: number;
@@ -14,6 +14,7 @@ export type Meeting = {
   location: string | null;
   online_link: string | null;
   source_url: string | null;
+  document_count: number;
 };
 
 export type MeetingsListState =

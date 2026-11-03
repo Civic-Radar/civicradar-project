@@ -12,13 +12,14 @@ const { renderToStaticMarkup } = createRequire(import.meta.url)('react-dom/serve
 type Row = Record<string, string | number | null>;
 type Call = { table: string; method: string; args: unknown[] };
 
-// A small stand-in for the three tables the list route reads. select, eq and in
+// A small stand-in for the four tables the list route reads. select, eq and in
 // decide what comes back; order is recorded only, because the fixtures are
 // stored in the route's order (the order itself is covered in document-list.test.ts).
 const db = vi.hoisted(() => ({
   follows: [] as Row[],
   documents: [] as Row[],
   towns: [] as Row[],
+  meetings: [] as Row[],
   calls: [] as Call[],
   failures: {} as Record<string, { message: string }>,
 }));
@@ -37,6 +38,7 @@ vi.mock('../../lib/supabase', () => {
       user_followed_towns: db.follows,
       documents: db.documents,
       towns: db.towns,
+      meetings: db.meetings,
     };
     const rows = tables[table];
     if (!rows) throw new Error(`The stand-in has no table ${table}`);
@@ -120,6 +122,7 @@ function storedDoc(id: number, townId: number, retrievedAt: string): Row {
     title: `Document ${id}`,
     retrieved_at: retrievedAt,
     summary_status: 'Complete',
+    document_type: 'Agenda',
     storage_path: `${townId}/file-${id}.pdf`,
   };
 }
@@ -156,6 +159,7 @@ beforeEach(() => {
   db.follows.length = 0;
   db.documents.splice(0, db.documents.length, ...STORED_DOCUMENTS.map((row) => ({ ...row })));
   db.towns.splice(0, db.towns.length, ...STORED_TOWNS.map((row) => ({ ...row })));
+  db.meetings.splice(0, db.meetings.length, { meeting_id: 1102, start_at: '2026-10-05T16:00:00+00:00' });
 });
 
 afterEach(() => {
@@ -171,8 +175,8 @@ describe('GET /api/documents: town name on each entry (SRS-212.1)', () => {
     expect(response.status).toBe(200);
     expect(await response.json()).toEqual({
       documents: [
-        { document_id: 102, meeting_id: 1102, town_id: TOWN_A, title: 'Document 102', retrieved_at: '2026-10-05T12:00:00+00:00', summary_status: 'Complete', town_name: 'Town A' },
-        { document_id: 101, meeting_id: 1101, town_id: TOWN_A, title: 'Document 101', retrieved_at: '2026-09-01T12:00:00+00:00', summary_status: 'Complete', town_name: 'Town A' },
+        { document_id: 102, meeting_id: 1102, town_id: TOWN_A, title: 'Document 102', retrieved_at: '2026-10-05T12:00:00+00:00', summary_status: 'Complete', document_type: 'Agenda', town_name: 'Town A', meeting_start_at: '2026-10-05T16:00:00+00:00' },
+        { document_id: 101, meeting_id: 1101, town_id: TOWN_A, title: 'Document 101', retrieved_at: '2026-09-01T12:00:00+00:00', summary_status: 'Complete', document_type: 'Agenda', town_name: 'Town A', meeting_start_at: null },
       ],
     });
   });
@@ -231,7 +235,10 @@ describe('GET /api/documents: town name on each entry (SRS-212.1)', () => {
 });
 
 function entry(document_id: number, title: string, town_name: string | null): DocumentListEntry {
-  return { document_id, title, town_id: 1, meeting_id: 9, retrieved_at: '2026-10-01T12:00:00+00:00', summary_status: 'Complete', town_name };
+  return {
+    document_id, title, town_id: 1, meeting_id: 9, retrieved_at: '2026-10-01T12:00:00+00:00', summary_status: 'Complete',
+    document_type: 'Agenda', town_name, meeting_start_at: '2026-10-01T16:00:00+00:00',
+  };
 }
 
 // Vitest compiles this project's JSX to React.createElement, and the page does
@@ -257,6 +264,11 @@ function textOutsideLinks(markup: string): string {
   return markup.replace(/<a\b[^>]*>[\s\S]*?<\/a>/g, '').replace(/<[^>]*>/g, '');
 }
 
+// The entry's details line under the title: "<Type> · <town> · <date>".
+function detailsLine(markup: string): string | undefined {
+  return markup.match(/<p class="mt-1 text-sm text-fg-muted">([\s\S]*?)<\/p>/)?.[1];
+}
+
 describe('Documents page: town tag on each list entry (SRS-212.1)', () => {
   beforeEach(() => {
     vi.stubGlobal('React', React);
@@ -271,17 +283,18 @@ describe('Documents page: town tag on each list entry (SRS-212.1)', () => {
     const items = listItems(renderLoaded([entry(7, 'Agenda', 'Town A'), entry(60, 'Minutes', 'Town B')]));
 
     expect(items).toHaveLength(2);
-    expect(items.map((inner) => textOutsideLinks(inner).trim())).toEqual(['Town A', 'Town B']);
+    expect(textOutsideLinks(items[0])).toContain('Town A');
+    expect(textOutsideLinks(items[1])).toContain('Town B');
     expect(items.map((inner) => anchorsIn(inner).map((a) => a.text))).toEqual([['Agenda'], ['Minutes']]);
-    expect(items[0]).toContain('<span class="text-fg-muted">Town A</span>');
-    expect(items[1]).toContain('<span class="text-fg-muted">Town B</span>');
+    expect(detailsLine(items[0])).toBe('Agenda · Town A · 10/01/2026');
+    expect(detailsLine(items[1])).toBe('Agenda · Town B · 10/01/2026');
   });
 
   it('shows no tag for an entry whose town name is null', () => {
     const [item] = listItems(renderLoaded([entry(7, 'Agenda', null)]));
 
-    expect(textOutsideLinks(item)).toBe('');
-    expect(item).not.toContain('<span');
+    expect(detailsLine(item)).toBe('Agenda · 10/01/2026');
+    expect(textOutsideLinks(item)).not.toContain('Town');
     expect(anchorsIn(item).map((a) => a.text)).toEqual(['Agenda']);
   });
 

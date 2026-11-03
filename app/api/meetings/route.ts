@@ -38,5 +38,28 @@ export async function GET() {
     return Response.json({ error: `Could not read meetings: ${meetingsError.message}` }, { status: 500 });
   }
 
-  return Response.json({ towns, meetings }, { status: 200 });
+  // Each meeting's linked document count for the Materials column, from one read for all listed meetings.
+  const meetingRows = (meetings ?? []) as { meeting_id: number }[];
+  const documentCounts = new Map<number, number>();
+  if (meetingRows.length > 0) {
+    const { data: documents, error: documentsError } = await supabase
+      .from('documents')
+      .select('meeting_id')
+      .in('meeting_id', meetingRows.map((meeting) => meeting.meeting_id));
+
+    if (documentsError) {
+      return Response.json({ error: `Could not read documents: ${documentsError.message}` }, { status: 500 });
+    }
+
+    for (const { meeting_id } of (documents ?? []) as { meeting_id: number }[]) {
+      documentCounts.set(meeting_id, (documentCounts.get(meeting_id) ?? 0) + 1);
+    }
+  }
+
+  const entries = meetingRows.map((meeting) => ({
+    ...meeting,
+    document_count: documentCounts.get(meeting.meeting_id) ?? 0,
+  }));
+
+  return Response.json({ towns, meetings: entries }, { status: 200 });
 }

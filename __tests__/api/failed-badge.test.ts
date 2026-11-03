@@ -12,12 +12,13 @@ const { renderToStaticMarkup } = createRequire(import.meta.url)('react-dom/serve
 type Row = Record<string, string | number | null>;
 type Call = { table: string; method: string; args: unknown[] };
 
-// A small stand-in for the three tables the list route reads. select, eq, in and
+// A small stand-in for the four tables the list route reads. select, eq, in and
 // order decide what comes back, so the route's own order is exercised.
 const db = vi.hoisted(() => ({
   follows: [] as Row[],
   documents: [] as Row[],
   towns: [] as Row[],
+  meetings: [] as Row[],
   calls: [] as Call[],
 }));
 
@@ -42,6 +43,7 @@ vi.mock('../../lib/supabase', () => {
       user_followed_towns: db.follows,
       documents: db.documents,
       towns: db.towns,
+      meetings: db.meetings,
     };
     const rows = tables[table];
     if (!rows) throw new Error(`The stand-in has no table ${table}`);
@@ -124,6 +126,10 @@ const TOWN_A = 1;
 const USER = 'user-123'; // token "valid-token"
 const FAILED_BADGE = 'Summary failed';
 const PENDING_BADGE = 'Summary pending';
+const READY_BADGE = 'Summary ready';
+// The Badge component's pill classes (app/components/ui/Badge.tsx), then the tone.
+const PILL = 'inline-flex w-fit items-center gap-1 whitespace-nowrap rounded-md px-2 py-1 text-xs font-medium leading-tight';
+const FAILED_PILL = `<span class="${PILL} bg-danger-wash text-danger-soft">${FAILED_BADGE}</span>`;
 type SummaryStatus = DocumentListEntry['summary_status'];
 
 function storedDoc(id: number, retrievedAt: string, status: SummaryStatus): Row {
@@ -134,6 +140,7 @@ function storedDoc(id: number, retrievedAt: string, status: SummaryStatus): Row 
     title: `Document ${id}`,
     retrieved_at: retrievedAt,
     summary_status: status,
+    document_type: 'Agenda',
     summary_text: status === 'Complete' ? 'A stored summary the list must not return.' : null,
     storage_path: `${TOWN_A}/file-${id}.pdf`,
   };
@@ -157,6 +164,7 @@ beforeEach(() => {
   db.follows.splice(0, db.follows.length, { user_id: USER, town_id: TOWN_A });
   db.documents.splice(0, db.documents.length, ...STORED_DOCUMENTS.map((row) => ({ ...row })));
   db.towns.splice(0, db.towns.length, { town_id: TOWN_A, name: 'Town A', removed_at: null });
+  db.meetings.splice(0, db.meetings.length, { meeting_id: 1301, start_at: '2026-10-05T16:00:00+00:00' });
 });
 
 afterEach(() => {
@@ -187,7 +195,9 @@ describe('GET /api/documents: summary status on each entry (SRS-210.3)', () => {
       meeting_id: 1301,
       retrieved_at: '2026-10-05T12:00:00+00:00',
       summary_status: 'Failed',
+      document_type: 'Agenda',
       town_name: 'Town A',
+      meeting_start_at: '2026-10-05T16:00:00+00:00',
     });
     expect(JSON.stringify(body)).not.toContain('summary_text');
   });
@@ -197,7 +207,7 @@ describe('GET /api/documents: summary status on each entry (SRS-210.3)', () => {
 
     const documentCalls = db.calls.filter((call) => call.table === 'documents');
     expect(documentCalls.map((call) => [call.method, ...call.args])).toEqual([
-      ['select', 'document_id, title, town_id, meeting_id, retrieved_at, summary_status'],
+      ['select', 'document_id, title, town_id, meeting_id, retrieved_at, summary_status, document_type'],
       ['in', 'town_id', [TOWN_A]],
       ['order', 'retrieved_at', { ascending: false }],
       ['order', 'document_id', { ascending: false }],
@@ -206,7 +216,20 @@ describe('GET /api/documents: summary status on each entry (SRS-210.3)', () => {
 });
 
 function entry(document_id: number, title: string, summary_status: SummaryStatus, town_name: string | null = 'Town A'): DocumentListEntry {
-  return { document_id, title, town_id: TOWN_A, meeting_id: 9, retrieved_at: '2026-10-01T12:00:00+00:00', summary_status, town_name };
+  return {
+    document_id, title, town_id: TOWN_A, meeting_id: 9, retrieved_at: '2026-10-01T12:00:00+00:00', summary_status,
+    document_type: 'Agenda', town_name, meeting_start_at: '2026-10-01T16:00:00+00:00',
+  };
+}
+
+// The entry's details line under the title: "<Type> · <town> · <date>".
+function detailsLine(markup: string): string | undefined {
+  return markup.match(/<p class="mt-1 text-sm text-fg-muted">([\s\S]*?)<\/p>/)?.[1];
+}
+
+// The entry with its status pill removed.
+function withoutPill(markup: string): string {
+  return markup.replace(/<span class="inline-flex w-fit[^"]*">[\s\S]*?<\/span>/, '');
 }
 
 // Vitest compiles this project's JSX to React.createElement, and the page does
@@ -245,16 +268,17 @@ describe('Documents page: Summary failed badge (SRS-210.3)', () => {
     const [item] = listItems(renderLoaded([entry(7, 'Agenda', 'Failed')]));
 
     expect(count(item, FAILED_BADGE)).toBe(1);
-    expect(item).toContain(`<span class="text-danger">${FAILED_BADGE}</span>`);
+    expect(item).toContain(FAILED_PILL);
     expect(item).not.toContain(PENDING_BADGE);
   });
 
-  it('shows no badge on a Complete entry', () => {
+  it('shows the Summary ready badge, and neither the failed nor the pending one, on a Complete entry', () => {
     const [item] = listItems(renderLoaded([entry(7, 'Agenda', 'Complete')]));
 
     expect(item).not.toContain(FAILED_BADGE);
     expect(item).not.toContain(PENDING_BADGE);
     expect(item).not.toContain('text-danger');
+    expect(count(item, READY_BADGE)).toBe(1);
   });
 
   // Pending entries carry their own Summary pending badge (SRS-206.2), never the failed one.
@@ -276,20 +300,21 @@ describe('Documents page: Summary failed badge (SRS-210.3)', () => {
     expect(items.map((inner) => count(inner, FAILED_BADGE))).toEqual([0, 1, 0]);
   });
 
-  it('places the badge right after the town tag, in the same tag area', () => {
+  it('places the badge on the same row as the town tag', () => {
     const [item] = listItems(renderLoaded([entry(7, 'Agenda', 'Failed')]));
 
-    expect(item).toContain(`<span class="text-fg-muted">Town A</span> <span class="text-danger">${FAILED_BADGE}</span>`);
     const area = item.match(/<div class="flex min-w-0 flex-1[^"]*">([\s\S]*)<\/div>/)?.[1] ?? '';
-    expect(area).toContain('Town A');
-    expect(area).toContain(FAILED_BADGE);
+    expect(detailsLine(area)).toContain('Town A');
+    expect(area).toContain(FAILED_PILL);
+    expect(area.indexOf(FAILED_PILL)).toBeGreaterThan(area.indexOf('Town A'));
   });
 
   it('still shows the badge on a Failed entry whose town name is null', () => {
     const [item] = listItems(renderLoaded([entry(7, 'Agenda', 'Failed', null)]));
 
     expect(count(item, FAILED_BADGE)).toBe(1);
-    expect(item).not.toContain('text-fg-muted');
+    expect(detailsLine(item)).toBe('Agenda · 10/01/2026');
+    expect(item).not.toContain('Town A');
   });
 
   it('keeps the title link and town tag of a Failed entry the same as a Complete one', () => {
@@ -298,7 +323,7 @@ describe('Documents page: Summary failed badge (SRS-210.3)', () => {
 
     expect(anchorsIn(failed)).toEqual([{ href: '/documents/7', text: 'Agenda' }]);
     expect(anchorsIn(failed)).toEqual(anchorsIn(complete));
-    expect(failed).toContain('<span class="text-fg-muted">Town A</span>');
-    expect(failed.replace(` <span class="text-danger">${FAILED_BADGE}</span>`, '')).toBe(complete);
+    expect(detailsLine(failed)).toBe('Agenda · Town A · 10/01/2026');
+    expect(withoutPill(failed)).toBe(withoutPill(complete));
   });
 });
