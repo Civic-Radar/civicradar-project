@@ -17,11 +17,6 @@
   }
 }
 
-/* Retrieval page column. */
-.card {
-  width: 100%;
-}
-
 /* Meeting details column (prototype .meeting-overview, 1152px). */
 .overview {
   width: 100%;
@@ -128,36 +123,7 @@
   color: rgb(var(--color-fg-subtle)); /* fg-subtle */
 }
 
-/* Retrieval panel (prototype .paper.retrieval-panel, .retrieval-toolbar). */
-.panel {
-  margin-top: 2rem;
-  overflow: hidden;
-  border: 1px solid rgb(var(--color-line)); /* line */
-  border-radius: 0.625rem;
-  background: rgb(var(--color-card)); /* card */
-}
-
-.toolbar {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: flex-end;
-  gap: 1rem;
-  padding: 1.5rem;
-}
-
-.toolbar .button {
-  min-height: 3rem;
-}
-
-/* Messages and the loading line sit inset under the toolbar. */
-.panel > .message,
-.panel > .error,
-.panel > .muted {
-  margin: 0 1.5rem 1.5rem;
-}
-
-/* Empty states (prototype .empty-state). */
-.empty,
+/* Empty state (prototype .empty-state). */
 .documentsEmpty {
   display: flex;
   flex-direction: column;
@@ -171,75 +137,9 @@
   font-size: 1rem;
   font-weight: 600;
   color: rgb(var(--color-fg-muted)); /* fg-muted */
-}
-
-.empty {
-  border-top: 1px solid rgb(var(--color-line)); /* line */
-}
-
-.documentsEmpty {
   border: 1px solid rgb(var(--color-line)); /* line */
   border-radius: 0.625rem;
   background: rgb(var(--color-card)); /* card */
-}
-
-/* Retrieval table (prototype .table-scroll, .meetings-table). Scrolls inside its own wrapper. */
-.tableWrap {
-  overflow-x: auto;
-}
-
-.table {
-  width: 100%;
-  min-width: 67.5rem;
-  border-collapse: collapse;
-  table-layout: fixed;
-  font-size: 0.75rem;
-  line-height: 1.8;
-  color: rgb(var(--color-fg)); /* fg */
-}
-
-.table th {
-  text-align: left;
-  vertical-align: top;
-  font-size: 0.6875rem;
-  font-weight: 600;
-  letter-spacing: 0.04em;
-  color: rgb(var(--color-fg-muted)); /* fg-muted */
-  background: rgb(var(--color-raised)); /* raised */
-  padding: 1rem;
-}
-
-.table th:first-child {
-  width: 19%;
-}
-
-.table th:nth-child(2) {
-  width: 11%;
-}
-
-.table th:nth-child(3) {
-  width: 13%;
-}
-
-.table th:nth-child(4) {
-  width: 17%;
-}
-
-.table td {
-  border-top: 1px solid rgb(var(--color-line)); /* line */
-  padding: 1.25rem 1rem;
-  vertical-align: top;
-  overflow-wrap: anywhere;
-}
-
-.tableLink {
-  font-weight: 600;
-  color: rgb(var(--color-accent)); /* accent */
-  text-decoration: none;
-}
-
-.tableLink:hover {
-  text-decoration: underline;
 }
 
 .link {
@@ -273,7 +173,6 @@
 .button:focus-visible,
 .secondaryButton:focus-visible,
 .link:focus-visible,
-.tableLink:focus-visible,
 .backLink:focus-visible,
 .documentTitleLink:focus-visible {
   outline: 2px solid rgb(var(--color-accent)); /* accent */

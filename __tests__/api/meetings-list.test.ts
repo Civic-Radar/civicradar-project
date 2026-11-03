@@ -37,6 +37,7 @@ function meeting(meeting_id: number, town: MeetingTown, title: string): Meeting 
     location: null,
     online_link: null,
     source_url: null,
+    document_count: 0,
   };
 }
 
@@ -55,19 +56,15 @@ function renderLoaded(followedTownIds: number[]): string {
 }
 
 function textOf(html: string): string {
-  return html.replace(/<[^>]*>/g, '');
+  return html.replace(/<[^>]*>/g, '').replace(/&amp;/g, '&');
 }
 
-// Each body row as its cell texts, in order.
+// Each list row as its line texts, in order: title, then "<governing body> · <town>", then date and time.
 function rows(markup: string): string[][] {
-  const body = markup.match(/<tbody>([\s\S]*?)<\/tbody>/)?.[1] ?? '';
-  return Array.from(body.matchAll(/<tr\b[^>]*>([\s\S]*?)<\/tr>/g), ([, row]) =>
-    Array.from(row.matchAll(/<td\b[^>]*>([\s\S]*?)<\/td>/g), ([, cell]) => textOf(cell)),
+  const list = markup.match(/<ul\b[^>]*>([\s\S]*?)<\/ul>/)?.[1] ?? '';
+  return Array.from(list.matchAll(/<li\b[^>]*>([\s\S]*?)<\/li>/g), ([, row]) =>
+    Array.from(row.matchAll(/<p\b[^>]*>([\s\S]*?)<\/p>/g), ([, line]) => textOf(line)),
   );
-}
-
-function headers(markup: string): string[] {
-  return Array.from(markup.matchAll(/<th\b[^>]*>([\s\S]*?)<\/th>/g), ([, inner]) => textOf(inner));
 }
 
 function options(markup: string): { value: string; text: string; selected: boolean }[] {
@@ -111,10 +108,10 @@ describe('A user who follows Brookline only (SRS-220.3 AC 2)', () => {
     expect(meetingsForUser(MEETINGS, [BROOKLINE.town_id], null).map((m) => m.meeting_id)).toEqual([2, 4]);
   });
 
-  it('the page lists only Brookline meetings, each with its town name in the Town column', () => {
+  it('the page lists only Brookline meetings, each with its town name on the row', () => {
     const markup = renderLoaded([BROOKLINE.town_id]);
 
-    expect(headers(markup).slice(0, 2)).toEqual(['Title', 'Town']);
+    expect(textOf(markup)).toContain('MeetingDate & timeMaterials');
     expect(rows(markup).map((cells) => cells.slice(0, 2))).toEqual([
       ['Brookline Select Board', 'Brookline'],
       ['Brookline School Committee', 'Brookline'],
@@ -128,7 +125,7 @@ describe('A user who follows Brookline only (SRS-220.3 AC 2)', () => {
 
     expect(markup).toMatch(/<h1[^>]*>Meetings<\/h1>/);
     expect(markup).not.toContain('Retrieval');
-    expect(markup).toContain('Civic Radar');
+    expect(markup).toContain('Your community calendar');
   });
 });
 
@@ -152,7 +149,7 @@ describe('A user who follows Salem and Brookline (SRS-220.3 AC 3 and AC 4)', () 
   it('the filter is labelled Town, starts on All my towns, then lists each followed town by name', () => {
     const markup = renderLoaded([SALEM.town_id, BROOKLINE.town_id]);
 
-    expect(markup).toMatch(/<label[^>]*>Town<select/);
+    expect(markup).toMatch(/<label[^>]*><span class="sr-only">Town<\/span><select/);
     expect(options(markup)).toEqual([
       { value: '', text: 'All my towns', selected: true },
       { value: String(BROOKLINE.town_id), text: 'Brookline', selected: false },
@@ -187,7 +184,7 @@ describe('A user who follows no towns (SRS-220.3 AC 5)', () => {
     const markup = renderLoaded([]);
 
     expect(rows(markup)).toEqual([]);
-    expect(markup).not.toContain('<table');
+    expect(markup).not.toContain('<ul');
     expect(markup).not.toContain('<select');
     expect(markup).toContain('Choose your towns in Preferences.');
     expect(hrefs(markup)).toEqual(['/preferences']);
