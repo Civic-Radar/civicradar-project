@@ -498,9 +498,9 @@ Traces to: UR-207
 
 Traces to: UR-208
 
-**SRS-208.2, MS, New document added.** The system shall add a document to the document list when a scheduled check finds a document that has not been retrieved before.
+**SRS-208.2, MS, New document added.** The system shall add a document to the document list when a scheduled check finds a document that has not been retrieved before and whose file is no larger than the document size limit (50 MB by default). A larger file is not downloaded, is counted as skipped, and does not stop the check.
 
-**Acceptance Criteria:** Given a new agenda is published on CivicClerk, When the next scheduled check completes, Then the agenda appears on the Documents page.
+**Acceptance Criteria:** Given a new agenda is published on CivicClerk, When the next scheduled check completes, Then the agenda appears on the Documents page. Given a new packet is larger than the document size limit, When the next scheduled check runs, Then the packet is not stored and the check still completes.
 
 Traces to: UR-208
 

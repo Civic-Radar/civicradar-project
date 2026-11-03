@@ -42,8 +42,11 @@ export interface SourceFile {
 
 // Options a source client's file download takes (SRS-208.2). The limit always
 // comes from the caller; without maxBytes the download has no size limit.
+// onDeclaredSize is called once with the size the source declared, before the
+// body is read, when the source declares one and it is within maxBytes.
 export interface DownloadOptions {
   maxBytes?: number;
+  onDeclaredSize?: (sizeBytes: number) => void;
 }
 
 // Thrown by a source client's file download when the file is larger than

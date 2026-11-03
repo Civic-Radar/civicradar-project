@@ -512,6 +512,9 @@ export async function downloadFile(
       response.body?.cancel().catch(() => {});
       throw new FileTooLargeError(Number(contentLength), maxBytes);
     }
+    if (contentLength !== null && Number.isFinite(Number(contentLength))) {
+      options.onDeclaredSize?.(Number(contentLength));
+    }
 
     let bytes: Uint8Array;
     try {
