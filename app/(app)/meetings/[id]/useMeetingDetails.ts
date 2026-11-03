@@ -26,6 +26,14 @@ export type MeetingDocument = {
   source_url: string | null;
 };
 
+// SRS-502.6: one agenda item, in the source's order.
+export type AgendaItem = {
+  agenda_item_id: number;
+  sort_order: number;
+  title: string;
+  item_text: string | null;
+};
+
 export type MeetingDetailsState =
   | { status: 'loading' }
   | { status: 'notFound' }
@@ -34,6 +42,8 @@ export type MeetingDetailsState =
       status: 'loaded';
       meeting: MeetingDetails;
       documents: MeetingDocument[];
+      // The meeting's agenda items (SRS-502.6); empty when the source provides none.
+      agendaItems?: AgendaItem[];
       // null when the followed towns could not be read (signed out or an error).
       followedTownIds: number[] | null;
       // Names of the topics the user follows; empty when none or not readable.
@@ -81,6 +91,7 @@ export function useMeetingDetails(id: string): MeetingDetailsState {
           status: 'loaded',
           meeting: data.meeting,
           documents: Array.isArray(data.documents) ? data.documents : [],
+          agendaItems: Array.isArray(data.agenda_items) ? data.agenda_items : [],
           followedTownIds: towns ? towns.map((town) => town.town_id) : null,
           followedTopics: topics ? topics.map((topic) => topic.name) : [],
         });

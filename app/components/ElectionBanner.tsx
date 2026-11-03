@@ -55,6 +55,7 @@ export default function ElectionBanner() {
         type="button"
         onClick={show}
         aria-label="Show Election Day reminder"
+        data-election-button
         className="fixed bottom-[max(1rem,env(safe-area-inset-bottom))] right-[max(1rem,env(safe-area-inset-right))] z-30 flex min-h-11 items-center gap-2 rounded-full border border-lime/60 bg-accent-strong px-4 text-sm font-semibold text-on-dark shadow-lg transition hover:bg-accent focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
       >
         <Vote className="h-4 w-4" aria-hidden="true" />

@@ -140,6 +140,7 @@ export default function SearchHighlight({ children }: { children: React.ReactNod
       {active ? (
         <div
           role="status"
+          data-search-highlight-bar
           className="fixed bottom-4 left-1/2 z-40 flex max-w-[calc(100vw-2rem)] -translate-x-1/2 items-center gap-1 rounded-full border border-line bg-card py-1.5 pl-4 pr-1.5 text-sm text-fg shadow-lg"
         >
           <span className="truncate">

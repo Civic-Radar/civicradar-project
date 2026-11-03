@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import { useEffect, useState } from 'react';
 import {
   ArrowLeft,
   ArrowRight,
@@ -16,9 +17,10 @@ import {
 import styles from '../meetings.module.css';
 import LeafLoader from '../../../components/art/LeafLoader';
 import { buttonClasses } from '../../../components/ui/Button';
+import { HIGHLIGHT_PARAM, matchRanges, searchTerms } from '../../../../lib/search';
 import { useIsAdministrator } from '../../../admin/retrieval/useIsAdministrator';
 import FollowMeetingButton from './FollowMeetingButton';
-import { useMeetingDetails, type MeetingDetails, type MeetingDocument } from './useMeetingDetails';
+import { useMeetingDetails, type AgendaItem, type MeetingDetails, type MeetingDocument } from './useMeetingDetails';
 
 // SRS-502.3: a detail the source omits is marked as not provided.
 const NOT_PROVIDED = 'Not provided by the source';
@@ -28,6 +30,9 @@ const OPEN_ON_CIVICCLERK = 'Open on CivicClerk';
 
 // SRS-502.5: shown when the meeting has zero linked documents.
 const NO_DOCUMENTS = 'No documents have been published for this meeting yet.';
+
+// SRS-502.6: shown when the source provides agenda items but this meeting has none yet.
+const NO_AGENDA_ITEMS = 'No agenda items have been posted for this meeting yet.';
 
 // SRS-502.8: shown in place of agenda items or recordings when the town's source does not provide them.
 const NOT_AVAILABLE = 'Not available from this source';
@@ -145,6 +150,71 @@ function DocumentList({ documents }: { documents: MeetingDocument[] }) {
   );
 }
 
+// SRS-502.6: the agenda as the meeting's running order, numbered stops down a
+// line. Each item's full text shows under its title (when it says more than the
+// title), so words found by Search can be highlighted here. When the page was
+// opened from Search, the stops of the items that match are filled in green.
+// Each item has an id for linking to it.
+function AgendaTimeline({ items }: { items: AgendaItem[] }) {
+  // The searched words, read after the first render (the address is only in the browser).
+  const [terms, setTerms] = useState<string[]>([]);
+  useEffect(() => {
+    setTerms(searchTerms(new URLSearchParams(window.location.search).get(HIGHLIGHT_PARAM)) ?? []);
+  }, []);
+  const matches = (item: AgendaItem) =>
+    terms.length > 0 && [item.title, item.item_text ?? ''].some((text) => matchRanges(text, terms).length > 0);
+
+  if (items.length === 0) {
+    return <p className="rounded-xl border border-line bg-card px-6 py-10 text-center text-sm text-fg-muted">{NO_AGENDA_ITEMS}</p>;
+  }
+  return (
+    <ol className="relative m-0 list-none rounded-xl border border-line bg-card p-5 pl-4 md:p-6">
+      {items.map((item, index) => {
+        const text = item.item_text?.trim();
+        const last = index === items.length - 1;
+        const match = matches(item);
+        return (
+          <li key={item.agenda_item_id} id={`agenda-item-${item.agenda_item_id}`} className={`relative scroll-mt-24 pl-11 ${last ? '' : 'pb-5'}`}>
+            {/* The line between stops. */}
+            {last ? null : <span aria-hidden="true" className="absolute bottom-0 left-[13px] top-6 w-0.5 rounded bg-line-strong" />}
+            <span
+              aria-hidden="true"
+              className={`absolute left-0.5 top-0 grid h-6 w-6 place-items-center rounded-full border-2 text-[11px] font-semibold tabular-nums ${
+                match ? 'border-accent-strong bg-accent-strong text-on-dark' : 'border-line-strong bg-card text-fg-subtle'
+              }`}
+            >
+              {index + 1}
+            </span>
+            <p className="break-words text-sm font-semibold leading-6 text-fg">{item.title}</p>
+            {text && text !== item.title.trim() ? (
+              <p className="mt-1 max-w-prose whitespace-pre-line break-words text-sm leading-relaxed text-fg-muted">{text}</p>
+            ) : null}
+          </li>
+        );
+      })}
+    </ol>
+  );
+}
+
+// The official agenda for reference: the source copy of the meeting's Agenda
+// document, or its page here when the source link is missing.
+function OfficialAgendaLink({ documents }: { documents: MeetingDocument[] }) {
+  const agenda = documents.find((document) => document.document_type === 'Agenda');
+  if (!agenda) return null;
+  const className = 'inline-flex min-h-11 items-center gap-1.5 text-sm font-semibold text-accent hover:underline';
+  return agenda.source_url ? (
+    <a href={agenda.source_url} target="_blank" rel="noopener noreferrer" className={className}>
+      View the official agenda
+      <ExternalLink className="h-4 w-4" aria-hidden="true" />
+    </a>
+  ) : (
+    <Link href={`/documents/${agenda.document_id}`} className={className}>
+      View the official agenda
+      <ArrowRight className="h-4 w-4" aria-hidden="true" />
+    </Link>
+  );
+}
+
 // "Why this is on your radar", built only from the town and the user's own follows.
 function RadarPanel({ meeting, followedTownIds, followedTopics }: {
   meeting: MeetingDetails;
@@ -225,6 +295,7 @@ export default function MeetingDetailsPage({ params }: { params: { id: string } 
           <MeetingOverview
             meeting={state.meeting}
             documents={state.documents}
+            agendaItems={state.agendaItems ?? []}
             followedTownIds={state.followedTownIds}
             followedTopics={state.followedTopics}
           />
@@ -234,9 +305,10 @@ export default function MeetingDetailsPage({ params }: { params: { id: string } 
   );
 }
 
-function MeetingOverview({ meeting, documents, followedTownIds, followedTopics }: {
+function MeetingOverview({ meeting, documents, agendaItems, followedTownIds, followedTopics }: {
   meeting: MeetingDetails;
   documents: MeetingDocument[];
+  agendaItems: AgendaItem[];
   followedTownIds: number[] | null;
   followedTopics: string[];
 }) {
@@ -320,7 +392,7 @@ function MeetingOverview({ meeting, documents, followedTownIds, followedTopics }
                 {!meeting.source_url ? (
                   <SmallDetail label="Official source link"><TextOrNotProvided value={null} /></SmallDetail>
                 ) : null}
-                {/* Listing agenda items and recordings for towns that provide them is SRS-502.6 / 502.7. */}
+                {/* Agenda items for towns that provide them are listed below (SRS-502.6); recordings are SRS-502.7. */}
                 {!meeting.provides_agenda_items ? (
                   <SmallDetail label="Agenda items"><span className={styles.missing}>{NOT_AVAILABLE}</span></SmallDetail>
                 ) : null}
@@ -330,6 +402,21 @@ function MeetingOverview({ meeting, documents, followedTownIds, followedTopics }
               </div>
             ) : null}
           </dl>
+
+          {meeting.provides_agenda_items ? (
+            <section aria-labelledby="agenda-heading">
+              <div className="mt-10 flex flex-wrap items-end justify-between gap-2">
+                <div>
+                  <p className={EYEBROW}>Running order</p>
+                  <h2 id="agenda-heading" className="mt-2 font-display text-3xl font-normal leading-tight tracking-tight">Agenda</h2>
+                </div>
+                <OfficialAgendaLink documents={documents} />
+              </div>
+              <div className="mt-4">
+                <AgendaTimeline items={agendaItems} />
+              </div>
+            </section>
+          ) : null}
 
           <div className="mt-10 flex flex-wrap items-end justify-between gap-2">
             <div>
