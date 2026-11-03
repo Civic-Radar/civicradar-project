@@ -8,7 +8,7 @@
 --   Part 4  avatars bucket     - public storage bucket for profile pictures
 --
 -- Part 2 is generated from database/schema.sql (the portable PostgreSQL script,
--- which is the source of truth). Only eleven things differ, and each is marked
+-- which is the source of truth). Only twelve things differ, and each is marked
 -- "Supabase:" inline:
 --
 --   1. is_valid_time_zone() is created as public.is_valid_time_zone() with a
@@ -51,6 +51,10 @@
 --      most recent finished check was not successful, or that have no
 --      finished check, so the matching result can be marked Incomplete
 --      (SRS-401.11). Only the service role may run it.
+--  12. public.mark_meeting_for_tagging(), fired by the
+--      agenda_items_mark_for_tagging trigger, sets a meeting back to Pending
+--      when the agenda text topic tagging reads changes, so the next scheduled
+--      check tags it again (SRS-401.4, Task 401.4-7).
 -- =============================================================================
 -- =============================================================================
 -- PART 1. Profile table (used by app/api/profile)
@@ -164,6 +168,8 @@ drop function IF exists public.create_meeting_baseline () CASCADE;
 drop function IF exists public.record_meeting_changes () CASCADE;
 
 drop function IF exists public.process_successful_check (BIGINT) CASCADE;
+
+drop function IF exists public.mark_meeting_for_tagging () CASCADE;
 
 -- -----------------------------------------------------------------------------
 -- Helper function
@@ -691,6 +697,47 @@ create table agenda_items (
   unique (meeting_id, source_item_id),
   unique (agenda_item_id, meeting_id) -- target of meeting_updates' composite FK
 );
+
+-- Function: mark_meeting_for_tagging (trigger)
+-- Reviewed by: EG (Erick Gonzalez)
+-- Supports: SRS-401.4 (Task 401.4-7), SRS-401.10
+-- Purpose: Sets a meeting's topic_classification back to Pending when the
+--          agenda that topic tagging reads changes: an agenda item is added or
+--          deleted, or its item_text, sort_order or removed_at changes. Saving
+--          an item with the same values, as every retrieval does, changes
+--          nothing, so only new or changed agenda text is tagged again.
+--          lib/tagPendingMeetings.ts tags Pending meetings after each
+--          scheduled check. Tags are never removed here; tagging replaces them.
+-- Supabase: not in database/schema.sql; fired by the agenda_items_mark_for_tagging trigger.
+create function public.mark_meeting_for_tagging () RETURNS trigger LANGUAGE plpgsql SECURITY INVOKER
+set
+  search_path = pg_catalog,
+  public -- Supabase: pin the search path (linter 0011)
+  as $$
+BEGIN
+  IF TG_OP = 'UPDATE' THEN
+    IF NEW.meeting_id = OLD.meeting_id
+       AND NEW.item_text IS NOT DISTINCT FROM OLD.item_text
+       AND NEW.sort_order IS NOT DISTINCT FROM OLD.sort_order
+       AND NEW.removed_at IS NOT DISTINCT FROM OLD.removed_at THEN
+      RETURN NULL;
+    END IF;
+    UPDATE meetings SET topic_classification = 'Pending'
+    WHERE meeting_id IN (NEW.meeting_id, OLD.meeting_id) AND topic_classification <> 'Pending';
+  ELSIF TG_OP = 'INSERT' THEN
+    UPDATE meetings SET topic_classification = 'Pending'
+    WHERE meeting_id = NEW.meeting_id AND topic_classification <> 'Pending';
+  ELSE
+    UPDATE meetings SET topic_classification = 'Pending'
+    WHERE meeting_id = OLD.meeting_id AND topic_classification <> 'Pending';
+  END IF;
+  RETURN NULL;
+END;
+$$;
+
+create trigger agenda_items_mark_for_tagging
+after insert or update or delete on agenda_items for each row
+execute function public.mark_meeting_for_tagging ();
 
 -- Table: meeting_recordings
 -- Reviewed by: MS (Marcos Salazar)

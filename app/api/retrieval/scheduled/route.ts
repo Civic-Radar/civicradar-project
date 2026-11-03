@@ -1,6 +1,7 @@
 import { getSupabaseClient } from '../../../../lib/supabase';
 import { retrievalMaxPages } from '../../../../lib/retrieval/maxPages';
 import { runAllTownChecks } from '../../../../lib/retrieval/runAllTownChecks';
+import { tagPendingMeetings } from '../../../../lib/tagPendingMeetings';
 import {
   getScheduleSecret,
   isValidScheduleSecret,
@@ -34,5 +35,9 @@ export async function POST(request: Request) {
     return Response.json({ error: 'Could not read the town list.' }, { status: 500 });
   }
 
-  return Response.json({ towns: result.towns, totals: result.totals }, { status: 200 });
+  // Tags the meetings whose agenda text is new or changed, now that this
+  // check has saved it (Task 401.4-7). null when they could not be read.
+  const tagging = await tagPendingMeetings(supabase);
+
+  return Response.json({ towns: result.towns, totals: result.totals, tagging }, { status: 200 });
 }

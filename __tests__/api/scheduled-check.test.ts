@@ -16,10 +16,18 @@ vi.mock('../../lib/sources/civicclerk', () => ({
   downloadFile: vi.fn(),
 }));
 
+// Topic tagging after the checks (Task 401.4-7); __tests__/lib/tagPendingMeetings.test.ts covers it.
+vi.mock('../../lib/tagPendingMeetings', () => ({
+  tagPendingMeetings: vi.fn(),
+}));
+
 import { getSupabaseClient } from '../../lib/supabase';
 import { downloadFile, fetchMeetingFiles, fetchMeetings } from '../../lib/sources/civicclerk';
 import { POST } from '../../app/api/retrieval/scheduled/route';
 import { runAllTownChecks } from '../../lib/retrieval/runAllTownChecks';
+import { tagPendingMeetings } from '../../lib/tagPendingMeetings';
+
+const TAGGING = { classified: 2, unavailable: 1, agendaChanged: 0, failed: 0 };
 
 type Row = Record<string, unknown>;
 
@@ -332,6 +340,7 @@ describe('Scheduled source check (SRS-208.1)', () => {
     vi.mocked(fetchMeetings).mockImplementation(async () => meetingListing());
     vi.mocked(fetchMeetingFiles).mockImplementation(async () => fileListing());
     vi.mocked(downloadFile).mockImplementation(download);
+    vi.mocked(tagPendingMeetings).mockResolvedValue(TAGGING);
   });
 
   afterEach(() => {
@@ -408,6 +417,7 @@ describe('Scheduled source check (SRS-208.1)', () => {
       expect(await response.json()).toEqual({
         towns: [checked(1), checked(3)],
         totals: { towns: 2, checked: 2, skipped: 0, failed: 0, saved: 2 },
+        tagging: TAGGING,
       });
     });
 
@@ -438,6 +448,7 @@ describe('Scheduled source check (SRS-208.1)', () => {
       expect(await response.json()).toEqual({
         towns: [{ townId: 1, status: 'failed' }, checked(3)],
         totals: { towns: 2, checked: 1, skipped: 0, failed: 1, saved: 1 },
+        tagging: TAGGING,
       });
       // The failed town's check is still closed.
       expect(fake.checks.map((row) => [row.town_id, row.ended_at !== null])).toEqual([
@@ -455,6 +466,7 @@ describe('Scheduled source check (SRS-208.1)', () => {
       expect(await response.json()).toEqual({
         towns: [{ townId: 1, status: 'failed' }, checked(3)],
         totals: { towns: 2, checked: 1, skipped: 0, failed: 1, saved: 1 },
+        tagging: TAGGING,
       });
       expect(listedAccounts()).toEqual(['town-c']);
       expect(fake.checks.map((row) => row.town_id)).toEqual([3]);
@@ -469,6 +481,36 @@ describe('Scheduled source check (SRS-208.1)', () => {
       expect(await response.json()).toEqual({ error: 'Could not read the town list.' });
       expect(fake.tables).toEqual(['towns']);
       expect(fetchMeetings).not.toHaveBeenCalled();
+      expect(tagPendingMeetings).not.toHaveBeenCalled();
+    });
+
+    it('tags Pending meetings once, after every town is checked (Task 401.4-7)', async () => {
+      useFake();
+      vi.mocked(tagPendingMeetings).mockImplementation(async () => {
+        // Both towns' checks are closed before tagging starts.
+        expect(fake.checks.map((row) => row.ended_at !== null)).toEqual([true, true]);
+        return TAGGING;
+      });
+
+      const response = await callScheduled();
+
+      expect(tagPendingMeetings).toHaveBeenCalledTimes(1);
+      expect(vi.mocked(tagPendingMeetings).mock.calls[0][0]).toBe(fake.client);
+      expect((await response.json()).tagging).toEqual(TAGGING);
+    });
+
+    it('still answers with the check results when the Pending meetings cannot be read', async () => {
+      useFake();
+      vi.mocked(tagPendingMeetings).mockResolvedValue(null);
+
+      const response = await callScheduled();
+
+      expect(response.status).toBe(200);
+      expect(await response.json()).toEqual({
+        towns: [checked(1), checked(3)],
+        totals: { towns: 2, checked: 2, skipped: 0, failed: 0, saved: 2 },
+        tagging: null,
+      });
     });
   });
 
@@ -486,6 +528,7 @@ describe('Scheduled source check (SRS-208.1)', () => {
       expect(await response.json()).toEqual({
         towns: [{ townId: 1, status: 'skipped' }, checked(3)],
         totals: { towns: 2, checked: 1, skipped: 1, failed: 0, saved: 1 },
+        tagging: TAGGING,
       });
       expect(listedAccounts()).toEqual(['town-c']);
       // No new row for the skipped town; the old rows are only read.
@@ -574,6 +617,7 @@ describe('Scheduled source check (SRS-208.1)', () => {
       expect(JSON.parse(text)).toEqual({
         towns: [{ townId: 1, status: 'failed' }, checked(3)],
         totals: { towns: 2, checked: 1, skipped: 0, failed: 1, saved: 1 },
+        tagging: TAGGING,
       });
       for (const forbidden of ['listing down', MEETING_100.title, SECRET, 'town-a', 'town-c', 'example.test']) {
         expect(text).not.toContain(forbidden);
