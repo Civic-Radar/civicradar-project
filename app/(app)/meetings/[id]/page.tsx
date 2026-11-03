@@ -17,6 +17,7 @@ import {
 import styles from '../meetings.module.css';
 import LeafLoader from '../../../components/art/LeafLoader';
 import { buttonClasses } from '../../../components/ui/Button';
+import { agendaDetail } from '../../../../lib/agenda';
 import { HIGHLIGHT_PARAM, matchRanges, searchTerms } from '../../../../lib/search';
 import { useIsAdministrator } from '../../../admin/retrieval/useIsAdministrator';
 import FollowMeetingButton from './FollowMeetingButton';
@@ -151,8 +152,8 @@ function DocumentList({ documents }: { documents: MeetingDocument[] }) {
 }
 
 // SRS-502.6: the agenda as the meeting's running order, numbered stops down a
-// line. Each item's full text shows under its title (when it says more than the
-// title), so words found by Search can be highlighted here. When the page was
+// line. Each item's text shows under its title (without repeating the title),
+// so words found by Search can be highlighted here. When the page was
 // opened from Search, the stops of the items that match are filled in green.
 // Each item has an id for linking to it.
 function AgendaTimeline({ items }: { items: AgendaItem[] }) {
@@ -170,7 +171,7 @@ function AgendaTimeline({ items }: { items: AgendaItem[] }) {
   return (
     <ol className="relative m-0 list-none rounded-xl border border-line bg-card p-5 pl-4 md:p-6">
       {items.map((item, index) => {
-        const text = item.item_text?.trim();
+        const text = agendaDetail(item);
         const last = index === items.length - 1;
         const match = matches(item);
         return (
@@ -186,7 +187,7 @@ function AgendaTimeline({ items }: { items: AgendaItem[] }) {
               {index + 1}
             </span>
             <p className="break-words text-sm font-semibold leading-6 text-fg">{item.title}</p>
-            {text && text !== item.title.trim() ? (
+            {text ? (
               <p className="mt-1 max-w-prose whitespace-pre-line break-words text-sm leading-relaxed text-fg-muted">{text}</p>
             ) : null}
           </li>
