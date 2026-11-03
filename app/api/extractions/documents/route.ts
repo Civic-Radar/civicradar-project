@@ -6,8 +6,12 @@
 // Each document comes with its meeting (title and start time) so the page can
 // group documents by meeting. Newest meeting first; within a meeting the
 // agenda comes before the packet, then minutes, then anything else.
+//
+// SRS-301.8, AO, Extractable documents: only documents from the user's followed
+// towns whose meeting has already taken place. A user who follows no town gets
+// none, as on the Documents page (SRS-201.1); followsAnyTown tells the page why.
 import { getSupabaseClient } from '../../../../lib/supabase';
-import { sortDocuments } from '../../../../lib/extractions';
+import { hasMeetingTakenPlace, sortDocuments } from '../../../../lib/extractions';
 import type { ExtractableDocument } from '../../../../lib/extractions';
 
 // Upper bound on documents sent to the page (Supabase returns at most 1000 rows).
@@ -28,13 +32,27 @@ export async function GET(request: Request) {
   const { data: { user }, error: authError } = await supabase.auth.getUser(token);
   if (authError || !user) return Response.json({ error: 'Invalid or expired token.' }, { status: 401 });
 
+  const { data: follows, error: followsError } = await supabase
+    .from('user_followed_towns')
+    .select('town_id')
+    .eq('user_id', user.id);
+
+  if (followsError) return Response.json({ error: 'Could not load documents.' }, { status: 500 });
+
+  const townIds = ((follows ?? []) as { town_id: number }[]).map((row) => row.town_id);
+  if (townIds.length === 0) return Response.json({ documents: [], followsAnyTown: false }, { status: 200 });
+
   const { data, error } = await supabase
     .from('documents')
     .select('document_id, title, document_type, mime_type, retrieved_at, meeting:meetings(meeting_id, title, start_at)')
+    .in('town_id', townIds)
     .limit(MAX_DOCUMENTS);
 
   if (error) return Response.json({ error: 'Could not load documents.' }, { status: 500 });
 
-  const documents = sortDocuments((data ?? []) as unknown as ExtractableDocument[]);
-  return Response.json({ documents }, { status: 200 });
+  const now = new Date();
+  const documents = sortDocuments(
+    ((data ?? []) as unknown as ExtractableDocument[]).filter((document) => hasMeetingTakenPlace(document, now)),
+  );
+  return Response.json({ documents, followsAnyTown: true }, { status: 200 });
 }

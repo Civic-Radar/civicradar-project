@@ -8,6 +8,8 @@
 // Also shows SRS-301.6 (non-PDF message) and SRS-306.3 (no duplicate in-flight request).
 // SRS-301.7: once the daily extraction limit is reached, the message is shown and
 // the request control stays disabled.
+// SRS-301.8: only documents from followed towns whose meeting has taken place
+// are listed; with no followed town, the page points to Preferences.
 // Each request links to its own page, which shows its status (SRS-306.1).
 //
 // Documents are grouped by meeting, newest meeting first, with a search box.
@@ -48,6 +50,8 @@ export default function ExtractPage() {
   const [loading, setLoading] = useState(true);
 
   const [documents, setDocuments] = useState<ExtractableDocument[]>([]);
+  // SRS-301.8: false when the user follows no town, so there is nothing to list.
+  const [followsAnyTown, setFollowsAnyTown] = useState(true);
   const [extractions, setExtractions] = useState<Extraction[]>([]);
   const [selectedId, setSelectedId] = useState<number | null>(null);
   const [query, setQuery] = useState('');
@@ -87,6 +91,7 @@ export default function ExtractPage() {
     if (!extRes.ok) { setError(extData.error || 'Could not load your extractions.'); return; }
 
     setDocuments(docsData.documents);
+    setFollowsAnyTown(docsData.followsAnyTown !== false);
     setExtractions(extData.extractions);
   }
 
@@ -212,7 +217,14 @@ export default function ExtractPage() {
             <div className="flex min-h-[260px] flex-col items-center justify-center gap-4 px-6 py-16 text-center text-fg-muted">
               <BookOpen aria-hidden="true" className="h-[30px] w-[30px] text-accent" />
               <p className="max-w-[450px] text-sm leading-relaxed">
-                No documents have been retrieved yet. (Run <code className="break-all text-fg">supabase/seed_extraction_salem_documents.sql</code> to load Salem documents.)
+                {followsAnyTown ? (
+                  'No documents yet for meetings that have already taken place in the towns you follow.'
+                ) : (
+                  <>
+                    You don&apos;t follow any towns yet. Choose towns on the{' '}
+                    <Link href="/preferences" className="text-accent hover:underline">Preferences</Link> page to see their documents here.
+                  </>
+                )}
               </p>
             </div>
           ) : (

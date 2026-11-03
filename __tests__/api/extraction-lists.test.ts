@@ -18,9 +18,15 @@ vi.mock('../../lib/supabase', () => ({
           : { data: { user: null }, error: { message: 'Invalid token' } },
       ),
     },
-    from: vi.fn(() => {
+    // The user follows Salem (town 1); SRS-301.8 lists only followed towns' documents.
+    from: vi.fn((table: string) => {
+      if (table === 'user_followed_towns') {
+        const follows = { select: vi.fn(() => follows), eq: vi.fn(async () => ({ data: [{ town_id: 1 }], error: null })) };
+        return follows;
+      }
       const query = {
         select: vi.fn(() => query),
+        in: vi.fn(() => query),
         limit: vi.fn(async () => ({ data: documentRows, error: null })),
       };
       return query;
@@ -82,12 +88,11 @@ describe('GET /api/extractions/documents', () => {
     expect(body.documents.map((d: Row) => d.document_id)).toEqual([5, 2, 4, 6, 1, 3]);
   });
 
-  it('returns each document with its meeting, and puts documents without one last', async () => {
+  it('returns each document with its meeting, and leaves out documents without one (SRS-301.8)', async () => {
     documentRows = [documentRow(1, 'Agenda', null), documentRow(2, 'Agenda', OCT)];
     const { body } = await listDocumentIds();
+    expect(body.documents).toHaveLength(1);
     expect(body.documents[0].meeting).toEqual(OCT);
-    expect(body.documents[1].document_id).toBe(1);
-    expect(body.documents[1].meeting).toBeNull();
   });
 });
 
