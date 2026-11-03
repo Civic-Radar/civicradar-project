@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { BellRing, CalendarDays, FileText, Landmark } from "lucide-react";
 import { buttonClasses } from "./components/ui/Button";
+import ElectionBanner from "./components/ElectionBanner";
 import TownSquare from "./components/TownSquare";
 
 const features = [
@@ -24,6 +25,9 @@ const features = [
 export default function Home() {
   return (
     <main className="min-h-screen bg-surface text-fg">
+      {/* Election Day reminder across the top; shows only around Election Day. */}
+      <ElectionBanner />
+
       <div className="mx-auto max-w-[1400px] px-5 pb-[100px] pt-5 md:px-8 md:pb-[110px] md:pt-6 lg:px-16">
         <header className="flex items-center justify-between gap-4 border-b border-line pb-6">
           <div className="flex items-center gap-3">
