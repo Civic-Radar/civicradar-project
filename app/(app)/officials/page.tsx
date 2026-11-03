@@ -10,21 +10,79 @@
 // SRS-308.1). Each entry links to every document it was found in.
 
 import Link from 'next/link';
-import { BookUser } from 'lucide-react';
+import { BookUser, ChevronRight, FileText } from 'lucide-react';
 import ContactsTabs from '../../components/ContactsTabs';
 import LeafLoader from '../../components/art/LeafLoader';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import DocumentPanel from '../../components/DocumentPanel';
 import { alertClasses } from '../../components/ui/Alert';
 import { cardClasses } from '../../components/ui/Card';
 import SignedOutNotice from '../../components/ui/SignedOutNotice';
 import { NOT_FOUND_LABEL, OFFICIAL_FIELDS } from '../../../lib/extractions';
-import { groupByTown, type MyOfficial } from '../../../lib/officialsList';
+import { groupByTown, type MyOfficial, type OfficialSource } from '../../../lib/officialsList';
+
+// "Found in" opens a small menu of the documents the official was found in, to
+// the left of the button (below it on small screens). Picking one opens its card.
+function FoundInMenu({ sources, onPick }: { sources: OfficialSource[]; onPick: (source: OfficialSource) => void }) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    const onDown = (e: MouseEvent) => { if (!ref.current?.contains(e.target as Node)) setOpen(false); };
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setOpen(false); };
+    document.addEventListener('mousedown', onDown);
+    document.addEventListener('keydown', onKey);
+    return () => { document.removeEventListener('mousedown', onDown); document.removeEventListener('keydown', onKey); };
+  }, [open]);
+
+  return (
+    <div ref={ref} className="relative w-fit">
+      <button
+        type="button"
+        aria-expanded={open}
+        onClick={() => setOpen((o) => !o)}
+        className="inline-flex items-center gap-1.5 rounded-md px-2 py-1 -mx-2 text-xs font-semibold uppercase tracking-[0.1em] text-fg-muted transition-colors hover:bg-raised hover:text-accent"
+      >
+        Found in
+        <span className="font-normal normal-case tracking-normal">
+          · {sources.length} {sources.length === 1 ? 'document' : 'documents'}
+        </span>
+        <ChevronRight aria-hidden="true" className={`h-3.5 w-3.5 transition-transform duration-200 ${open ? 'rotate-180' : ''}`} />
+      </button>
+
+      {open ? (
+        <div className="absolute left-0 top-full z-20 mt-2 w-72 max-w-[80vw] rounded-md border border-line bg-card shadow-lg sm:left-auto sm:right-full sm:top-1/2 sm:mr-3 sm:mt-0 sm:-translate-y-1/2">
+          <p className="border-b border-line px-3 py-2 text-xs font-semibold uppercase tracking-[0.1em] text-fg-muted">Found in</p>
+          <ul aria-label="Documents this official was found in" className="divide-y divide-line">
+            {sources.map((source) => (
+              <li key={source.extraction_id}>
+                <button
+                  type="button"
+                  onClick={() => { setOpen(false); onPick(source); }}
+                  className="group flex w-full items-start gap-2.5 px-3 py-2.5 text-left text-sm text-fg transition-colors hover:bg-raised hover:text-accent"
+                >
+                  <FileText aria-hidden="true" className="mt-0.5 h-4 w-4 shrink-0 text-fg-subtle group-hover:text-accent" />
+                  <span className="min-w-0 flex-1 break-words leading-snug">{source.title}</span>
+                  <ChevronRight aria-hidden="true" className="mt-0.5 h-4 w-4 shrink-0 text-fg-subtle opacity-0 transition-opacity group-hover:opacity-100" />
+                </button>
+              </li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
+    </div>
+  );
+}
 
 export default function OfficialsPage() {
   const [token, setToken] = useState<string | null>(null);
   const [officials, setOfficials] = useState<MyOfficial[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  // The "Found in" document shown in the side panel, if one is open.
+  const [openSource, setOpenSource] = useState<{ source: OfficialSource; townName?: string } | null>(null);
+  const closePanel = useCallback(() => setOpenSource(null), []);
 
   useEffect(() => {
     const stored = localStorage.getItem('access_token');
@@ -120,20 +178,12 @@ export default function OfficialsPage() {
                             })}
                           </dl>
 
-                          {/* The documents this official was found in; each opens its detail page. */}
+                          {/* The documents this official was found in; each opens its card in a side panel. */}
                           <div className="mt-4 border-t border-line pt-3 text-sm">
-                            <p className="text-xs font-semibold uppercase tracking-[0.1em] text-fg-muted">Found in</p>
-                            <ul className="mt-1 space-y-1">
-                              {official.sources.map((source) => (
-                                <li key={source.extraction_id}>
-                                  {source.document_id !== null ? (
-                                    <Link href={`/documents/${source.document_id}`} className="break-words text-accent hover:underline">{source.title}</Link>
-                                  ) : (
-                                    <span className="break-words">{source.title}</span>
-                                  )}
-                                </li>
-                              ))}
-                            </ul>
+                            <FoundInMenu
+                              sources={official.sources}
+                              onPick={(source) => setOpenSource({ source, townName: official.town_name })}
+                            />
                           </div>
                         </li>
                       ))}
@@ -145,6 +195,10 @@ export default function OfficialsPage() {
           ) : null}
         </section>
       </div>
+
+      {openSource ? (
+        <DocumentPanel source={openSource.source} townName={openSource.townName} token={token} onClose={closePanel} />
+      ) : null}
     </main>
   );
 }
