@@ -1,12 +1,14 @@
 import { useEffect, useState } from 'react';
 
-// Fields returned by GET /api/documents (SRS-201.1, town_name SRS-212.1).
+// Fields returned by GET /api/documents (SRS-201.1, town_name SRS-212.1,
+// summary_status SRS-210.3).
 export type DocumentListEntry = {
   document_id: number;
   title: string;
   town_id: number;
   meeting_id: number;
   retrieved_at: string;
+  summary_status: 'Pending' | 'Complete' | 'Failed';
   town_name: string | null;
 };
 

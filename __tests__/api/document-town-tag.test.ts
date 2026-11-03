@@ -119,6 +119,7 @@ function storedDoc(id: number, townId: number, retrievedAt: string): Row {
     town_id: townId,
     title: `Document ${id}`,
     retrieved_at: retrievedAt,
+    summary_status: 'Complete',
     storage_path: `${townId}/file-${id}.pdf`,
   };
 }
@@ -170,8 +171,8 @@ describe('GET /api/documents: town name on each entry (SRS-212.1)', () => {
     expect(response.status).toBe(200);
     expect(await response.json()).toEqual({
       documents: [
-        { document_id: 102, meeting_id: 1102, town_id: TOWN_A, title: 'Document 102', retrieved_at: '2026-10-05T12:00:00+00:00', town_name: 'Town A' },
-        { document_id: 101, meeting_id: 1101, town_id: TOWN_A, title: 'Document 101', retrieved_at: '2026-09-01T12:00:00+00:00', town_name: 'Town A' },
+        { document_id: 102, meeting_id: 1102, town_id: TOWN_A, title: 'Document 102', retrieved_at: '2026-10-05T12:00:00+00:00', summary_status: 'Complete', town_name: 'Town A' },
+        { document_id: 101, meeting_id: 1101, town_id: TOWN_A, title: 'Document 101', retrieved_at: '2026-09-01T12:00:00+00:00', summary_status: 'Complete', town_name: 'Town A' },
       ],
     });
   });
@@ -230,7 +231,7 @@ describe('GET /api/documents: town name on each entry (SRS-212.1)', () => {
 });
 
 function entry(document_id: number, title: string, town_name: string | null): DocumentListEntry {
-  return { document_id, title, town_id: 1, meeting_id: 9, retrieved_at: '2026-10-01T12:00:00+00:00', town_name };
+  return { document_id, title, town_id: 1, meeting_id: 9, retrieved_at: '2026-10-01T12:00:00+00:00', summary_status: 'Complete', town_name };
 }
 
 // Vitest compiles this project's JSX to React.createElement, and the page does

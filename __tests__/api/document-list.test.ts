@@ -182,8 +182,8 @@ const OTHER_USER = 'user-456'; // token "other-token", follows Brookline only
 const BOTH_USER = 'user-789'; // token "both-token", follows both towns
 
 const SELECTED_FOLLOWS = 'town_id';
-const SELECTED_DOCUMENTS = 'document_id, title, town_id, meeting_id, retrieved_at';
-const RETURNED_KEYS = ['document_id', 'meeting_id', 'retrieved_at', 'title', 'town_id', 'town_name'];
+const SELECTED_DOCUMENTS = 'document_id, title, town_id, meeting_id, retrieved_at, summary_status';
+const RETURNED_KEYS = ['document_id', 'meeting_id', 'retrieved_at', 'summary_status', 'title', 'town_id', 'town_name'];
 const TOWN_NAMES: Record<number, string> = { [SALEM]: 'Town A', [BROOKLINE]: 'Town B' };
 const LOAD_ERROR = 'Documents could not be loaded. Please try again.';
 const dbError = { message: 'relation "documents" does not exist (42P01)' };
@@ -232,12 +232,12 @@ function town(townId: number): Stored {
   return { town_id: townId, name: TOWN_NAMES[townId], source_account_id: `account-${townId}`, removed_at: null };
 }
 
-// What the list returns for a document: the five selected columns plus its town's name.
+// What the list returns for a document: the six selected columns plus its town's name.
 function listed(id: number) {
   const row = STORED.find((stored) => stored.document_id === id);
   if (!row) throw new Error(`No fixture document ${id}`);
-  const { document_id, title, town_id, meeting_id, retrieved_at } = row;
-  return { document_id, title, town_id, meeting_id, retrieved_at, town_name: TOWN_NAMES[town_id as number] };
+  const { document_id, title, town_id, meeting_id, retrieved_at, summary_status } = row;
+  return { document_id, title, town_id, meeting_id, retrieved_at, summary_status, town_name: TOWN_NAMES[town_id as number] };
 }
 
 function follow(userId: string, ...townIds: number[]) {
@@ -398,7 +398,7 @@ describe('GET /api/documents: what the route asks the database', () => {
     expect(ids.slice(1, 4)).toEqual([201, 104, 102]);
   });
 
-  it('returns exactly the five selected keys and town_name on each row and nothing else', async () => {
+  it('returns exactly the six selected keys and town_name on each row and nothing else', async () => {
     follow(USER, SALEM, BROOKLINE);
 
     const body = await (await list()).json();

@@ -27,7 +27,7 @@ export async function GET(request: Request) {
 
   const { data: documents, error } = await supabase!
     .from('documents')
-    .select('document_id, title, town_id, meeting_id, retrieved_at')
+    .select('document_id, title, town_id, meeting_id, retrieved_at, summary_status')
     .in('town_id', townIds)
     .order('retrieved_at', { ascending: false })
     .order('document_id', { ascending: false });
