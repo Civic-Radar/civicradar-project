@@ -1,12 +1,15 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
-import type { SourceFile } from '../sources/types';
+import type { DownloadOptions, SourceFile } from '../sources/types';
 import { createSummaryStarter } from '../summaries/runSummaryJob';
 import { hashFile } from './hashFile';
 import { DocumentExistsError, insertDocument, type DocumentMeeting } from './insertDocument';
 import { StoragePathExistsError, storeDocumentFile } from './storeDocumentFile';
 
 // The source client's file download, passed in so this file stays source-agnostic.
-export type DownloadFile = (file: SourceFile) => Promise<{ bytes: Uint8Array; mimeType: string }>;
+export type DownloadFile = (
+  file: SourceFile,
+  options?: DownloadOptions,
+) => Promise<{ bytes: Uint8Array; mimeType: string }>;
 
 // skipped counts files under a meeting with no meetings row. alreadyRetrieved
 // counts files that already have a documents row (SRS-208.3).

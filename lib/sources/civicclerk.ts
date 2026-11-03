@@ -1,5 +1,7 @@
+import { FileTooLargeError } from './types';
 import type {
   DocumentType,
+  DownloadOptions,
   ListingWindow,
   MeetingFilesListing,
   MeetingListing,
@@ -23,6 +25,10 @@ const FILE_STREAM_URL = `${API_BASE_URL}/Meetings/GetMeetingFileStream(fileId={i
 // Each Events page, body included, must arrive within this time, or the page
 // counts as failed (SRS-220.1).
 const PAGE_TIMEOUT_MS = 15_000;
+
+// A file download, headers and body, must finish within this time, or it
+// counts as failed (SRS-208.2).
+const DOWNLOAD_TIMEOUT_MS = 120_000;
 
 // CivicClerk file types mapped to documents.document_type. Any other or
 // missing type is Other.
@@ -429,45 +435,110 @@ export async function fetchAgendaItems(sourceAccountId: string, agendaRef: strin
   return toSourceAgendaItems(agenda.items, agendaRef);
 }
 
+// Reads a body with no declared size, chunk by chunk, and stops as soon as
+// the total passes maxBytes: the read is cancelled and FileTooLargeError is
+// thrown, so no more than about maxBytes is ever held.
+async function readBodyWithLimit(response: Response, maxBytes: number): Promise<Uint8Array> {
+  if (!response.body) {
+    return new Uint8Array(0);
+  }
+
+  const reader = response.body.getReader();
+  const chunks: Uint8Array[] = [];
+  let total = 0;
+
+  for (;;) {
+    const { done, value } = await reader.read();
+    if (done) {
+      break;
+    }
+
+    total += value.length;
+    if (total > maxBytes) {
+      reader.cancel().catch(() => {});
+      throw new FileTooLargeError(null, maxBytes);
+    }
+    chunks.push(value);
+  }
+
+  const bytes = new Uint8Array(total);
+  let offset = 0;
+  for (const chunk of chunks) {
+    bytes.set(chunk, offset);
+    offset += chunk.length;
+  }
+  return bytes;
+}
+
 // Downloads one file's bytes and returns them with the MIME type the source
 // sent (SRS-208.2). The whole body is read before anything is returned, so a
-// partial file is never kept. Throws on a failed request, an empty body, a
-// missing Content-Type, and a body that does not match Content-Length.
-export async function downloadFile(file: SourceFile): Promise<{ bytes: Uint8Array; mimeType: string }> {
-  let response: Response;
+// partial file is never kept. Throws on a failed request, a download that
+// takes longer than the time limit, an empty body, a missing Content-Type,
+// and a body that does not match Content-Length. With maxBytes, a file whose
+// Content-Length is larger is never read, and a file with no Content-Length
+// is read only until it passes the limit; both throw FileTooLargeError.
+export async function downloadFile(
+  file: SourceFile,
+  options: DownloadOptions = {},
+): Promise<{ bytes: Uint8Array; mimeType: string }> {
+  const { maxBytes } = options;
+
+  // The same signal also covers reading the body, so a hung download fails.
+  const controller = new AbortController();
+  const timer = setTimeout(
+    () => controller.abort(new Error(`download took longer than ${DOWNLOAD_TIMEOUT_MS / 1000} s`)),
+    DOWNLOAD_TIMEOUT_MS,
+  );
+
   try {
-    response = await fetch(file.downloadUrl);
-  } catch (error) {
-    throw new Error(`CivicClerk could not be reached for file ${file.sourceFileId}: ${(error as Error).message}`);
-  }
+    let response: Response;
+    try {
+      response = await fetch(file.downloadUrl, { signal: controller.signal });
+    } catch (error) {
+      throw new Error(`CivicClerk could not be reached for file ${file.sourceFileId}: ${(error as Error).message}`);
+    }
 
-  if (!response.ok) {
-    throw new Error(`CivicClerk file ${file.sourceFileId} download failed with status ${response.status}`);
-  }
+    if (!response.ok) {
+      throw new Error(`CivicClerk file ${file.sourceFileId} download failed with status ${response.status}`);
+    }
 
-  const mimeType = response.headers.get('content-type')?.split(';')[0].trim().toLowerCase();
-  if (!mimeType) {
-    throw new Error(`CivicClerk returned file ${file.sourceFileId} without a Content-Type`);
-  }
+    const mimeType = response.headers.get('content-type')?.split(';')[0].trim().toLowerCase();
+    if (!mimeType) {
+      throw new Error(`CivicClerk returned file ${file.sourceFileId} without a Content-Type`);
+    }
 
-  let bytes: Uint8Array;
-  try {
-    bytes = new Uint8Array(await response.arrayBuffer());
-  } catch (error) {
-    throw new Error(`CivicClerk file ${file.sourceFileId} download did not finish: ${(error as Error).message}`);
-  }
+    const contentLength = response.headers.get('content-length');
+    if (maxBytes !== undefined && contentLength !== null && Number(contentLength) > maxBytes) {
+      response.body?.cancel().catch(() => {});
+      throw new FileTooLargeError(Number(contentLength), maxBytes);
+    }
 
-  if (bytes.length === 0) {
-    throw new Error(`CivicClerk returned file ${file.sourceFileId} with an empty body`);
-  }
+    let bytes: Uint8Array;
+    try {
+      bytes =
+        maxBytes !== undefined && contentLength === null
+          ? await readBodyWithLimit(response, maxBytes)
+          : new Uint8Array(await response.arrayBuffer());
+    } catch (error) {
+      if (error instanceof FileTooLargeError) {
+        throw error;
+      }
+      throw new Error(`CivicClerk file ${file.sourceFileId} download did not finish: ${(error as Error).message}`);
+    }
 
-  // A compressed response's Content-Length is not the body length.
-  const contentLength = response.headers.get('content-length');
-  if (contentLength !== null && !response.headers.has('content-encoding') && Number(contentLength) !== bytes.length) {
-    throw new Error(
-      `CivicClerk file ${file.sourceFileId} is ${bytes.length} bytes but Content-Length is ${contentLength}`,
-    );
-  }
+    if (bytes.length === 0) {
+      throw new Error(`CivicClerk returned file ${file.sourceFileId} with an empty body`);
+    }
 
-  return { bytes, mimeType };
+    // A compressed response's Content-Length is not the body length.
+    if (contentLength !== null && !response.headers.has('content-encoding') && Number(contentLength) !== bytes.length) {
+      throw new Error(
+        `CivicClerk file ${file.sourceFileId} is ${bytes.length} bytes but Content-Length is ${contentLength}`,
+      );
+    }
+
+    return { bytes, mimeType };
+  } finally {
+    clearTimeout(timer);
+  }
 }
