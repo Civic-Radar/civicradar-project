@@ -5,7 +5,8 @@ export const dynamic = 'force-dynamic';
 
 // Returns one stored meeting with its town and governing body names
 // (SRS-502.2, SRS-502.3, SRS-502.9), its linked documents (SRS-220.7, SRS-502.4),
-// and whether the town's source provides agenda items and recordings (SRS-502.8).
+// whether the town's source provides agenda items and recordings (SRS-502.8),
+// and, when it provides them, the meeting's agenda items in agenda order (SRS-502.6).
 // No access control yet: any caller can read stored meetings.
 export async function GET(_request: Request, { params }: { params: { id: string } }) {
   const meetingId = Number(params.id);
@@ -78,6 +79,28 @@ export async function GET(_request: Request, { params }: { params: { id: string 
     );
   }
 
+  // SRS-502.6: the meeting's agenda items, in the source's order. Items the
+  // source no longer lists (removed_at set) are left out. Only read when the
+  // town's source provides agenda items; otherwise SRS-502.8's label shows.
+  type AgendaItem = { agenda_item_id: number; sort_order: number; title: string; item_text: string | null };
+  let agendaItems: AgendaItem[] = [];
+  if (town?.provides_agenda_items) {
+    const { data: items, error: itemsError } = await supabase
+      .from('agenda_items')
+      .select('agenda_item_id, sort_order, title, item_text')
+      .eq('meeting_id', meeting.meeting_id)
+      .is('removed_at', null)
+      .order('sort_order', { ascending: true });
+
+    if (itemsError) {
+      return Response.json(
+        { error: `Could not read the meeting's agenda items: ${itemsError.message}` },
+        { status: 500 },
+      );
+    }
+    agendaItems = (items ?? []) as AgendaItem[];
+  }
+
   return Response.json(
     {
       meeting: {
@@ -90,6 +113,7 @@ export async function GET(_request: Request, { params }: { params: { id: string 
         provides_recordings: town?.provides_recordings ?? false,
       },
       documents: documents ?? [],
+      agenda_items: agendaItems,
     },
     { status: 200 },
   );
