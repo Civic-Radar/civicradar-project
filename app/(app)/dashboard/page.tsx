@@ -1,3 +1,4 @@
+import ElectionBanner from "../../components/ElectionBanner";
 import PageShell from "../../components/ui/PageShell";
 import DashboardMeetings from "./DashboardMeetings";
 import SetupMessage from "./SetupMessage";
@@ -6,21 +7,26 @@ import SetupMessage from "./SetupMessage";
 // browser, so the list loads in DashboardMeetings (SRS-501.1).
 export default function DashboardPage() {
   return (
-    <PageShell title="Civic Radar Dashboard">
-      <p className="mt-3 text-sm leading-relaxed text-fg-muted">
-        Stay informed about your local government
-        meetings and community updates.
-      </p>
+    <>
+      {/* Election Day reminder across the top; shows only around Election Day. */}
+      <ElectionBanner />
 
-      <SetupMessage />
+      <PageShell title="Civic Radar Dashboard">
+        <p className="mt-3 text-sm leading-relaxed text-fg-muted">
+          Stay informed about your local government
+          meetings and community updates.
+        </p>
 
-      <section className="mt-7 md:mt-9">
-        <h2 className="mb-4 font-display text-2xl font-normal tracking-tight">
-          Upcoming Meetings
-        </h2>
+        <SetupMessage />
 
-        <DashboardMeetings />
-      </section>
-    </PageShell>
+        <section className="mt-7 md:mt-9">
+          <h2 className="mb-4 font-display text-2xl font-normal tracking-tight">
+            Upcoming Meetings
+          </h2>
+
+          <DashboardMeetings />
+        </section>
+      </PageShell>
+    </>
   );
 }
