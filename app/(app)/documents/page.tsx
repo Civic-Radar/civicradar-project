@@ -29,6 +29,7 @@ export default function DocumentsPage() {
               <div className="flex min-w-0 flex-1 flex-col items-start gap-1 text-xs">
                 <Link href={`/documents/${doc.document_id}`} className="text-sm font-semibold leading-relaxed text-fg hover:text-accent hover:underline">{doc.title}</Link>
                 {doc.town_name && <> <span className="text-fg-muted">{doc.town_name}</span></>}
+                {doc.summary_status === 'Failed' && <> <span className="text-danger">Summary failed</span></>}
               </div>
             </li>
           ))}
