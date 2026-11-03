@@ -321,6 +321,7 @@ Copy-Item .env.example .env.local
 | Retrieval | `RETRIEVAL_MAX_PAGES` | Optional | Source pages read per pass. Defaults to 20, and can only lower it (a value that is not a whole number from 1 to 20 gives 20). |
 | Retrieval | `RETRIEVAL_WINDOW_DAYS_BACK` | Optional | Days before today the retrieval window starts. Defaults to 90 (a value that is not a whole number from 0 to 365 gives 90). |
 | Retrieval | `RETRIEVAL_WINDOW_DAYS_AHEAD` | Optional | Days after today the retrieval window ends. Defaults to 30 (a value that is not a whole number from 0 to 365 gives 30). |
+| Retrieval | `RETRIEVAL_MAX_FILE_MB` | Optional | Document size limit in MB. A larger file is not downloaded and is counted as skipped. Defaults to 50, and can only lower it (a value that is not a whole number from 1 to 50 gives 50). |
 
 In Supabase, the URL is under **Project Settings → General** (build it from the project ID), and the keys are under **Project Settings → API Keys**.
 
@@ -377,7 +378,7 @@ The live site at https://civic-radar.onrender.com runs as a Render web service.
 | :-- | :-- |
 | Build command | `npm install && npm run build` |
 | Start command | `npm run start` |
-| Environment | The variables in [Environment variables](#getting-started): Supabase URL and keys, `ANTHROPIC_API_KEY`, `SUMMARY_MODEL`, `ANTHROPIC_MODEL`, `SUMMARY_PROCESS_SECRET`, `TOPIC_TAGGING_SECRET`, `RETRIEVAL_MAX_PAGES` |
+| Environment | The variables in [Environment variables](#getting-started): Supabase URL and keys, `ANTHROPIC_API_KEY`, `SUMMARY_MODEL`, `ANTHROPIC_MODEL`, `SUMMARY_PROCESS_SECRET`, `TOPIC_TAGGING_SECRET`, `RETRIEVAL_MAX_PAGES`, `RETRIEVAL_MAX_FILE_MB` |
 
 **Automatic today:** GitHub Actions runs `npm ci`, `npm test` and `npm run build` on every pull request and every push to `main`. During a retrieval run, up to 5 summary jobs start on their own after the run. TODO: confirm whether Render deploys automatically on push to `main`.
 

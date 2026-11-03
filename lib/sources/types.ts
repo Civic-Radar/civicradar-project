@@ -40,6 +40,34 @@ export interface SourceFile {
   sizeBytes: number | null; // null when the source does not send a size
 }
 
+// Options a source client's file download takes (SRS-208.2). The limit always
+// comes from the caller; without maxBytes the download has no size limit.
+// onDeclaredSize is called once with the size the source declared, before the
+// body is read, when the source declares one and it is within maxBytes.
+export interface DownloadOptions {
+  maxBytes?: number;
+  onDeclaredSize?: (sizeBytes: number) => void;
+}
+
+// Thrown by a source client's file download when the file is larger than
+// maxBytes. sizeBytes is the size the source declared, or null when it sent
+// none and the read stopped once it passed the limit. The file is not stored.
+export class FileTooLargeError extends Error {
+  readonly sizeBytes: number | null;
+  readonly maxBytes: number;
+
+  constructor(sizeBytes: number | null, maxBytes: number) {
+    super(
+      sizeBytes === null
+        ? `File is more than the limit of ${maxBytes} bytes`
+        : `File is ${sizeBytes} bytes, over the limit of ${maxBytes} bytes`,
+    );
+    this.name = 'FileTooLargeError';
+    this.sizeBytes = sizeBytes;
+    this.maxBytes = maxBytes;
+  }
+}
+
 // How far a source client's paged listing got (SRS-220.1). complete is true
 // only when the source's last page was read within the page bound. A failed
 // page, a timeout or pages left at the bound make it false. pagesRead counts

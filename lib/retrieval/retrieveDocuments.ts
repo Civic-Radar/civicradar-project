@@ -1,15 +1,20 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
-import type { SourceFile } from '../sources/types';
+import { FileTooLargeError, type DownloadOptions, type SourceFile } from '../sources/types';
 import { createSummaryStarter } from '../summaries/runSummaryJob';
 import { hashFile } from './hashFile';
 import { DocumentExistsError, insertDocument, type DocumentMeeting } from './insertDocument';
+import { retrievalMaxFileBytes } from './maxFileSize';
 import { StoragePathExistsError, storeDocumentFile } from './storeDocumentFile';
 
 // The source client's file download, passed in so this file stays source-agnostic.
-export type DownloadFile = (file: SourceFile) => Promise<{ bytes: Uint8Array; mimeType: string }>;
+export type DownloadFile = (
+  file: SourceFile,
+  options?: DownloadOptions,
+) => Promise<{ bytes: Uint8Array; mimeType: string }>;
 
-// skipped counts files under a meeting with no meetings row. alreadyRetrieved
-// counts files that already have a documents row (SRS-208.3).
+// skipped counts files under a meeting with no meetings row and files larger
+// than the document size limit (SRS-208.2). alreadyRetrieved counts files
+// that already have a documents row (SRS-208.3).
 export interface RetrieveDocumentsResult {
   stored: number;
   alreadyRetrieved: number;
@@ -20,8 +25,18 @@ export interface RetrieveDocumentsResult {
 // Keeps each .in() filter well inside the request URL limit and the row cap.
 const LOOKUP_CHUNK_SIZE = 100;
 
+const BYTES_PER_MB = 1024 * 1024;
+
+// A download declared larger than this, but within the limit, is logged
+// before its body is read, so a crash during it shows which file it was.
+const LARGE_DOWNLOAD_BYTES = 20 * BYTES_PER_MB;
+
 function errorMessage(error: unknown): string {
   return error instanceof Error ? error.message : 'Unexpected error';
+}
+
+function megabytes(bytes: number): string {
+  return String(Math.round((bytes / BYTES_PER_MB) * 10) / 10);
 }
 
 // Maps each source meeting id to its meetings row for the town. Throws on
@@ -103,7 +118,9 @@ async function hasDocumentRow(
 // for the town is skipped before the download and never changes its row
 // (SRS-208.3). A row a concurrent run inserted first (a unique violation, or
 // a taken Storage path with a row behind it) also counts as already
-// retrieved, not failed. Each inserted document gets summary attempt 1
+// retrieved, not failed. A file larger than the document size limit is not
+// downloaded or stored, is logged and counts as skipped, not failed
+// (SRS-208.2). Each inserted document gets summary attempt 1
 // (SRS-204.1), and after the run the first few queued summary jobs start
 // without being awaited.
 export async function retrieveDocuments(
@@ -113,6 +130,7 @@ export async function retrieveDocuments(
   download: DownloadFile,
 ): Promise<RetrieveDocumentsResult> {
   const result: RetrieveDocumentsResult = { stored: 0, alreadyRetrieved: 0, failed: 0, skipped: 0 };
+  const maxBytes = retrievalMaxFileBytes();
   const meetings = await loadMeetings(supabase, townId, [...filesByMeeting.keys()]);
   const summaries = createSummaryStarter(supabase, townId);
 
@@ -162,7 +180,16 @@ export async function retrieveDocuments(
       let documentId: number | null = null;
 
       try {
-        const { bytes, mimeType } = await download(file);
+        const { bytes, mimeType } = await download(file, {
+          maxBytes,
+          onDeclaredSize: (sizeBytes) => {
+            if (sizeBytes > LARGE_DOWNLOAD_BYTES) {
+              console.log(
+                `Document retrieval: town ${townId} file ${file.sourceFileId} downloading ${megabytes(sizeBytes)} MB`,
+              );
+            }
+          },
+        });
         step = 'hash';
         const { sha256, sizeBytes } = hashFile(bytes);
         step = 'store';
@@ -171,7 +198,16 @@ export async function retrieveDocuments(
         documentId = await insertDocument(supabase, meeting, file, { storagePath, mimeType, sha256, sizeBytes });
         result.stored += 1;
       } catch (error: unknown) {
-        if (error instanceof DocumentExistsError) {
+        if (error instanceof FileTooLargeError) {
+          // Nothing was stored or inserted, and the run moves on.
+          result.skipped += 1;
+          const limit = `${megabytes(error.maxBytes)} MB limit`;
+          console.log(
+            error.sizeBytes === null
+              ? `Document retrieval: town ${townId} file ${file.sourceFileId} skipped, more than the ${limit}`
+              : `Document retrieval: town ${townId} file ${file.sourceFileId} skipped, ${megabytes(error.sizeBytes)} MB is over the ${limit}`,
+          );
+        } else if (error instanceof DocumentExistsError) {
           // A concurrent run inserted the row first. This run's upload left a
           // file no row points at, so its path stays visible in the log.
           result.alreadyRetrieved += 1;
