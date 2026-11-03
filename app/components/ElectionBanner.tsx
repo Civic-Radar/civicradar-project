@@ -8,10 +8,10 @@ import { ELECTION, electionReminder, type ElectionReminder } from '../../lib/ele
 const DISMISS_KEY = `civic-radar:election-reminder-hidden:${ELECTION.date}`;
 
 /**
- * A slim band at the top of the landing page and the dashboard around Election Day: the date,
+ * A slim band at the top of every page around Election Day: the date,
  * poll hours, and a link to the state's official elections page. It works out
  * the day in the browser, so it appears and disappears on its own, and the ✕
- * hides it for that visitor on both pages.
+ * hides it for that visitor on every page.
  */
 export default function ElectionBanner() {
   const [reminder, setReminder] = useState<ElectionReminder | null>(null);
