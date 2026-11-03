@@ -33,6 +33,14 @@ const NO_DOCUMENTS = 'No documents have been published for this meeting yet.';
 const NOT_AVAILABLE = 'Not available from this source';
 
 const EYEBROW = 'text-xs font-semibold uppercase tracking-[0.17em] text-accent';
+
+// Around FollowMeetingButton: one button width for every label, and the "You are
+// following this meeting." note (role status) taken out of the flow under the
+// button, so following or unfollowing never moves the header.
+const FOLLOW_ACTIONS =
+  'relative [&>div>button]:min-w-[8.5rem] [&_[role=status]]:absolute [&_[role=status]]:left-0 [&_[role=status]]:top-full ' +
+  '[&_[role=status]]:mt-1.5 [&_[role=status]]:whitespace-nowrap [&_[role=status]]:px-2 [&_[role=status]]:py-1 ' +
+  '[&_[role=status]]:text-xs [&_[role=status]]:leading-4';
 const CELL_LABEL = 'text-xs font-semibold uppercase tracking-wide text-fg-muted';
 
 // Splits start_at into the long date and the time with its zone, in the town's
@@ -255,7 +263,7 @@ function MeetingOverview({ meeting, documents, followedTownIds, followedTopics }
         </div>
         <div className="flex flex-wrap items-start gap-3">
           {/* Follow and Unfollow (SRS-404.1, SRS-404.2) are unchanged. */}
-          <div className={styles.headerActions}>
+          <div className={`${styles.headerActions} ${FOLLOW_ACTIONS}`}>
             <FollowMeetingButton meetingId={meeting.meeting_id} />
           </div>
           {meeting.source_url ? (

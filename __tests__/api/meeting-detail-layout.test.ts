@@ -14,7 +14,26 @@ const { renderToStaticMarkup } = createRequire(import.meta.url)('react-dom/serve
 const hooks = vi.hoisted(() => ({
   state: { status: 'loading' } as MeetingDetailsState,
   isAdministrator: null as boolean | null,
+  // null renders the real FollowMeetingButton (its first render, before any effect).
+  // 'followed' renders a stand-in with the component's markup after Follow succeeds,
+  // because a static render cannot press the button.
+  follow: null as 'followed' | null,
 }));
+
+vi.mock('../../app/(app)/meetings/[id]/FollowMeetingButton', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../../app/(app)/meetings/[id]/FollowMeetingButton')>();
+  const React = await import('react');
+  function FollowStandIn(props: { meetingId: number }) {
+    if (hooks.follow !== 'followed') return React.createElement(actual.default, props);
+    return React.createElement(
+      'div',
+      null,
+      React.createElement('button', { type: 'button', 'aria-pressed': true }, 'Unfollow'),
+      React.createElement('p', { role: 'status' }, 'You are following this meeting.'),
+    );
+  }
+  return { default: FollowStandIn };
+});
 
 vi.mock('../../app/(app)/meetings/[id]/useMeetingDetails', () => ({
   useMeetingDetails: () => hooks.state,
@@ -132,6 +151,64 @@ afterEach(() => {
   vi.unstubAllGlobals();
   hooks.state = { status: 'loading' };
   hooks.isAdministrator = null;
+  hooks.follow = null;
+});
+
+// The header actions: the follow wrapper's class list and its inner markup.
+function followActions(markup: string): { classes: string[]; inner: string } {
+  const header = markup.match(/<header\b[^>]*>([\s\S]*?)<\/header>/)?.[1] ?? '';
+  const match = header.match(/<div class="([^"]*\brelative\b[^"]*)">([\s\S]*?)<\/div><a\b/);
+  const classes = (match?.[1] ?? '').replace(/&amp;/g, '&').replace(/&gt;/g, '>').split(' ');
+  return { classes, inner: match?.[2] ?? '' };
+}
+
+describe('Following a meeting does not move the header', () => {
+  it('gives the actions wrapper the same classes whether the meeting is followed or not', () => {
+    const notFollowed = followActions(render());
+    hooks.follow = 'followed';
+    const followed = followActions(render());
+
+    expect(notFollowed.classes.length).toBeGreaterThan(1);
+    expect(followed.classes).toEqual(notFollowed.classes);
+    expect(followed.inner).toContain('You are following this meeting.');
+    expect(notFollowed.inner).not.toContain('You are following this meeting.');
+  });
+
+  it('takes the note out of the flow, under the button, as one compact line', () => {
+    const { classes } = followActions(render());
+
+    expect(classes).toEqual(expect.arrayContaining([
+      'relative',
+      '[&_[role=status]]:absolute',
+      '[&_[role=status]]:left-0',
+      '[&_[role=status]]:top-full',
+      '[&_[role=status]]:whitespace-nowrap',
+      '[&_[role=status]]:text-xs',
+    ]));
+  });
+
+  it('keeps the note announced (role status) with its text after Follow', () => {
+    hooks.follow = 'followed';
+    const { inner } = followActions(render());
+
+    expect(inner).toMatch(/<p role="status">You are following this meeting.<\/p>/);
+  });
+
+  it('gives the follow button a minimum width that fits Follow and Unfollow', () => {
+    const { classes, inner } = followActions(render());
+
+    expect(classes).toContain('[&>div>button]:min-w-[8.5rem]');
+    // The real component's button is a direct child of its root div, which the variant targets.
+    expect(inner).toMatch(/^<div><button\b/);
+  });
+
+  it('keeps Open on CivicClerk right after the follow wrapper in both states', () => {
+    for (const follow of [null, 'followed'] as const) {
+      hooks.follow = follow;
+      const header = render().match(/<header\b[^>]*>([\s\S]*?)<\/header>/)?.[1] ?? '';
+      expect(header).toMatch(/<\/div><a\b[^>]*href="https:\/\/example\.portal\.civicclerk\.com\/event\/1165\/overview"/);
+    }
+  });
 });
 
 describe('Meeting details top row', () => {
