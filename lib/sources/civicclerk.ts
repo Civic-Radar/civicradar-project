@@ -1,5 +1,6 @@
 import type {
   DocumentType,
+  ListingWindow,
   MeetingFilesListing,
   MeetingListing,
   SourceAgendaItem,
@@ -191,11 +192,14 @@ async function fetchEventPage(url: string): Promise<{ events: CivicClerkEvent[];
 // is true only when a page with no next link is read within the bound. Pages
 // left at the bound give false, with no read past it. A failed first page
 // throws, since nothing was read. A later failed page or timeout is logged
-// and ends the read with complete false, keeping the pages before it.
+// and ends the read with complete false, keeping the pages before it. With a
+// window, the first request also filters startDateTime to the window, and the
+// next link (which keeps the filter) is followed as given.
 async function readEventPages<T>(
   sourceAccountId: string,
   maxPages: number,
   convert: (event: CivicClerkEvent) => T,
+  window?: ListingWindow,
 ): Promise<{ items: T[]; complete: boolean; pagesRead: number }> {
   if (!/^[a-z0-9-]+$/i.test(sourceAccountId)) {
     throw new Error(`Invalid CivicClerk account id: "${sourceAccountId}"`);
@@ -211,7 +215,10 @@ async function readEventPages<T>(
   const visited = new Set<string>();
   const items: T[] = [];
   let pagesRead = 0;
-  let nextUrl: string | undefined = `${baseUrl}/Events?$orderby=startDateTime desc`;
+  const filter = window
+    ? `$filter=${encodeURIComponent(`startDateTime ge ${window.from} and startDateTime le ${window.to}`)}&`
+    : '';
+  let nextUrl: string | undefined = `${baseUrl}/Events?${filter}$orderby=startDateTime desc`;
 
   while (nextUrl) {
     if (pagesRead === maxPages) {
@@ -247,11 +254,18 @@ async function readEventPages<T>(
 
 // Returns the meetings on the first maxPages pages the source lists, newest
 // first, and whether the whole list was read (SRS-220.1). Nothing is filtered
-// out (SRS-220.2, SRS-220.8). Throws when the first page fails: a failed
-// fetch is never "no meetings".
-export async function fetchMeetings(sourceAccountId: string, maxPages: number): Promise<MeetingListing> {
-  const { items, complete, pagesRead } = await readEventPages(sourceAccountId, maxPages, (event) =>
-    toSourceMeeting(event, sourceAccountId),
+// out (SRS-220.2, SRS-220.8). With a window, only meetings in it are listed.
+// Throws when the first page fails: a failed fetch is never "no meetings".
+export async function fetchMeetings(
+  sourceAccountId: string,
+  maxPages: number,
+  window?: ListingWindow,
+): Promise<MeetingListing> {
+  const { items, complete, pagesRead } = await readEventPages(
+    sourceAccountId,
+    maxPages,
+    (event) => toSourceMeeting(event, sourceAccountId),
+    window,
   );
 
   return { meetings: items, complete, pagesRead };
@@ -262,8 +276,13 @@ export async function fetchMeetings(sourceAccountId: string, maxPages: number): 
 // SRS-220.1), and whether the whole list was read. A meeting with no files
 // maps to an empty list. Nothing is filtered out. A meeting without a file
 // list or a file without an id or name fails its page. Throws when the first
-// page fails: a failed listing is never "no files".
-export async function fetchMeetingFiles(sourceAccountId: string, maxPages: number): Promise<MeetingFilesListing> {
+// page fails: a failed listing is never "no files". With a window, only
+// meetings in it are listed.
+export async function fetchMeetingFiles(
+  sourceAccountId: string,
+  maxPages: number,
+  window?: ListingWindow,
+): Promise<MeetingFilesListing> {
   const { items, complete, pagesRead } = await readEventPages(
     sourceAccountId,
     maxPages,
@@ -275,6 +294,7 @@ export async function fetchMeetingFiles(sourceAccountId: string, maxPages: numbe
 
       return [sourceMeetingId, event.publishedFiles.map((file) => toSourceFile(file, sourceMeetingId, sourceAccountId))];
     },
+    window,
   );
 
   return { filesByMeeting: new Map(items), complete, pagesRead };

@@ -49,6 +49,15 @@ export interface ListingProgress {
   pagesRead: number;
 }
 
+// The retrieval window a listing is limited to (SRS-220.1): meetings that
+// start from `from` to `to`, both ISO UTC strings like 2026-10-01T00:00:00Z.
+// A source without a date filter would apply the window itself while paging
+// and report complete only when every in-window page was read.
+export interface ListingWindow {
+  from: string;
+  to: string;
+}
+
 export interface MeetingListing extends ListingProgress {
   meetings: SourceMeeting[];
 }
