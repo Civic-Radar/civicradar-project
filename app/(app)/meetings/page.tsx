@@ -4,6 +4,8 @@ import Link from 'next/link';
 import { useState } from 'react';
 import SignedOutNotice from '../../components/ui/SignedOutNotice';
 import styles from './meetings.module.css';
+import EmptyArt from '../../components/art/EmptyArt';
+import LeafLoader from '../../components/art/LeafLoader';
 import { meetingsForUser } from './meetingsForUser';
 import { useMeetingsList, type Meeting } from './useMeetingsList';
 
@@ -65,13 +67,14 @@ export default function MeetingsPage() {
 
         <div className={styles.panel}>
           {state.status === 'loading' ? (
-            <p className={styles.muted}>Loading stored meetings...</p>
+            <LeafLoader label="Loading stored meetings..." />
           ) : state.status === 'signedOut' ? (
             <SignedOutNotice className="p-6" message="You must be logged in to view your meetings." />
           ) : state.status === 'loadFailed' ? (
             <p className={styles.error}>Could not load stored meetings.</p>
           ) : followedTownIds.length === 0 ? (
-            <div className="space-y-2 p-6">
+            <div className="space-y-2 p-6 text-center">
+              <EmptyArt scene="tree" className="mx-auto mb-2 h-auto w-full max-w-[240px]" />
               <p className="text-fg-muted">Choose your towns in Preferences.</p>
               <Link href="/preferences" className="text-accent hover:underline">Go to Preferences</Link>
             </div>
@@ -93,7 +96,10 @@ export default function MeetingsPage() {
                 </label>
               </div>
               {meetings.length === 0 ? (
-                <p className={styles.empty}>No meetings are stored for your towns yet.</p>
+                <div className="text-center">
+                  <EmptyArt scene="tree" className="mx-auto mt-6 h-auto w-full max-w-[240px]" />
+                  <p className={styles.empty}>No meetings are stored for your towns yet.</p>
+                </div>
               ) : (
                 <div className={styles.tableWrap}>
                   <table className={styles.table}>
