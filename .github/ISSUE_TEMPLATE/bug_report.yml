@@ -3,6 +3,10 @@ description: Report a defect found during cross-team testing
 title: "[Bug]: "
 labels: ["bug"]
 body:
+
+  - type: textarea
+    attributes: { label: Summary, value: "Enter a summary of the bug in a few sentences." }
+    validations: { required: true }
   - type: input
     attributes: { label: SRS requirement, placeholder: "e.g. SRS-1.7" }
     validations: { required: true }
