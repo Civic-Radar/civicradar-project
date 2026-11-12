@@ -38,13 +38,19 @@ export function missingFieldsMessage(fields: TownField[]): string {
   return `${labels.slice(0, -1).join(', ')} and ${labels[labels.length - 1]} are required.`;
 }
 
+// True when a save failed because another town already uses the source
+// account identifier (towns.source_account_id is unique across every row).
+export function isDuplicateSourceAccountId(error: { code?: string; message?: string }): boolean {
+  return error.code === '23505' && (error.message ?? '').includes('source_account_id');
+}
+
 // Turns a database error into a message an administrator can act on.
 export function townSaveErrorMessage(
   error: { code?: string; message?: string },
   values: TownValues,
 ): string {
   const message = error.message ?? '';
-  if (error.code === '23505' && message.includes('source_account_id')) {
+  if (isDuplicateSourceAccountId(error)) {
     return `A town with source account identifier "${values.source_account_id}" already exists.`;
   }
   if (error.code === '23505' && message.includes('towns_active_name_uq')) {
