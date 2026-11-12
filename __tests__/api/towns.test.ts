@@ -147,7 +147,7 @@ describe('Town source settings (SRS-104.6)', () => {
       error: { code: '23505', message: 'duplicate key value violates unique constraint "towns_source_account_id_key"' },
     } as never);
     // No removed town has this identifier, so it belongs to an active town.
-    mockBuilder.maybeSingle.mockResolvedValue({ data: null, error: null });
+    mockBuilder.maybeSingle.mockResolvedValue({ data: null, error: null } as never);
 
     const response = await POST(req('POST', salemInput));
 

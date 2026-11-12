@@ -4,6 +4,7 @@ import {
   TOWN_COLUMNS,
   cleanTownInput,
   findMissingTownFields,
+  isDuplicateSourceAccountId,
   missingFieldsMessage,
   townSaveErrorMessage,
 } from '../../../lib/towns';
@@ -68,7 +69,24 @@ export async function POST(request: Request) {
     .select(TOWN_COLUMNS)
     .single();
 
-  if (error) return Response.json({ error: townSaveErrorMessage(error, values) }, { status: 400 });
+  if (!error) return Response.json({ town: data }, { status: 201 });
+  if (!isDuplicateSourceAccountId(error)) {
+    return Response.json({ error: townSaveErrorMessage(error, values) }, { status: 400 });
+  }
 
-  return Response.json({ town: data }, { status: 201 });
+  // SRS-104.2, #519: removing a town only sets removed_at, so its identifier is
+  // still taken. If the identifier belongs to a removed town, restore that town
+  // with the values just saved; if it belongs to an active town, it is a duplicate.
+  const { data: restored, error: restoreError } = await supabase!
+    .from('towns')
+    .update({ ...values, removed_at: null })
+    .eq('source_account_id', values.source_account_id)
+    .not('removed_at', 'is', null)
+    .select(TOWN_COLUMNS)
+    .maybeSingle();
+
+  if (restoreError) return Response.json({ error: townSaveErrorMessage(restoreError, values) }, { status: 400 });
+  if (restored) return Response.json({ town: restored }, { status: 201 });
+
+  return Response.json({ error: townSaveErrorMessage(error, values) }, { status: 400 });
 }
