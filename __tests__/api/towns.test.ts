@@ -15,6 +15,7 @@ const mockBuilder = {
   update: vi.fn().mockReturnThis(),
   eq: vi.fn().mockReturnThis(),
   is: vi.fn().mockReturnThis(),
+  not: vi.fn().mockReturnThis(),
   order: vi.fn(async () => ({ data: [salem], error: null })),
   single: vi.fn(async () => ({ data: salem, error: null })),
   maybeSingle: vi.fn(async () => ({ data: salem, error: null })),
@@ -69,6 +70,7 @@ beforeEach(() => {
   mockBuilder.update.mockReturnThis();
   mockBuilder.eq.mockReturnThis();
   mockBuilder.is.mockReturnThis();
+  mockBuilder.not.mockReturnThis();
   mockBuilder.order.mockResolvedValue({ data: [salem], error: null });
   mockBuilder.single.mockResolvedValue({ data: salem, error: null });
   mockBuilder.maybeSingle.mockResolvedValue({ data: salem, error: null });
@@ -144,6 +146,8 @@ describe('Town source settings (SRS-104.6)', () => {
       data: null,
       error: { code: '23505', message: 'duplicate key value violates unique constraint "towns_source_account_id_key"' },
     } as never);
+    // No removed town has this identifier, so it belongs to an active town.
+    mockBuilder.maybeSingle.mockResolvedValue({ data: null, error: null });
 
     const response = await POST(req('POST', salemInput));
 
@@ -160,6 +164,50 @@ describe('Town source settings (SRS-104.6)', () => {
     const response = await GET(req('GET'));
     expect(response.status).toBe(200);
     expect(await response.json()).toEqual({ towns: [salem] });
+  });
+});
+
+describe('Re-adding a removed town (SRS-104.2, #519)', () => {
+  const input = { name: 'Test MA', source_account_id: 'testma', meeting_time_zone: 'America/New_York' };
+  const restored = { town_id: 7, ...input };
+  const duplicateSourceAccountId = {
+    data: null,
+    error: { code: '23505', message: 'duplicate key value violates unique constraint "towns_source_account_id_key"' },
+  };
+
+  it('restores the removed town with the new values instead of refusing a duplicate identifier', async () => {
+    mockBuilder.single.mockResolvedValue(duplicateSourceAccountId as never);
+    mockBuilder.maybeSingle.mockResolvedValue({ data: restored, error: null } as never);
+
+    const response = await POST(req('POST', input));
+
+    expect(response.status).toBe(201);
+    expect(await response.json()).toEqual({ town: restored });
+    expect(mockBuilder.update).toHaveBeenCalledWith({ ...input, removed_at: null });
+    expect(mockBuilder.eq).toHaveBeenCalledWith('source_account_id', 'testma');
+    expect(mockBuilder.not).toHaveBeenCalledWith('removed_at', 'is', null);
+  });
+
+  it('adds a new town normally without trying to restore one', async () => {
+    mockBuilder.single.mockResolvedValue({ data: { town_id: 8, ...input }, error: null } as never);
+
+    const response = await POST(req('POST', input));
+
+    expect(response.status).toBe(201);
+    expect(mockBuilder.update).not.toHaveBeenCalled();
+  });
+
+  it('explains a name clash with an active town when the restore fails', async () => {
+    mockBuilder.single.mockResolvedValue(duplicateSourceAccountId as never);
+    mockBuilder.maybeSingle.mockResolvedValue({
+      data: null,
+      error: { code: '23505', message: 'duplicate key value violates unique constraint "towns_active_name_uq"' },
+    } as never);
+
+    const response = await POST(req('POST', input));
+
+    expect(response.status).toBe(400);
+    expect((await response.json()).error).toBe('A town named "Test MA" already exists.');
   });
 });
 
