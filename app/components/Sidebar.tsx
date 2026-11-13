@@ -13,6 +13,7 @@ import {
   Settings,
   CircleUserRound,
   RefreshCw,
+  Library,
   LogOut,
   Menu,
   X,
@@ -32,6 +33,7 @@ const navigation: { name: string; href: string; icon: typeof Users; also?: strin
   { name: "Preferences", href: "/preferences", icon: Settings },
   { name: "Profile", href: "/profile", icon: CircleUserRound },
   { name: "Retrieval", href: "/admin/retrieval", icon: RefreshCw, adminOnly: true },
+  { name: "Catalog", href: "/admin/towns", icon: Library, adminOnly: true },
 ];
 
 function NavLinks({ pathname, onNavigate }: { pathname: string; onNavigate?: () => void }) {

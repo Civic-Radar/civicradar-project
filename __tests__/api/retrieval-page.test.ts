@@ -223,12 +223,20 @@ describe('Administrators only (SRS-220.3 AC 4)', () => {
 
     expect(links).toContain('/dashboard');
     expect(links).not.toContain('/admin/retrieval');
+    expect(links).not.toContain('/admin/towns');
   });
 
   it('the Sidebar shows the retrieval link to a system administrator', () => {
     hooks.isAdministrator = true;
 
     expect(hrefs(render(Sidebar))).toContain('/admin/retrieval');
+  });
+
+  // Issue #525, SRS-104.1: administrators reach catalog management from the app.
+  it('the Sidebar shows the catalog management link to a system administrator', () => {
+    hooks.isAdministrator = true;
+
+    expect(hrefs(render(Sidebar))).toContain('/admin/towns');
   });
 });
 
