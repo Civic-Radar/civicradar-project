@@ -1,6 +1,6 @@
 // SRS-102.1, KJ, Last check time display
 import { describe, expect, it } from 'vitest';
-import { formatCheckTime, isSuccessfulCheck, lastSuccessfulCheckAt } from '../../lib/dataFreshness';
+import { formatCheckTime, isSuccessfulCheck, lastSuccessfulCheckAt, latestCheckFailed } from '../../lib/dataFreshness';
 
 function check(id: number, endedAt: string | null, results: string[] = ['Complete']) {
   return {
@@ -57,5 +57,19 @@ describe('lastSuccessfulCheckAt (SRS-102.1)', () => {
   it('returns null when no check was successful', () => {
     expect(lastSuccessfulCheckAt([check(1, '2026-09-23T18:00:00Z', ['Failed'])])).toBeNull();
     expect(lastSuccessfulCheckAt([])).toBeNull();
+  });
+});
+
+describe('latestCheckFailed (SRS-102.2)', () => {
+  it('is true when the most recent finished check has a failed collection', () => {
+    expect(latestCheckFailed([check(2, '2026-09-23T21:00:00Z', ['Failed']), check(1, '2026-09-23T18:00:00Z')])).toBe(true);
+  });
+
+  it('is false when the most recent finished check was successful', () => {
+    expect(latestCheckFailed([check(2, '2026-09-23T21:00:00Z'), check(1, '2026-09-23T18:00:00Z', ['Failed'])])).toBe(false);
+  });
+
+  it('is false when the town has no finished check yet', () => {
+    expect(latestCheckFailed([])).toBe(false);
   });
 });

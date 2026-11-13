@@ -81,7 +81,12 @@ function req(token: string | null = 'resident-token') {
 async function freshness() {
   const response = await GET(req());
   expect(response.status).toBe(200);
-  return (await response.json()).towns as { town_id: number; name: string; last_successful_check: string | null }[];
+  return (await response.json()).towns as {
+    town_id: number;
+    name: string;
+    last_successful_check: string | null;
+    latest_check_failed: boolean;
+  }[];
 }
 
 function addCheck(checkId: number, townId: number, endedAt: string | null, results: string[] = ['Complete']) {
@@ -115,7 +120,9 @@ describe('Last check time display (SRS-102.1)', () => {
     addCheck(1, SALEM, '2026-09-23T15:00:00.000Z');
     addCheck(2, SALEM, '2026-09-23T18:00:00.000Z');
 
-    expect(await freshness()).toEqual([{ town_id: SALEM, name: 'Salem', last_successful_check: '09/23/2026 2:00 PM ET' }]);
+    expect(await freshness()).toEqual([
+      { town_id: SALEM, name: 'Salem', last_successful_check: '09/23/2026 2:00 PM ET', latest_check_failed: false },
+    ]);
   });
 
   it('shows the most recent successful check, not a newer one that failed', async () => {
@@ -138,8 +145,8 @@ describe('Last check time display (SRS-102.1)', () => {
     addCheck(2, BEVERLY, '2026-09-22T13:30:00.000Z');
 
     expect(await freshness()).toEqual([
-      { town_id: BEVERLY, name: 'Beverly', last_successful_check: '09/22/2026 9:30 AM ET' },
-      { town_id: SALEM, name: 'Salem', last_successful_check: '09/23/2026 2:00 PM ET' },
+      { town_id: BEVERLY, name: 'Beverly', last_successful_check: '09/22/2026 9:30 AM ET', latest_check_failed: false },
+      { town_id: SALEM, name: 'Salem', last_successful_check: '09/23/2026 2:00 PM ET', latest_check_failed: false },
     ]);
   });
 
@@ -154,7 +161,7 @@ describe('Last check time display (SRS-102.1)', () => {
   it('returns null for a followed town with no successful check yet', async () => {
     addCheck(1, SALEM, '2026-09-23T18:00:00.000Z', ['Failed']);
 
-    expect(await freshness()).toEqual([{ town_id: SALEM, name: 'Salem', last_successful_check: null }]);
+    expect(await freshness()).toEqual([{ town_id: SALEM, name: 'Salem', last_successful_check: null, latest_check_failed: true }]);
   });
 
   it('returns an empty list when the resident follows no towns', async () => {
@@ -179,5 +186,62 @@ describe('Last check time display (SRS-102.1)', () => {
 
     expect(response.status).toBe(500);
     expect(await response.json()).toEqual({ error: 'Data freshness could not be loaded. Please try again.' });
+  });
+});
+
+describe('Failed check label (SRS-102.2)', () => {
+  beforeEach(() => {
+    vi.stubEnv('SUPABASE_SERVICE_ROLE_KEY', 'test-service-role-key');
+    db.failOn = null;
+    db.tables = {
+      towns: [
+        { town_id: SALEM, name: 'Salem', meeting_time_zone: 'America/New_York', removed_at: null },
+        { town_id: BEVERLY, name: 'Beverly', meeting_time_zone: 'America/New_York', removed_at: null },
+      ],
+      user_followed_towns: [{ user_id: 'resident-1', town_id: SALEM }],
+      source_checks: [],
+      source_check_collections: [],
+    };
+  });
+
+  // Acceptance criterion: Salem's most recent check was not successful, so "Could not check the source" is shown.
+  it('marks Salem when its most recent check failed, and still shows its last successful check', async () => {
+    addCheck(1, SALEM, '2026-09-23T18:00:00.000Z');
+    addCheck(2, SALEM, '2026-09-23T21:00:00.000Z', ['Complete', 'Failed']);
+
+    expect(await freshness()).toEqual([
+      { town_id: SALEM, name: 'Salem', last_successful_check: '09/23/2026 2:00 PM ET', latest_check_failed: true },
+    ]);
+  });
+
+  it('does not mark Salem when an older check failed but the most recent one was successful', async () => {
+    addCheck(1, SALEM, '2026-09-23T18:00:00.000Z', ['Failed']);
+    addCheck(2, SALEM, '2026-09-23T21:00:00.000Z');
+
+    expect((await freshness())[0].latest_check_failed).toBe(false);
+  });
+
+  it('judges the most recent finished check, not one that is still running', async () => {
+    addCheck(1, SALEM, '2026-09-23T18:00:00.000Z', ['Failed']);
+    addCheck(2, SALEM, null);
+
+    expect((await freshness())[0].latest_check_failed).toBe(true);
+  });
+
+  it('does not mark a town that has not been checked yet', async () => {
+    expect(await freshness()).toEqual([
+      { town_id: SALEM, name: 'Salem', last_successful_check: null, latest_check_failed: false },
+    ]);
+  });
+
+  it('marks only the town whose most recent check failed', async () => {
+    db.tables.user_followed_towns.push({ user_id: 'resident-1', town_id: BEVERLY });
+    addCheck(1, SALEM, '2026-09-23T21:00:00.000Z', ['Failed']);
+    addCheck(2, BEVERLY, '2026-09-23T21:00:00.000Z');
+
+    const towns = await freshness();
+
+    expect(towns.find((town) => town.name === 'Salem')?.latest_check_failed).toBe(true);
+    expect(towns.find((town) => town.name === 'Beverly')?.latest_check_failed).toBe(false);
   });
 });
