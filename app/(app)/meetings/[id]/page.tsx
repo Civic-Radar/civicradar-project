@@ -18,6 +18,7 @@ import styles from '../meetings.module.css';
 import LeafLoader from '../../../components/art/LeafLoader';
 import { buttonClasses } from '../../../components/ui/Button';
 import { agendaDetail } from '../../../../lib/agenda';
+import { radarReason, type MatchingMeeting } from '../../../../lib/radarReason';
 import { HIGHLIGHT_PARAM, matchRanges, searchTerms } from '../../../../lib/search';
 import { useIsAdministrator } from '../../../admin/retrieval/useIsAdministrator';
 import FollowMeetingButton from './FollowMeetingButton';
@@ -216,17 +217,27 @@ function OfficialAgendaLink({ documents }: { documents: MeetingDocument[] }) {
   );
 }
 
-// "Why this is on your radar", built only from the town and the user's own follows.
-function RadarPanel({ meeting, followedTownIds, followedTopics }: {
+// "Why this is on your radar" (SRS-401.5): the reason comes from the user's
+// matching result, so the panel shows the topic tags this meeting matched and the
+// agenda text that produced each one. A meeting that did not match says so, and
+// nothing is claimed when the matching result could not be read; in both cases
+// the label is "Your radar", since the panel is not giving a reason.
+function RadarPanel({ meeting, followedTownIds, matchingMeetings }: {
   meeting: MeetingDetails;
   followedTownIds: number[] | null;
-  followedTopics: string[];
+  matchingMeetings: MatchingMeeting[] | null;
 }) {
-  const followsTown = meeting.town_name !== null && (followedTownIds ?? []).includes(meeting.town_id);
+  const reason = radarReason(meeting, matchingMeetings, followedTownIds);
+  const town = meeting.town_name ?? "This meeting's town";
+  const heading =
+    reason.kind === 'matched' ? 'Connected to your community.'
+    : reason.kind === 'notMatched' ? 'Not one of your matches.'
+    : 'About this meeting.';
+  const eyebrow = reason.kind === 'matched' ? 'Why this is on your radar' : 'Your radar';
   return (
     <aside className="rounded-xl border border-line bg-card p-6">
-      <p className={EYEBROW}>Why this is on your radar</p>
-      <h2 className="mt-3 font-display text-3xl font-normal leading-tight tracking-tight">Connected to your community.</h2>
+      <p className={EYEBROW}>{eyebrow}</p>
+      <h2 className="mt-3 font-display text-3xl font-normal leading-tight tracking-tight">{heading}</h2>
       {meeting.town_name ? (
         <p className="mt-4">
           <span className="inline-flex items-center gap-1 rounded-md bg-accent-wash px-2 py-1 text-xs font-medium text-accent-strong">
@@ -235,17 +246,30 @@ function RadarPanel({ meeting, followedTownIds, followedTopics }: {
           </span>
         </p>
       ) : null}
-      {followsTown ? (
+      {reason.kind === 'matched' && reason.topics.length > 0 ? (
         <p className="mt-4 text-sm leading-relaxed text-fg-muted">
-          {meeting.town_name} is one of the towns you follow. Explore its meeting materials and official source.
+          {town} is one of the towns you follow, and this agenda mentions topics you follow.
         </p>
       ) : null}
-      {followedTopics.length > 0 ? (
+      {reason.kind === 'matched' && reason.followedDirectly ? (
+        <p className="mt-4 text-sm leading-relaxed text-fg-muted">You follow this meeting.</p>
+      ) : null}
+      {reason.kind === 'notMatched' ? (
+        <p className="mt-4 text-sm leading-relaxed text-fg-muted">
+          {reason.followsTown
+            ? `${town} is one of the towns you follow, but none of your followed topics are on this meeting's agenda.`
+            : "This meeting isn't in a town you follow."}
+        </p>
+      ) : null}
+      {reason.kind === 'matched' && reason.topics.length > 0 ? (
         <div className="mt-6">
-          <p className={EYEBROW}>Your followed topics</p>
-          <ul className="mt-3 flex flex-wrap gap-2">
-            {followedTopics.map((topic) => (
-              <li key={topic} className="rounded-md bg-accent-wash px-2 py-1 text-xs font-medium text-accent-strong">{topic}</li>
+          <p className={EYEBROW}>Matched topics</p>
+          <ul className="mt-3 space-y-4">
+            {reason.topics.map((tag) => (
+              <li key={tag.topic}>
+                <span className="rounded-md bg-accent-wash px-2 py-1 text-xs font-medium text-accent-strong">{tag.topic}</span>
+                <blockquote className="mt-2 border-l-2 border-line pl-3 text-sm leading-relaxed text-fg-muted">{tag.evidence_text}</blockquote>
+              </li>
             ))}
           </ul>
         </div>
@@ -298,7 +322,7 @@ export default function MeetingDetailsPage({ params }: { params: { id: string } 
             documents={state.documents}
             agendaItems={state.agendaItems ?? []}
             followedTownIds={state.followedTownIds}
-            followedTopics={state.followedTopics}
+            matchingMeetings={state.matchingMeetings ?? null}
           />
         )}
       </div>
@@ -306,12 +330,12 @@ export default function MeetingDetailsPage({ params }: { params: { id: string } 
   );
 }
 
-function MeetingOverview({ meeting, documents, agendaItems, followedTownIds, followedTopics }: {
+function MeetingOverview({ meeting, documents, agendaItems, followedTownIds, matchingMeetings }: {
   meeting: MeetingDetails;
   documents: MeetingDocument[];
   agendaItems: AgendaItem[];
   followedTownIds: number[] | null;
-  followedTopics: string[];
+  matchingMeetings: MatchingMeeting[] | null;
 }) {
   const start = startParts(meeting);
   const bodyName = meeting.body_name ?? meeting.source_body_name;
@@ -434,7 +458,7 @@ function MeetingOverview({ meeting, documents, agendaItems, followedTownIds, fol
         </div>
 
         <div className="lg:w-80 lg:shrink-0">
-          <RadarPanel meeting={meeting} followedTownIds={followedTownIds} followedTopics={followedTopics} />
+          <RadarPanel meeting={meeting} followedTownIds={followedTownIds} matchingMeetings={matchingMeetings} />
         </div>
       </div>
     </>
