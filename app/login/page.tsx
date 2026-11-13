@@ -6,6 +6,9 @@ import { useState } from 'react';
 import AuthCard, { inputClass, primaryButtonClass } from '../components/AuthCard';
 import { alertClasses } from '../components/ui/Alert';
 import { pathAfterSignIn } from '../../lib/setup';
+import { sendAuthRequest } from '../../lib/authForm';
+
+type LoginReply = { session?: { session?: { access_token?: string } } };
 
 export default function LoginPage() {
   const router = useRouter();
@@ -19,20 +22,21 @@ export default function LoginPage() {
     setLoading(true);
     setMessage('');
 
-    const response = await fetch('/api/auth/login', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email, password }),
-    });
-
-    const data = await response.json();
-    setLoading(false);
-    if (response.ok) {
-      const accessToken = data?.session?.session?.access_token;
+    // Issue #529: whatever goes wrong, the button leaves "Signing in…" (finally)
+    // and an error message is shown instead of nothing happening.
+    try {
+      const reply = await sendAuthRequest('/api/auth/login', { email, password }, 'Login failed.');
+      if (!reply.ok) {
+        setMessage(reply.message);
+        return;
+      }
+      const accessToken = (reply.data as LoginReply)?.session?.session?.access_token;
       if (accessToken) localStorage.setItem('access_token', accessToken);
-        router.push(await pathAfterSignIn(accessToken));
-    } else {
-      setMessage(data.error || 'Login failed.');
+      router.push(await pathAfterSignIn(accessToken));
+    } catch {
+      setMessage('Login failed.');
+    } finally {
+      setLoading(false);
     }
   }
 
