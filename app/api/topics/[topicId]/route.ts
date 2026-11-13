@@ -1,6 +1,8 @@
 import { getSupabaseClient } from '../../../../lib/supabase';
 import { ADMIN_ONLY_ERROR, ROLE_CHECK_ERROR, isSystemAdministrator } from '../../../../lib/catalogAdmin';
 
+const REMOVE_ERROR = 'The topic could not be removed. Please try again.';
+
 function getToken(request: Request): string | null {
   const auth = request.headers.get('Authorization');
   return auth?.startsWith('Bearer ') ? auth.slice(7) : null;
@@ -63,7 +65,8 @@ export async function PATCH(request: Request, { params }: { params: { topicId: s
 }
 
 // SRS-104.4: remove a topic from every resident selection list after the administrator confirms.
-// The row is kept and removed_at hides it, so follows and meeting tags that reference it are not lost.
+// The row is kept and removed_at hides it, so meeting tags that reference it are not lost.
+// SRS-101.9: the removed topic is also taken out of every resident's followed topics.
 export async function DELETE(request: Request, { params }: { params: { topicId: string } }) {
   const token = getToken(request);
   if (!token) return Response.json({ error: 'Unauthorized' }, { status: 401 });
@@ -89,8 +92,19 @@ export async function DELETE(request: Request, { params }: { params: { topicId: 
     .select('topic_id, name')
     .maybeSingle();
 
-  if (error) return Response.json({ error: 'The topic could not be removed. Please try again.' }, { status: 500 });
+  if (error) return Response.json({ error: REMOVE_ERROR }, { status: 500 });
   if (!data) return Response.json({ error: 'Topic not found.' }, { status: 404 });
+
+  const { error: followsError } = await supabase!
+    .from('user_followed_topics')
+    .delete()
+    .eq('topic_id', topicId);
+
+  if (followsError) {
+    // Put the topic back, so it is never hidden from the catalog while residents still follow it.
+    await supabase!.from('topics').update({ removed_at: null }).eq('topic_id', topicId);
+    return Response.json({ error: REMOVE_ERROR }, { status: 500 });
+  }
 
   return Response.json({ removed: data }, { status: 200 });
 }
