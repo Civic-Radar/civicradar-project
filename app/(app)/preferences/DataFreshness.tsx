@@ -3,11 +3,18 @@
 import { Clock } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { alertClasses } from '../../components/ui/Alert';
+import Badge from '../../components/ui/Badge';
 import { cardClasses } from '../../components/ui/Card';
 
 // SRS-102.1: when each followed town was last checked successfully.
+// SRS-102.2: "Could not check the source" when its most recent check was not successful.
 
-type TownFreshness = { town_id: number; name: string; last_successful_check: string | null };
+type TownFreshness = {
+  town_id: number;
+  name: string;
+  last_successful_check: string | null;
+  latest_check_failed: boolean;
+};
 
 const LOAD_ERROR = 'Data freshness could not be loaded. Please try again.';
 
@@ -51,7 +58,8 @@ export default function DataFreshness() {
           {towns.map((town) => (
             <li key={town.town_id} className="flex flex-wrap items-center justify-between gap-2 rounded-md border border-line p-3 text-sm">
               <span className="font-medium text-fg">{town.name}</span>
-              <span className="text-fg-muted">
+              <span className="flex flex-wrap items-center gap-2 text-fg-muted">
+                {town.latest_check_failed ? <Badge tone="warning">Could not check the source</Badge> : null}
                 {town.last_successful_check
                   ? `Last checked ${town.last_successful_check}`
                   : 'No successful check yet'}
