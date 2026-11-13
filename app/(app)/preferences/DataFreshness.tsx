@@ -8,12 +8,14 @@ import { cardClasses } from '../../components/ui/Card';
 
 // SRS-102.1: when each followed town was last checked successfully.
 // SRS-102.2: "Could not check the source" when its most recent check was not successful.
+// SRS-102.3: "Checked — no new information" when it was successful and found nothing new.
 
 type TownFreshness = {
   town_id: number;
   name: string;
   last_successful_check: string | null;
   latest_check_failed: boolean;
+  no_new_information: boolean;
 };
 
 const LOAD_ERROR = 'Data freshness could not be loaded. Please try again.';
@@ -60,6 +62,7 @@ export default function DataFreshness() {
               <span className="font-medium text-fg">{town.name}</span>
               <span className="flex flex-wrap items-center gap-2 text-fg-muted">
                 {town.latest_check_failed ? <Badge tone="warning">Could not check the source</Badge> : null}
+                {town.no_new_information ? <Badge tone="neutral">Checked — no new information</Badge> : null}
                 {town.last_successful_check
                   ? `Last checked ${town.last_successful_check}`
                   : 'No successful check yet'}
