@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import type { MatchingMeeting } from '../../../../lib/radarReason';
 
 // Fields returned by GET /api/meetings/[id] (SRS-502.2, SRS-502.3, SRS-502.8, SRS-502.9).
 export type MeetingDetails = {
@@ -48,6 +49,9 @@ export type MeetingDetailsState =
       followedTownIds: number[] | null;
       // Names of the topics the user follows; empty when none or not readable.
       followedTopics: string[];
+      // SRS-401.5: the user's matching result, which holds why each meeting
+      // matched; null when it could not be read (signed out or an error).
+      matchingMeetings?: MatchingMeeting[] | null;
     };
 
 const LOAD_ERROR = 'Could not load the meeting.';
@@ -66,6 +70,20 @@ async function loadFollowed<T extends { followed: boolean }>(url: string, key: s
   }
 }
 
+// Reads the signed-in user's matching result from GET /api/matching-meetings.
+// Any failure gives null, so the panel makes no claim about why the meeting matched.
+async function loadMatchingMeetings(token: string | null): Promise<MatchingMeeting[] | null> {
+  if (!token) return null;
+  try {
+    const res = await fetch('/api/matching-meetings', { headers: { Authorization: `Bearer ${token}` }, cache: 'no-store' });
+    if (!res.ok) return null;
+    const data = await res.json();
+    return Array.isArray(data.meetings) ? (data.meetings as MatchingMeeting[]) : null;
+  } catch {
+    return null;
+  }
+}
+
 // Loads one meeting with its documents for the meeting details page, plus the
 // signed-in user's followed towns and topics for the "Why this is on your radar" panel.
 export function useMeetingDetails(id: string): MeetingDetailsState {
@@ -78,10 +96,11 @@ export function useMeetingDetails(id: string): MeetingDetailsState {
 
     async function load() {
       try {
-        const [response, towns, topics] = await Promise.all([
+        const [response, towns, topics, matchingMeetings] = await Promise.all([
           fetch(`/api/meetings/${encodeURIComponent(id)}`, { cache: 'no-store' }),
           loadFollowed<{ town_id: number; followed: boolean }>('/api/followed-towns', 'towns', token),
           loadFollowed<{ name: string; followed: boolean }>('/api/followed-topics', 'topics', token),
+          loadMatchingMeetings(token),
         ]);
         const data = await response.json();
         if (ignore) return;
@@ -94,6 +113,7 @@ export function useMeetingDetails(id: string): MeetingDetailsState {
           agendaItems: Array.isArray(data.agenda_items) ? data.agenda_items : [],
           followedTownIds: towns ? towns.map((town) => town.town_id) : null,
           followedTopics: topics ? topics.map((topic) => topic.name) : [],
+          matchingMeetings,
         });
       } catch {
         if (!ignore) setState({ status: 'loadFailed', error: LOAD_ERROR });

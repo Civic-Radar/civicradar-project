@@ -2,6 +2,7 @@ import { createRequire } from 'node:module';
 import * as React from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { MeetingDetails, MeetingDetailsState, MeetingDocument } from '../../app/(app)/meetings/[id]/useMeetingDetails';
+import type { MatchedTopic, MatchingMeeting } from '../../lib/radarReason';
 
 // @types/react-dom is not installed, so react-dom/server is loaded with only the
 // one function this file uses typed here.
@@ -81,6 +82,7 @@ function render(options: {
   documents?: MeetingDocument[];
   followedTownIds?: number[] | null;
   followedTopics?: string[];
+  matchingMeetings?: MatchingMeeting[] | null;
 } = {}): string {
   hooks.state = {
     status: 'loaded',
@@ -88,6 +90,7 @@ function render(options: {
     documents: options.documents ?? [],
     followedTownIds: options.followedTownIds === undefined ? [1] : options.followedTownIds,
     followedTopics: options.followedTopics ?? [],
+    matchingMeetings: options.matchingMeetings === undefined ? [] : options.matchingMeetings,
   };
   return renderPage();
 }
@@ -393,32 +396,76 @@ describe('Meeting details documents', () => {
   });
 });
 
+// SRS-401.5 (#526): the panel shows why this meeting matched, from the user's
+// matching result, never the user's whole list of followed topics.
 describe('Why this is on your radar panel', () => {
-  it('shows the eyebrow, the heading, the town chip, the followed line and the preferences link', () => {
-    const panel = aside(render());
+  const HOUSING: MatchedTopic = { topic: 'Housing', evidence_text: 'Vote on the housing production plan.' };
+  const MATCHED: MatchingMeeting = { meeting_id: 1165, matched_topics: [HOUSING], followed_directly: false };
+  const FOLLOWED_ONLY: MatchingMeeting = { meeting_id: 1165, matched_topics: [], followed_directly: true };
+
+  it('shows the eyebrow, the town chip and the preferences link', () => {
+    const panel = aside(render({ matchingMeetings: [MATCHED] }));
 
     expect(panel).toMatch(/<p class="[^"]*uppercase[^"]*">Why this is on your radar<\/p>/);
-    expect(panel).toMatch(/<h2[^>]*>Connected to your community.<\/h2>/);
-    expect(textOf(panel)).toContain('Salem is one of the towns you follow. Explore its meeting materials and official source.');
+    expect(textOf(panel)).toContain('Salem');
     expect(anchors(panel).filter((a) => a.text === 'Manage your interests').map((a) => a.href)).toEqual(['/preferences']);
   });
 
-  it.each<[string, number[] | null]>([
-    ['a town the user does not follow', [10]],
-    ['followed towns that could not be read', null],
-  ])('leaves out the followed line for %s', (_label, followedTownIds) => {
-    const panel = aside(render({ followedTownIds }));
+  it('shows only the topics this meeting matched, each with its agenda text', () => {
+    const panel = aside(render({ followedTopics: ['Housing', 'Parking'], matchingMeetings: [MATCHED] }));
 
-    expect(textOf(panel)).toContain('Salem');
+    expect(panel).toMatch(/<h2[^>]*>Connected to your community.<\/h2>/);
+    expect(textOf(panel)).toContain('Salem is one of the towns you follow, and this agenda mentions topics you follow.');
+    expect(panel).toMatch(/<p class="[^"]*uppercase[^"]*">Matched topics<\/p>/);
+    expect(Array.from(panel.matchAll(/<li\b[^>]*><span[^>]*>([^<]*)<\/span>/g), ([, topic]) => topic)).toEqual(['Housing']);
+    expect(textOf(panel)).toContain('Vote on the housing production plan.');
+    expect(panel).not.toContain('Parking');
+    expect(panel).not.toContain('Your followed topics');
+  });
+
+  it('says the meeting is followed, with no topics block, when it is only followed directly', () => {
+    const panel = aside(render({ followedTownIds: [10], matchingMeetings: [FOLLOWED_ONLY] }));
+
+    expect(panel).toMatch(/<h2[^>]*>Connected to your community.<\/h2>/);
+    expect(textOf(panel)).toContain('You follow this meeting.');
+    expect(panel).not.toContain('Matched topics');
     expect(panel).not.toContain('one of the towns you follow');
   });
 
-  it('shows the followed topics as chips, and no topics block when there are none', () => {
-    const withTopics = aside(render({ followedTopics: ['Housing', 'Schools'] }));
-    expect(withTopics).toMatch(/<p class="[^"]*uppercase[^"]*">Your followed topics<\/p>/);
-    expect(Array.from(withTopics.matchAll(/<li\b[^>]*>([^<]*)<\/li>/g), ([, topic]) => topic)).toEqual(['Housing', 'Schools']);
+  it('says none of the followed topics are on the agenda for an unmatched meeting in a followed town', () => {
+    const panel = aside(render({ followedTopics: ['Housing'], matchingMeetings: [] }));
 
-    expect(aside(render({ followedTopics: [] }))).not.toContain('Your followed topics');
+    expect(panel).toMatch(/<h2[^>]*>Not one of your matches.<\/h2>/);
+    expect(textOf(panel)).toContain("Salem is one of the towns you follow, but none of your followed topics are on this meeting's agenda.");
+    expect(panel).toMatch(/<p class="[^"]*uppercase[^"]*">Your radar<\/p>/);
+    expect(panel).not.toContain('Why this is on your radar');
+    expect(panel).not.toContain('Housing');
+  });
+
+  it('says the town is not followed for an unmatched meeting in another town', () => {
+    const panel = aside(render({ followedTownIds: [10], followedTopics: ['Housing'], matchingMeetings: [] }));
+
+    expect(panel).toMatch(/<h2[^>]*>Not one of your matches.<\/h2>/);
+    expect(textOf(panel)).toContain("This meeting isn't in a town you follow.");
+    expect(panel).toMatch(/<p class="[^"]*uppercase[^"]*">Your radar<\/p>/);
+    expect(panel).not.toContain('Why this is on your radar');
+    expect(panel).not.toContain('Connected to your community');
+    expect(panel).not.toContain('Housing');
+  });
+
+  it.each<[string, { followedTownIds?: number[] | null; matchingMeetings: MatchingMeeting[] | null }]>([
+    ['the matching result could not be read', { matchingMeetings: null }],
+    ['the followed towns could not be read', { followedTownIds: null, matchingMeetings: [] }],
+  ])('makes no claim about the match when %s', (_label, options) => {
+    const panel = aside(render({ followedTopics: ['Housing'], ...options }));
+
+    expect(panel).toMatch(/<h2[^>]*>About this meeting.<\/h2>/);
+    expect(panel).toMatch(/<p class="[^"]*uppercase[^"]*">Your radar<\/p>/);
+    expect(panel).not.toContain('Why this is on your radar');
+    expect(textOf(panel)).toContain('Salem');
+    expect(panel).not.toContain('towns you follow');
+    expect(panel).not.toContain("isn't in a town you follow");
+    expect(panel).not.toContain('Housing');
   });
 });
 
