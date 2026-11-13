@@ -1,6 +1,6 @@
 import type { SupabaseClient } from './residentAuth';
 
-// SRS-102.1: data freshness for each town the resident follows.
+// SRS-102.1, SRS-102.2, SRS-102.3: data freshness for each town the resident follows.
 
 export type FollowedTown = { town_id: number; name: string; meeting_time_zone: string };
 
@@ -8,6 +8,7 @@ type CheckRow = {
   check_id: number;
   started_at: string;
   ended_at: string | null;
+  changes_found: boolean | null;
   source_check_collections: { result: string }[] | null;
 };
 
@@ -45,7 +46,7 @@ export function isSuccessfulCheck(check: CheckRow): boolean {
 export async function getFinishedChecks(supabase: SupabaseClient, townId: number): Promise<CheckRow[] | null> {
   const { data, error } = await supabase
     .from('source_checks')
-    .select('check_id, started_at, ended_at, source_check_collections(result)')
+    .select('check_id, started_at, ended_at, changes_found, source_check_collections(result)')
     .eq('town_id', townId)
     .not('ended_at', 'is', null)
     .order('started_at', { ascending: false })
@@ -63,6 +64,12 @@ export function lastSuccessfulCheckAt(checks: CheckRow[]): string | null {
 // A town with no finished check yet has nothing that failed, so it is false.
 export function latestCheckFailed(checks: CheckRow[]): boolean {
   return checks.length > 0 && !isSuccessfulCheck(checks[0]);
+}
+
+// SRS-102.3: true when the town's most recent finished check was successful and found
+// no new or changed records.
+export function latestCheckFoundNothingNew(checks: CheckRow[]): boolean {
+  return checks.length > 0 && isSuccessfulCheck(checks[0]) && checks[0].changes_found === false;
 }
 
 // "09/23/2026 2:00 PM ET": the date and time in the town's own time zone.
