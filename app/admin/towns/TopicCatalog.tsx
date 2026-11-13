@@ -105,7 +105,7 @@ export default function TopicCatalog({ token }: { token: string }) {
   }
 
   function handleRemoved(name: string) {
-    setSuccess(`Removed ${name}. Residents no longer see it in their topic list.`);
+    setSuccess(`Removed ${name}. Residents no longer see it in their topic list, and it was taken out of their followed topics.`);
     loadTopics();
   }
 

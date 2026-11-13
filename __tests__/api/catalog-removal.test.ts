@@ -11,6 +11,7 @@ const db = vi.hoisted(() => ({
     error: null as null | { message: string },
   },
   tables: [] as string[],
+  follows: { error: null as null | { message: string } },
   update: vi.fn(),
   eq: vi.fn(),
   is: vi.fn(),
@@ -36,6 +37,7 @@ vi.mock('../../lib/supabase', () => ({
         is: (column: string, value: unknown) => { db.is(column, value); return chain; },
         select: () => chain,
         maybeSingle: async () => db.removed,
+        delete: () => ({ eq: async (column: string, value: unknown) => { db.eq(column, value); return db.follows; } }),
       };
       return chain;
     }),
@@ -58,6 +60,7 @@ describe('Catalog entry removal (SRS-104.4)', () => {
     db.tables = [];
     db.role = { data: { account_role: 'System administrator' }, error: null };
     db.removed = { data: { topic_id: 7, name: 'Parks' }, error: null };
+    db.follows = { error: null };
   });
 
   // Acceptance criterion: removing "Parks" hides it from the resident topic selection section.
@@ -66,7 +69,7 @@ describe('Catalog entry removal (SRS-104.4)', () => {
 
     expect(res.status).toBe(200);
     expect(await res.json()).toEqual({ removed: { topic_id: 7, name: 'Parks' } });
-    expect(db.tables).toEqual(['topics']);
+    expect(db.tables).toEqual(['topics', 'user_followed_topics']);
     expect(db.update).toHaveBeenCalledWith({ removed_at: expect.any(String) });
     expect(db.eq).toHaveBeenCalledWith('topic_id', 7);
     expect(db.is).toHaveBeenCalledWith('removed_at', null);
