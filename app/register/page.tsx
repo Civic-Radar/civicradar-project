@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { useState } from 'react';
 import AuthCard, { inputClass, primaryButtonClass } from '../components/AuthCard';
 import { alertClasses } from '../components/ui/Alert';
+import { sendAuthRequest } from '../../lib/authForm';
 
 export default function RegisterPage() {
   const [email, setEmail] = useState('');
@@ -18,19 +19,18 @@ export default function RegisterPage() {
     setMessage('');
     setSuccess(false);
 
-    const response = await fetch('/api/auth/register', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email, password }),
-    });
-
-    const data = await response.json();
-    setLoading(false);
-    if (response.ok) {
+    // Issue #529: whatever goes wrong, the button is enabled again (finally)
+    // and an error message is shown instead of nothing happening.
+    try {
+      const reply = await sendAuthRequest('/api/auth/register', { email, password }, 'Registration failed.');
+      if (!reply.ok) {
+        setMessage(reply.message);
+        return;
+      }
       setSuccess(true);
       setMessage('Your account was created. You can sign in now.');
-    } else {
-      setMessage(data.error || 'Registration failed.');
+    } finally {
+      setLoading(false);
     }
   }
 
