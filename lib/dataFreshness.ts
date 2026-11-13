@@ -59,6 +59,12 @@ export function lastSuccessfulCheckAt(checks: CheckRow[]): string | null {
   return checks.find(isSuccessfulCheck)?.ended_at ?? null;
 }
 
+// SRS-102.2: true when the town's most recent finished check was not successful.
+// A town with no finished check yet has nothing that failed, so it is false.
+export function latestCheckFailed(checks: CheckRow[]): boolean {
+  return checks.length > 0 && !isSuccessfulCheck(checks[0]);
+}
+
 // "09/23/2026 2:00 PM ET": the date and time in the town's own time zone.
 export function formatCheckTime(isoTime: string, timeZone: string): string {
   return new Intl.DateTimeFormat('en-US', {
