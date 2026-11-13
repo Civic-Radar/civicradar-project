@@ -1,12 +1,19 @@
-// SRS-102.1, KJ, Last check time display
+// SRS-102.1, SRS-102.2, SRS-102.3, KJ, Data freshness
 import { describe, expect, it } from 'vitest';
-import { formatCheckTime, isSuccessfulCheck, lastSuccessfulCheckAt, latestCheckFailed } from '../../lib/dataFreshness';
+import {
+  formatCheckTime,
+  isSuccessfulCheck,
+  lastSuccessfulCheckAt,
+  latestCheckFailed,
+  latestCheckFoundNothingNew,
+} from '../../lib/dataFreshness';
 
-function check(id: number, endedAt: string | null, results: string[] = ['Complete']) {
+function check(id: number, endedAt: string | null, results: string[] = ['Complete'], changesFound = true) {
   return {
     check_id: id,
     started_at: endedAt ?? '2026-09-23T19:00:00Z',
     ended_at: endedAt,
+    changes_found: endedAt ? changesFound : null,
     source_check_collections: results.map((result) => ({ result })),
   };
 }
@@ -71,5 +78,32 @@ describe('latestCheckFailed (SRS-102.2)', () => {
 
   it('is false when the town has no finished check yet', () => {
     expect(latestCheckFailed([])).toBe(false);
+  });
+});
+
+describe('latestCheckFoundNothingNew (SRS-102.3)', () => {
+  it('is true when the most recent finished check was successful and found nothing new', () => {
+    expect(latestCheckFoundNothingNew([check(2, '2026-09-23T21:00:00Z', ['Complete'], false)])).toBe(true);
+  });
+
+  it('is false when the most recent finished check found new or changed records', () => {
+    expect(latestCheckFoundNothingNew([check(2, '2026-09-23T21:00:00Z', ['Complete'], true)])).toBe(false);
+  });
+
+  it('is false when the most recent finished check failed', () => {
+    expect(latestCheckFoundNothingNew([check(2, '2026-09-23T21:00:00Z', ['Failed'], false)])).toBe(false);
+  });
+
+  it('is false when only an older check found nothing new', () => {
+    expect(
+      latestCheckFoundNothingNew([
+        check(2, '2026-09-23T21:00:00Z', ['Complete'], true),
+        check(1, '2026-09-23T18:00:00Z', ['Complete'], false),
+      ]),
+    ).toBe(false);
+  });
+
+  it('is false when the town has no finished check yet', () => {
+    expect(latestCheckFoundNothingNew([])).toBe(false);
   });
 });
