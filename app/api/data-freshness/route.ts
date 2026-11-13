@@ -1,7 +1,14 @@
 import { getAuthenticatedUser, getToken } from '../../../lib/residentAuth';
-import { formatCheckTime, getFinishedChecks, getFollowedTowns, lastSuccessfulCheckAt } from '../../../lib/dataFreshness';
+import {
+  formatCheckTime,
+  getFinishedChecks,
+  getFollowedTowns,
+  lastSuccessfulCheckAt,
+  latestCheckFailed,
+} from '../../../lib/dataFreshness';
 
 // SRS-102.1: for each followed town, the date and time of its most recent successful check.
+// SRS-102.2: and whether its most recent check was not successful.
 
 const LOAD_ERROR = 'Data freshness could not be loaded. Please try again.';
 
@@ -26,6 +33,7 @@ export async function GET(request: Request) {
       town_id: town.town_id,
       name: town.name,
       last_successful_check: endedAt ? formatCheckTime(endedAt, town.meeting_time_zone) : null,
+      latest_check_failed: latestCheckFailed(checks),
     });
   }
 
