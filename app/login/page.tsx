@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import AuthCard, { inputClass, primaryButtonClass } from '../components/AuthCard';
 import { alertClasses } from '../components/ui/Alert';
 import { pathAfterSignIn } from '../../lib/setup';
@@ -16,6 +16,13 @@ export default function LoginPage() {
   const [password, setPassword] = useState('');
   const [message, setMessage] = useState('');
   const [loading, setLoading] = useState(false);
+
+  // Issue #521: signed-in pages send an expired sign-in here with ?expired=1.
+  useEffect(() => {
+    if (new URLSearchParams(window.location.search).get('expired') === '1') {
+      setMessage('Your session expired. Please sign in again.');
+    }
+  }, []);
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();

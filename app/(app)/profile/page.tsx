@@ -55,6 +55,9 @@ export default function ProfilePage() {
   const [token, setToken] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  // True when the profile could not be read, so the page doesn't offer to create
+  // a profile the user may already have (issue #521).
+  const [loadFailed, setLoadFailed] = useState(false);
 
   const [editing, setEditing] = useState(false);
   const [biography, setBiography] = useState('');
@@ -81,14 +84,25 @@ export default function ProfilePage() {
 
   async function fetchProfile(accessToken: string) {
     setLoading(true);
-    const res = await fetch('/api/profile', {
-      headers: { Authorization: `Bearer ${accessToken}` },
-    });
-    const data = await res.json();
-    setLoading(false);
-    if (!res.ok) { setError(data.error || 'Failed to load profile.'); return; }
-    setProfile(data.profile);
-    if (data.profile) setBiography(data.profile.biography);
+    setLoadFailed(false);
+    try {
+      const res = await fetch('/api/profile', {
+        headers: { Authorization: `Bearer ${accessToken}` },
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setError(data.error || 'Failed to load profile.');
+        setLoadFailed(true);
+        return;
+      }
+      setProfile(data.profile);
+      if (data.profile) setBiography(data.profile.biography);
+    } catch {
+      setError('Failed to load profile.');
+      setLoadFailed(true);
+    } finally {
+      setLoading(false);
+    }
   }
 
   async function handleCreate(event: React.FormEvent) {
@@ -154,6 +168,19 @@ export default function ProfilePage() {
           <Link href="/login" className={buttonClasses({ variant: 'primary' })}>
             Go to login
           </Link>
+        </section>
+      </main>
+    );
+  }
+
+  if (loadFailed) {
+    return (
+      <main className="min-w-0 flex-1 p-4 text-fg sm:p-8">
+        <section className="space-y-4">
+          <p className={alertClasses('error')}>{error || 'Failed to load profile.'}</p>
+          <button type="button" onClick={() => fetchProfile(token)} className={buttonClasses({ variant: 'primary' })}>
+            Try again
+          </button>
         </section>
       </main>
     );
