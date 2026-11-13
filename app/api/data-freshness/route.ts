@@ -5,10 +5,12 @@ import {
   getFollowedTowns,
   lastSuccessfulCheckAt,
   latestCheckFailed,
+  latestCheckFoundNothingNew,
 } from '../../../lib/dataFreshness';
 
 // SRS-102.1: for each followed town, the date and time of its most recent successful check.
-// SRS-102.2: and whether its most recent check was not successful.
+// SRS-102.2: whether its most recent check was not successful.
+// SRS-102.3: whether its most recent check was successful and found nothing new.
 
 const LOAD_ERROR = 'Data freshness could not be loaded. Please try again.';
 
@@ -34,6 +36,7 @@ export async function GET(request: Request) {
       name: town.name,
       last_successful_check: endedAt ? formatCheckTime(endedAt, town.meeting_time_zone) : null,
       latest_check_failed: latestCheckFailed(checks),
+      no_new_information: latestCheckFoundNothingNew(checks),
     });
   }
 
