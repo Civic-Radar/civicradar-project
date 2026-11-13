@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import DataFreshness from './DataFreshness';
 import TownPreferences from './TownPreferences';
 import TopicPreferences from './TopicPreferences';
 
@@ -13,6 +14,8 @@ export default function PreferencesPage() {
           <TownPreferences />
           <TopicPreferences />
         </div>
+
+        <DataFreshness />
 
         <p className="mt-8 text-sm text-fg-muted">
           Back to <Link href="/dashboard" className="text-accent hover:underline">dashboard</Link>
