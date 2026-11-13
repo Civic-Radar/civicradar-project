@@ -1,6 +1,9 @@
 import { getSupabaseClient } from '../../../lib/supabase';
 
 // SRS-101.4: save and load the topics a resident follows.
+// SRS-104.5: read the catalog from the database on every request, so a saved catalog change
+// shows in this selection list right away, without a redeployment.
+export const dynamic = 'force-dynamic';
 
 type SupabaseClient = NonNullable<ReturnType<typeof getSupabaseClient>>;
 type Topic = { topic_id: number; name: string };
