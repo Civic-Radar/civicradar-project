@@ -1,5 +1,9 @@
 import { ensureUserAccount, getAuthenticatedUser, getToken, type SupabaseClient } from '../../../lib/residentAuth';
 
+// SRS-104.5: read the catalog from the database on every request, so a saved catalog change
+// shows in this selection list right away, without a redeployment.
+export const dynamic = 'force-dynamic';
+
 type Town = { town_id: number; name: string };
 
 const LOAD_ERROR = 'Your followed towns could not be loaded. Please try again.';
