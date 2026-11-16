@@ -43,7 +43,6 @@ describe('Topic tagger (SRS-401.4)', () => {
 
   it('matches whole words only', () => {
     expect(topicNames('Warehousing permit for Canal Street.')).toEqual([]);
-    expect(topicNames('Review of new housings.')).toEqual([]);
   });
 
   it('matches each part of a multi-part topic name', () => {
@@ -185,5 +184,66 @@ describe('Agenda passage saved with a tag (#511)', () => {
 
   it('writes line breaks and repeated spaces as single spaces', () => {
     expect(passage('  Housing update\n\n  from the   planning office.  ')).toBe('Housing update from the planning office.');
+  });
+});
+
+// Issue #507 (SRS-401.4): an agenda item that discusses a topic in another form
+// of the topic's own words gets the tag. Words are compared with their plural
+// ending removed, hyphens count as spaces, "re" may come before a word, and a
+// multi-word topic matches when at most one other word is between its words.
+describe('Other forms of a topic\'s words (#507)', () => {
+  it.each([
+    ['Public hearing on the FY2027 property tax rate.', 'Taxes & Municipal Budget'],
+    ['Forest River Park playground renovation.', 'Parks & Recreation'],
+    ['Proposed land-use amendment for Highland Ave.', 'Zoning & Land Use'],
+    ['Approve the FY27 school department budget.', 'School Budget'],
+    ['Rezoning of 10 Main St', 'Zoning & Land Use'],
+  ])('tags "%s" with %s (the table in #507)', (text, topic) => {
+    expect(topicNames(text)).toContain(topic);
+  });
+
+  it('matches a singular topic word in its plural form', () => {
+    expect(topicNames('Review of new housings.')).toEqual(['Housing']);
+  });
+
+  it('matches the words of a multi-word topic in either order', () => {
+    expect(topicNames('Budget for schools.')).toEqual(['School Budget']);
+  });
+
+  it('tags parking with Transportation & Parking only, not Parks & Recreation', () => {
+    expect(topicNames('Resident parking permit fees.')).toEqual(['Transportation & Parking']);
+  });
+
+  it('does not match words that only contain a topic word', () => {
+    expect(topicNames('Warehousing permit for Canal Street.')).toEqual([]);
+    expect(topicNames('Taxonomy of trees in the arboretum.')).toEqual([]);
+  });
+
+  it('does not match a multi-word topic whose words are far apart', () => {
+    expect(topicNames('Public comment on the safety of the bridge.')).toEqual([]);
+    expect(topicNames('School committee will discuss the new library budget.')).toEqual([]);
+  });
+
+  it('does not count "park" used as a verb as Parks & Recreation', () => {
+    expect(topicNames('Residents may park for free during these times.')).toEqual([]);
+    expect(topicNames('Vehicles that park in these designated spaces will be towed.')).toEqual([]);
+  });
+
+  it('counts a capitalized Park as Parks & Recreation, and lowercase "parks" too', () => {
+    expect(topicNames('Access road next to Memorial Park.')).toEqual(['Parks & Recreation']);
+    expect(topicNames('Transfer to the Park & Rec golf course account.')).toEqual(['Parks & Recreation']);
+    expect(topicNames('Maintenance plan for city parks.')).toEqual(['Parks & Recreation']);
+  });
+
+  it('does not count a topic word that is part of a street address', () => {
+    expect(topicNames('Public guide license for 6 Hale Park Ave., Beverly.')).toEqual([]);
+    expect(topicNames('Sign permit for 12 Housing St.')).toEqual([]);
+    expect(topicNames('Repaving of Park Street.')).toEqual([]);
+  });
+
+  it('saves the passage around the words that matched', () => {
+    const [tag] = tagAgendaText([item(1, 'Public hearing on the FY2027 property tax rate.')], CATALOG);
+
+    expect(tag).toMatchObject({ topic_name: 'Taxes & Municipal Budget', evidence_text: 'Public hearing on the FY2027 property tax rate.' });
   });
 });
