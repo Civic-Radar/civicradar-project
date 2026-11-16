@@ -518,13 +518,9 @@ Traces to: UR-208
 
 ## **UR-209 — Document Sort Order**
 
-**UR-209, MS — Document Sort Order.** As a user, I want my documents sorted with the most recent first, so that I can see the latest activity without scrolling.
+**UR-209, MS — Document Sort Order.** As a user, I want my documents split into upcoming and past meetings, with the next meeting first, so that I can see what is coming up without scrolling.
 
-**SRS-209.1, MS, Newest-first sort.** The system shall sort the document list by meeting date, newest first, when the Documents page loads.
-
-**Acceptance Criteria:** Given documents with meeting dates 09/01, 09/08, and 09/15/2026, When the Documents page loads, Then they appear in the order 09/15, 09/08, 09/01.
-
-Traces to: UR-209
+*SRS-209.1 (Newest-first sort) was removed on 11/16/2026 and replaced by SRS-209.4: with the newest meeting date first, far-future meetings were listed above the next one.*
 
 **SRS-209.2, MS, Same-date tie-breaker.** The system shall order documents that share a meeting date by retrieval time, newest first, when the Documents page loads.
 
@@ -532,9 +528,15 @@ Traces to: UR-209
 
 Traces to: UR-209
 
-**SRS-209.3, MS, Undated documents placement.** The system shall place documents with no meeting date after all dated documents when the Documents page loads.
+**SRS-209.3, MS, Undated documents placement.** The system shall place documents with no meeting date after all dated documents in the "Past meetings" list (SRS-209.4) when the Documents page loads.
 
-**Acceptance Criteria:** Given 10 dated documents and 1 undated document, When the Documents page loads, Then the undated document is the 11th entry.
+**Acceptance Criteria:** Given 10 past dated documents and 1 undated document, When the user selects "Past meetings", Then the undated document is the 11th entry.
+
+Traces to: UR-209
+
+**SRS-209.4, MS, Upcoming and past meetings.** The system shall display "Upcoming meetings" and "Past meetings" buttons above the document list, with "Upcoming meetings" selected each time the Documents page loads; while "Upcoming meetings" is selected, list only the documents whose meeting date is today or later, soonest first; and while "Past meetings" is selected, list only the documents whose meeting date is before today, most recent first.
+
+**Acceptance Criteria:** Given today is 11/16/2026 and the documents in scope have meeting dates 11/10/2026, 11/18/2026 and 12/07/2026, When the Documents page loads, Then "Upcoming meetings" is selected and the list shows the 11/18/2026 document above the 12/07/2026 document and does not show the 11/10/2026 document; and When the user selects "Past meetings", Then the list shows only the 11/10/2026 document.
 
 Traces to: UR-209
 
@@ -602,9 +604,9 @@ Traces to: UR-213
 
 Traces to: UR-213
 
-**SRS-213.3, MS, Combined list ordering.** The system shall apply the sort order in SRS-209.1 across all towns, without grouping entries by town, when the "All towns" scope is selected.
+**SRS-213.3, MS, Combined list ordering.** The system shall apply the upcoming and past ordering in SRS-209.4 across all towns, without grouping entries by town, when the "All towns" scope is selected.
 
-**Acceptance Criteria:** Given a Town A document dated 09/10 and a Town B document dated 09/12 are both in scope, When "All towns" is selected, Then the Town B document appears above the Town A document.
+**Acceptance Criteria:** Given a Town A document dated 09/10 and a Town B document dated 09/12 are both in scope and both meetings are past, When "All towns" and "Past meetings" are selected, Then the Town B document appears above the Town A document.
 
 Traces to: UR-213
 
@@ -2007,7 +2009,7 @@ Every UR is expanded into at least one SRS requirement. Counts are in parenthese
 | UR-206 | Pending Summary Indicator | MS | SRS-206.1 to SRS-206.2 (2) | SRS-NFR-8 |
 | UR-207 | Summary Source Link | MS | SRS-207.1 to SRS-207.4 (3) | — |
 | UR-208 | Automatic Document Updates | MS | SRS-208.1 to SRS-208.4 (4) | SRS-NFR-9 |
-| UR-209 | Document Sort Order | MS | SRS-209.1 to SRS-209.3 (3) | — |
+| UR-209 | Document Sort Order | MS | SRS-209.2 to SRS-209.4 (3) | — |
 | UR-210 | Failed Summary Notification | MS | SRS-210.1 to SRS-210.3 (3) | — |
 | UR-211 | PDF Access Without Summary | MS | SRS-211.1 (1) | — |
 | UR-212 | Document Town Tag | MS | SRS-212.1 to SRS-212.2 (2) | SRS-NFR-10 |
