@@ -1,5 +1,5 @@
 -- =============================================================================
--- Test: Incomplete matching result (SRS-401.11, Task 401.11-2)
+-- Test: Incomplete matching result (SRS-401.11, Tasks 401.11-2 and 401.11-4)
 -- Reviewed by: EG (Erick Gonzalez)
 --
 -- How to run: in the Supabase SQL editor, run the whole file. No account is
@@ -24,8 +24,11 @@ DECLARE
   salem INTEGER;
   brookline INTEGER;
   beverly INTEGER;  -- followed, never checked
+  newton INTEGER;   -- not followed; one of its meetings is followed directly (#510)
   housing INTEGER;
   m_salem BIGINT;
+  m_newton BIGINT;
+  m_beverly BIGINT;
   c BIGINT;
   running_check BIGINT;
   failed JSONB;
@@ -44,6 +47,9 @@ BEGIN
   INSERT INTO towns (name, source_account_id, meeting_time_zone)
     VALUES ('Test Incomplete Beverly', 'test-incomplete-beverly', 'America/New_York')
     RETURNING town_id INTO beverly;
+  INSERT INTO towns (name, source_account_id, meeting_time_zone)
+    VALUES ('Test Incomplete Newton', 'test-incomplete-newton', 'America/New_York')
+    RETURNING town_id INTO newton;
   INSERT INTO topics (name) VALUES ('Test Incomplete Housing') RETURNING topic_id INTO housing;
 
   -- The resident follows Salem, Brookline and Housing. A Salem meeting is
@@ -122,6 +128,49 @@ BEGIN
     RAISE EXCEPTION 'CHECK FAILED: A followed town never checked is listed (towns %)', failed;
   END IF;
 
-  RAISE EXCEPTION 'ALL CHECKS PASSED (4 checks). This error rolls back the test data.';
+  -- 5. Issue #510: the resident follows a Newton meeting directly but not
+  -- Newton. Newton's most recent check failed, so the meeting may be out of
+  -- date (moved or canceled): Newton is listed and the result is Incomplete.
+  INSERT INTO meetings (town_id, source_meeting_id, title, source_start_time, start_at)
+    VALUES (newton, 'test-incomplete-2', 'Newton City Council', '11/12/2026 7:00 PM', '2026-11-12 19:00:00-05')
+    RETURNING meeting_id INTO m_newton;
+  INSERT INTO user_followed_meetings (user_id, meeting_id) VALUES (resident, m_newton);
+  INSERT INTO source_checks (town_id, started_at, ended_at, changes_found)
+    VALUES (newton, now() - interval '2 hours', now() - interval '1 hour', false)
+    RETURNING check_id INTO c;
+  INSERT INTO source_check_collections (check_id, collection, result)
+    VALUES (c, 'Meetings', 'Failed'), (c, 'Documents', 'Complete');
+  SELECT coalesce(jsonb_agg(t), '[]'::jsonb) INTO failed FROM unsuccessful_check_towns(resident) t;
+  IF failed IS DISTINCT FROM jsonb_build_array(
+       jsonb_build_object('town_id', beverly, 'name', 'Test Incomplete Beverly'),
+       jsonb_build_object('town_id', newton, 'name', 'Test Incomplete Newton')) THEN
+    RAISE EXCEPTION 'CHECK FAILED: The town of a directly followed meeting whose check failed is listed (towns %)', failed;
+  END IF;
+
+  -- 6. A town that is both followed and the town of a directly followed
+  -- meeting is listed once.
+  INSERT INTO meetings (town_id, source_meeting_id, title, source_start_time, start_at)
+    VALUES (beverly, 'test-incomplete-3', 'Beverly City Council', '11/13/2026 7:00 PM', '2026-11-13 19:00:00-05')
+    RETURNING meeting_id INTO m_beverly;
+  INSERT INTO user_followed_meetings (user_id, meeting_id) VALUES (resident, m_beverly);
+  SELECT coalesce(jsonb_agg(t), '[]'::jsonb) INTO failed FROM unsuccessful_check_towns(resident) t;
+  IF failed IS DISTINCT FROM jsonb_build_array(
+       jsonb_build_object('town_id', beverly, 'name', 'Test Incomplete Beverly'),
+       jsonb_build_object('town_id', newton, 'name', 'Test Incomplete Newton')) THEN
+    RAISE EXCEPTION 'CHECK FAILED: A town that is followed and has a directly followed meeting is listed once (towns %)', failed;
+  END IF;
+
+  -- 7. Once Newton's newest check succeeds, Newton is no longer listed.
+  INSERT INTO source_checks (town_id, started_at, ended_at, changes_found)
+    VALUES (newton, now() - interval '10 minutes', now() - interval '5 minutes', false)
+    RETURNING check_id INTO c;
+  INSERT INTO source_check_collections (check_id, collection, result)
+    VALUES (c, 'Meetings', 'Complete'), (c, 'Documents', 'Complete');
+  SELECT coalesce(jsonb_agg(t), '[]'::jsonb) INTO failed FROM unsuccessful_check_towns(resident) t;
+  IF failed IS DISTINCT FROM jsonb_build_array(jsonb_build_object('town_id', beverly, 'name', 'Test Incomplete Beverly')) THEN
+    RAISE EXCEPTION 'CHECK FAILED: A newer successful check in the directly followed meeting''s town removes it from the list (towns %)', failed;
+  END IF;
+
+  RAISE EXCEPTION 'ALL CHECKS PASSED (7 checks). This error rolls back the test data.';
 END;
 $$;

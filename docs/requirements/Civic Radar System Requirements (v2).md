@@ -56,6 +56,8 @@ Civic Radar is a browser-based platform that helps residents follow local govern
 
 14\. **Preferences page:** A page containing the towns, topics, and email settings for the users; they can change any preference there.
 
+15\. **Required check:** For a resident, the most recent check of each town the resident follows and of the town of each meeting the resident follows directly.
+
  
 
 # **2\. General User Needs**
@@ -1281,7 +1283,11 @@ Traces to: UR-401
 
 **SRS-401.11, EG, Incomplete matching result.** The system shall return a matching result marked Incomplete, listing each town whose most recent check was not successful, when any required check was not successful.
 
-**Acceptance Criteria:** Given Brookline's most recent check failed and Salem's succeeded, When the matching result is returned, Then it is marked Incomplete, lists Brookline, and still includes Salem's matching meetings.
+**Acceptance Criteria:**
+
+•       Given Brookline's most recent check failed and Salem's succeeded, When the matching result is returned, Then it is marked Incomplete, lists Brookline, and still includes Salem's matching meetings.
+
+•       Given the resident follows Salem and one Newton meeting directly but not Newton, and Newton's most recent check failed, When the matching result is returned, Then it is marked Incomplete and lists Newton.
 
 Traces to: UR-401
 
