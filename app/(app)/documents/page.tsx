@@ -8,7 +8,7 @@ import Alert from '../../components/ui/Alert';
 import Badge from '../../components/ui/Badge';
 import SignedOutNotice from '../../components/ui/SignedOutNotice';
 import { meetingDateLabel } from '../../../lib/documentDates';
-import { EMPTY_LIST_MESSAGE, SETUP_LINK_HREF, SETUP_LINK_TEXT, SETUP_MESSAGE } from './documentsMessages';
+import { EMPTY_LIST_MESSAGE, NO_RESULTS_MESSAGE, SETUP_LINK_HREF, SETUP_LINK_TEXT, SETUP_MESSAGE } from './documentsMessages';
 import { documentsMatchingTitle } from './documentsMatchingTitle';
 import { documentsOfType } from './documentsOfType';
 import TitleSearch from './TitleSearch';
@@ -116,6 +116,13 @@ export default function DocumentsPage() {
           {state.documents.length === 0 ? (
             <p className="mt-3 rounded-xl border border-line bg-card px-6 py-12 text-center font-semibold text-fg">
               {EMPTY_LIST_MESSAGE}
+            </p>
+          ) : null}
+
+          {/* SRS-216.3: a submitted search found nothing in a scope that has documents. */}
+          {state.documents.length > 0 && titleSearch.submittedTerm !== '' && documents.length === 0 ? (
+            <p role="status" className="mt-3 rounded-xl border border-line bg-card px-6 py-12 text-center font-semibold text-fg">
+              {NO_RESULTS_MESSAGE}
             </p>
           ) : null}
 
