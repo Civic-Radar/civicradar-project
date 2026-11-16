@@ -35,6 +35,7 @@ function entry(overrides: Overrides): DocumentListEntry {
     town_name: 'Salem',
     // Midday UTC, so the date is the same in any US time zone.
     meeting_start_at: '2026-10-19T16:00:00+00:00',
+    meeting_time_zone: 'America/New_York',
     ...overrides,
   };
 }
