@@ -46,7 +46,7 @@ export default function DocumentsPage() {
   const state = useDocuments();
   // Empty means All documents.
   const [selectedType, setSelectedType] = useState('');
-  // The title search (SRS-216.1, SRS-216.2).
+  // The title search (SRS-216.1, SRS-216.2, clearing it SRS-216.4).
   const titleSearch = useTitleSearch();
 
   // The loaded documents are exactly the current scope (the followed towns), so the
@@ -99,7 +99,13 @@ export default function DocumentsPage() {
               </select>
             </label>
             {/* SRS-216.1: the Search by title field, above the count and the list. */}
-            <TitleSearch query={titleSearch.query} onQueryChange={titleSearch.type} onSubmit={titleSearch.submit} />
+            <TitleSearch
+              query={titleSearch.query}
+              onQueryChange={titleSearch.type}
+              onSubmit={titleSearch.submit}
+              searchActive={titleSearch.submittedTerm !== ''}
+              onClear={titleSearch.clear}
+            />
           </div>
 
           <div className="mt-6 flex flex-wrap items-center justify-between gap-2 text-sm text-fg-muted">

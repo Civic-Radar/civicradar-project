@@ -10,7 +10,7 @@ export type TitleSearchState = {
   submittedTerm: string;
 };
 
-export type TitleSearchAction = { type: 'typed'; value: string } | { type: 'submitted' };
+export type TitleSearchAction = { type: 'typed'; value: string } | { type: 'submitted' } | { type: 'cleared' };
 
 export const INITIAL_TITLE_SEARCH: TitleSearchState = { query: '', submittedTerm: '' };
 
@@ -18,9 +18,14 @@ export function titleSearchReducer(state: TitleSearchState, action: TitleSearchA
   switch (action.type) {
     case 'typed':
       // Typing alone does not filter the list; only submitting does (SRS-216.2).
-      return { ...state, query: action.value };
+      // An emptied field (text deleted, or the field's own clear button) ends the
+      // search, so every document in scope is listed again (SRS-216.4).
+      return { query: action.value, submittedTerm: action.value.trim() === '' ? '' : state.submittedTerm };
     case 'submitted':
       return { ...state, submittedTerm: state.query.trim() };
+    case 'cleared':
+      // The Clear search button (SRS-216.4).
+      return INITIAL_TITLE_SEARCH;
     default:
       return state;
   }
@@ -29,6 +34,7 @@ export function titleSearchReducer(state: TitleSearchState, action: TitleSearchA
 export type TitleSearch = TitleSearchState & {
   type: (value: string) => void;
   submit: () => void;
+  clear: () => void;
 };
 
 export function useTitleSearch(): TitleSearch {
@@ -37,5 +43,6 @@ export function useTitleSearch(): TitleSearch {
     ...state,
     type: (value) => dispatch({ type: 'typed', value }),
     submit: () => dispatch({ type: 'submitted' }),
+    clear: () => dispatch({ type: 'cleared' }),
   };
 }
