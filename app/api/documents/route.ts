@@ -22,8 +22,10 @@ export async function GET(request: Request) {
 
   if (followsError) return Response.json({ error: LOAD_ERROR }, { status: 500 });
 
+  // follows_towns tells the page whether the user follows any town, so it can
+  // show the setup message (SRS-201.3) rather than an empty list.
   const townIds = ((follows ?? []) as { town_id: number }[]).map((row) => row.town_id);
-  if (townIds.length === 0) return Response.json({ documents: [] }, { status: 200 });
+  if (townIds.length === 0) return Response.json({ documents: [], follows_towns: false }, { status: 200 });
 
   const { data: documents, error } = await supabase!
     .from('documents')
@@ -72,5 +74,5 @@ export async function GET(request: Request) {
     meeting_time_zone: townZones.get(row.town_id) ?? null,
   }));
 
-  return Response.json({ documents: entries }, { status: 200 });
+  return Response.json({ documents: entries, follows_towns: true }, { status: 200 });
 }
