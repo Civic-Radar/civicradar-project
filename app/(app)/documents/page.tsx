@@ -7,6 +7,7 @@ import LeafLoader from '../../components/art/LeafLoader';
 import Alert from '../../components/ui/Alert';
 import Badge from '../../components/ui/Badge';
 import SignedOutNotice from '../../components/ui/SignedOutNotice';
+import { meetingDateLabel } from '../../../lib/documentDates';
 import { documentsOfType } from './documentsOfType';
 import { useDocuments, type DocumentListEntry } from './useDocuments';
 
@@ -23,11 +24,6 @@ const TILE_CLASS: Record<DocumentType, string> = {
   Other: 'bg-raised text-fg-muted',
 };
 
-// MM/DD/YYYY. The list response has no town time zone, so this uses the viewer's.
-function meetingDate(startAt: string | null): string {
-  if (!startAt) return 'Date not available';
-  return new Intl.DateTimeFormat('en-US', { month: '2-digit', day: '2-digit', year: 'numeric' }).format(new Date(startAt));
-}
 
 // Summary status pill: Pending (SRS-206.2), Failed (SRS-210.3), Complete.
 function StatusPill({ status }: { status: DocumentListEntry['summary_status'] }) {
@@ -110,7 +106,8 @@ export default function DocumentsPage() {
                       {doc.title}
                     </Link>
                     <p className="mt-1 text-sm text-fg-muted">
-                      {[doc.document_type, doc.town_name, meetingDate(doc.meeting_start_at)].filter(Boolean).join(' · ')}
+                      {/* SRS-202.2: MM/DD/YYYY in the town's time zone, so every viewer sees the same date. */}
+                      {[doc.document_type, doc.town_name, meetingDateLabel(doc.meeting_start_at, doc.meeting_time_zone)].filter(Boolean).join(' · ')}
                     </p>
                   </div>
                   <StatusPill status={doc.summary_status} />
