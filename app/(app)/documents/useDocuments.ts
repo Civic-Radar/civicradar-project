@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react';
 
 // Fields returned by GET /api/documents (SRS-201.1, town_name SRS-212.1,
-// summary_status SRS-210.3, document_type and meeting_start_at for the entry's details line).
+// summary_status SRS-210.3, document_type and meeting_start_at for the entry's details line,
+// meeting_time_zone so the meeting date uses the town's zone, SRS-202.2).
 export type DocumentListEntry = {
   document_id: number;
   title: string;
@@ -12,6 +13,7 @@ export type DocumentListEntry = {
   document_type: 'Agenda' | 'Packet' | 'Minutes' | 'Other';
   town_name: string | null;
   meeting_start_at: string | null;
+  meeting_time_zone: string | null;
 };
 
 export type DocumentsState =
