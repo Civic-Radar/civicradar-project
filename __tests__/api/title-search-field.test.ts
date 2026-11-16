@@ -9,6 +9,13 @@ import type { DocumentListEntry, DocumentsState } from '../../app/(app)/document
 const hook = vi.hoisted(() => ({ state: { status: 'loading' } as DocumentsState }));
 vi.mock('../../app/(app)/documents/useDocuments', () => ({ useDocuments: () => hook.state }));
 
+// This file is not about the upcoming and past lists (SRS-209.4), so every document is
+// treated as upcoming, in the order the page passes it.
+vi.mock('../../lib/meetingTimeline', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../../lib/meetingTimeline')>();
+  return { ...actual, splitByMeetingDate: <T>(documents: T[]) => ({ upcoming: documents, past: [] as T[] }) };
+});
+
 import DocumentsPage from '../../app/(app)/documents/page';
 import TitleSearch, { TITLE_SEARCH_LABEL } from '../../app/(app)/documents/TitleSearch';
 import { INITIAL_TITLE_SEARCH, titleSearchReducer } from '../../app/(app)/documents/useTitleSearch';

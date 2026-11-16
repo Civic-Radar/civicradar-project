@@ -16,6 +16,13 @@ vi.mock('../../app/(app)/documents/useTitleSearch', async (importOriginal) => {
   return { ...actual, useTitleSearch: () => search.state };
 });
 
+// This file is not about the upcoming and past lists (SRS-209.4), so every document is
+// treated as upcoming, in the order the page passes it.
+vi.mock('../../lib/meetingTimeline', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../../lib/meetingTimeline')>();
+  return { ...actual, splitByMeetingDate: <T>(documents: T[]) => ({ upcoming: documents, past: [] as T[] }) };
+});
+
 import DocumentsPage from '../../app/(app)/documents/page';
 import TitleSearch, { CLEAR_SEARCH_LABEL } from '../../app/(app)/documents/TitleSearch';
 import { INITIAL_TITLE_SEARCH, titleSearchReducer } from '../../app/(app)/documents/useTitleSearch';
@@ -82,7 +89,8 @@ describe('Clear search: the SRS-216.4 example', () => {
 
 describe('Clear search button (SRS-216.4)', () => {
   const buttons = (markup: string) =>
-    Array.from(markup.matchAll(/<button\b[^>]*>([\s\S]*?)<\/button>/g), ([, inner]) => inner.replace(/<[^>]*>/g, '').trim());
+    // Only the title search's buttons; the Upcoming and Past meetings buttons (SRS-209.4) are left out.
+    Array.from(markup.matchAll(/<button\b(?![^>]*aria-pressed)[^>]*>([\s\S]*?)<\/button>/g), ([, inner]) => inner.replace(/<[^>]*>/g, '').trim());
 
   it('shows only while a search is active', () => {
     expect(buttons(render(INITIAL_TITLE_SEARCH))).toEqual(['Search']);

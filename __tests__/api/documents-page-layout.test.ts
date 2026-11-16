@@ -17,6 +17,13 @@ vi.mock('../../app/(app)/documents/useDocuments', () => ({
   useDocuments: () => hook.state,
 }));
 
+// This file is not about the upcoming and past lists (SRS-209.4), so every document is
+// treated as upcoming, in the order the page passes it.
+vi.mock('../../lib/meetingTimeline', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../../lib/meetingTimeline')>();
+  return { ...actual, splitByMeetingDate: <T>(documents: T[]) => ({ upcoming: documents, past: [] as T[] }) };
+});
+
 import DocumentsPage from '../../app/(app)/documents/page';
 import { documentsOfType } from '../../app/(app)/documents/documentsOfType';
 
@@ -106,8 +113,9 @@ describe('Documents page header', () => {
 
     expect(markup).not.toContain('Towns I follow');
     expect(markup).not.toContain('All towns');
-    // The only button is the title search's Search button (SRS-216.1), not a scope tab.
-    expect(count(markup, 'button')).toBe(1);
+    // The buttons are the title search's Search button (SRS-216.1) and the Upcoming
+    // meetings and Past meetings buttons (SRS-209.4), not scope tabs.
+    expect(count(markup, 'button')).toBe(3);
     expect(markup).toMatch(/<button type="submit"[^>]*>Search<\/button>/);
   });
 });
@@ -149,8 +157,9 @@ describe('Documents page type filter and status line', () => {
     const text = textOf(render([entry({ document_id: 1 }), entry({ document_id: 2 }), entry({ document_id: 3 })]));
 
     expect(text).toContain('3 documents');
-    expect(text).toContain('Newest first');
-    expect(text).not.toContain('Newest meeting first');
+    // Upcoming meetings is selected when the page loads, so the label is Soonest first (SRS-209.4).
+    expect(text).toContain('Soonest first');
+    expect(text).not.toContain('Newest first');
   });
 
   it('says 1 document for a single document and 0 documents for none', () => {
