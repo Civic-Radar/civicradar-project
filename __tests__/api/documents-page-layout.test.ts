@@ -106,7 +106,9 @@ describe('Documents page header', () => {
 
     expect(markup).not.toContain('Towns I follow');
     expect(markup).not.toContain('All towns');
-    expect(count(markup, 'button')).toBe(0);
+    // The only button is the title search's Search button (SRS-216.1), not a scope tab.
+    expect(count(markup, 'button')).toBe(1);
+    expect(markup).toMatch(/<button type="submit"[^>]*>Search<\/button>/);
   });
 });
 
