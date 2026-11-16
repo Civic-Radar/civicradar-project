@@ -36,7 +36,7 @@ const DOCS = [entry(1, 'Planning Board Agenda'), entry(2, 'City Council Minutes'
 function render(documents: DocumentListEntry[], query: string, submittedTerm: string): string {
   vi.stubGlobal('React', React);
   hook.state = { status: 'loaded', documents, followsTowns: true };
-  search.state = { query, submittedTerm, type: vi.fn(), submit: vi.fn() };
+  search.state = { query, submittedTerm, type: vi.fn(), submit: vi.fn(), clear: vi.fn() };
   return renderToStaticMarkup(React.createElement(DocumentsPage));
 }
 

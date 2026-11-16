@@ -41,7 +41,7 @@ vi.mock('../../app/(app)/documents/useDocuments', () => ({ useDocuments: () => h
 const search = vi.hoisted(() => ({ state: null as null | TitleSearchHook }));
 vi.mock('../../app/(app)/documents/useTitleSearch', async (importOriginal) => {
   const actual = await importOriginal<typeof import('../../app/(app)/documents/useTitleSearch')>();
-  return { ...actual, useTitleSearch: () => search.state ?? { ...actual.INITIAL_TITLE_SEARCH, type: () => {}, submit: () => {} } };
+  return { ...actual, useTitleSearch: () => search.state ?? { ...actual.INITIAL_TITLE_SEARCH, type: () => {}, submit: () => {}, clear: () => {} } };
 });
 
 import { GET } from '../../app/api/documents/route';
@@ -67,7 +67,7 @@ function entry(id: number, title: string, document_type: DocumentListEntry['docu
 }
 
 function searchState(submittedTerm: string): TitleSearchHook {
-  return { query: submittedTerm, submittedTerm, type: vi.fn(), submit: vi.fn() };
+  return { query: submittedTerm, submittedTerm, type: vi.fn(), submit: vi.fn(), clear: vi.fn() };
 }
 
 function render(documents: DocumentListEntry[], submittedTerm: string): string {
