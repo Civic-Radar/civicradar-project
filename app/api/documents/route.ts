@@ -34,17 +34,19 @@ export async function GET(request: Request) {
 
   if (error) return Response.json({ error: LOAD_ERROR }, { status: 500 });
 
-  // Each entry's town name for its tag (SRS-212.1). documents has no foreign key to towns, so no embed.
+  // Each entry's town name for its tag (SRS-212.1) and the town's meeting time
+  // zone, so the page shows the meeting date in the town's zone (SRS-202.2).
+  // documents has no foreign key to towns, so no embed.
   const { data: towns, error: townsError } = await supabase!
     .from('towns')
-    .select('town_id, name')
+    .select('town_id, name, meeting_time_zone')
     .in('town_id', townIds);
 
   if (townsError) return Response.json({ error: LOAD_ERROR }, { status: 500 });
 
-  const townNames = new Map(
-    ((towns ?? []) as { town_id: number; name: string | null }[]).map((row) => [row.town_id, row.name]),
-  );
+  const townRows = (towns ?? []) as { town_id: number; name: string | null; meeting_time_zone: string | null }[];
+  const townNames = new Map(townRows.map((row) => [row.town_id, row.name]));
+  const townZones = new Map(townRows.map((row) => [row.town_id, row.meeting_time_zone]));
 
   // Each entry's meeting start time for its date, from one read for all listed meetings.
   const documentRows = (documents ?? []) as { town_id: number; meeting_id: number }[];
@@ -67,6 +69,7 @@ export async function GET(request: Request) {
     ...row,
     town_name: townNames.get(row.town_id) ?? null,
     meeting_start_at: meetingStarts.get(row.meeting_id) ?? null,
+    meeting_time_zone: townZones.get(row.town_id) ?? null,
   }));
 
   return Response.json({ documents: entries }, { status: 200 });
