@@ -9,6 +9,7 @@ import Badge from '../../components/ui/Badge';
 import SignedOutNotice from '../../components/ui/SignedOutNotice';
 import { meetingDateLabel } from '../../../lib/documentDates';
 import { EMPTY_LIST_MESSAGE, SETUP_LINK_HREF, SETUP_LINK_TEXT, SETUP_MESSAGE } from './documentsMessages';
+import { documentsMatchingTitle } from './documentsMatchingTitle';
 import { documentsOfType } from './documentsOfType';
 import TitleSearch from './TitleSearch';
 import { useDocuments, type DocumentListEntry } from './useDocuments';
@@ -45,10 +46,16 @@ export default function DocumentsPage() {
   const state = useDocuments();
   // Empty means All documents.
   const [selectedType, setSelectedType] = useState('');
-  // The title search field (SRS-216.1). Running the search is SRS-216.2.
+  // The title search (SRS-216.1, SRS-216.2).
   const titleSearch = useTitleSearch();
 
-  const documents = state.status === 'loaded' ? documentsOfType(state.documents, selectedType) : [];
+  // The loaded documents are exactly the current scope (the followed towns), so the
+  // title search never lists a document from another town (SRS-216.2). The type
+  // filter applies together with it.
+  const documents =
+    state.status === 'loaded'
+      ? documentsMatchingTitle(documentsOfType(state.documents, selectedType), titleSearch.submittedTerm)
+      : [];
 
   return (
     <main className="min-w-0 flex-1 p-4 text-fg sm:p-8">
@@ -92,7 +99,7 @@ export default function DocumentsPage() {
               </select>
             </label>
             {/* SRS-216.1: the Search by title field, above the count and the list. */}
-            <TitleSearch query={titleSearch.query} onQueryChange={titleSearch.type} onSubmit={() => {}} />
+            <TitleSearch query={titleSearch.query} onQueryChange={titleSearch.type} onSubmit={titleSearch.submit} />
           </div>
 
           <div className="mt-6 flex flex-wrap items-center justify-between gap-2 text-sm text-fg-muted">
