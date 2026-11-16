@@ -105,7 +105,7 @@ async function listedIds(): Promise<number[]> {
 beforeEach(() => {
   vi.stubEnv('SUPABASE_SERVICE_ROLE_KEY', 'test-service-role-key');
   db.follows.splice(0, db.follows.length, { user_id: 'user-1', town_id: TOWN });
-  db.towns.splice(0, db.towns.length, { town_id: TOWN, name: 'Salem' });
+  db.towns.splice(0, db.towns.length, { town_id: TOWN, name: 'Salem', meeting_time_zone: 'America/New_York' });
   db.documents.length = 0;
   db.meetings.length = 0;
 });
@@ -189,7 +189,7 @@ describe('GET /api/documents: newest-first sort (SRS-209.1)', () => {
     expect(await listedIds()).toEqual([4, 2, 1, 3]);
   });
 
-  it('returns the same fields as before', async () => {
+  it('returns the list fields', async () => {
     db.documents.push(storedDocument(1, '2026-09-20T12:00:00+00:00'));
     db.meetings.push(storedMeeting(1, '2026-09-01T23:00:00+00:00'));
 
@@ -197,8 +197,8 @@ describe('GET /api/documents: newest-first sort (SRS-209.1)', () => {
     const body = await response.json();
 
     expect(Object.keys(body.documents[0]).sort()).toEqual([
-      'document_id', 'document_type', 'meeting_id', 'meeting_start_at', 'retrieved_at', 'summary_status', 'title',
-      'town_id', 'town_name',
+      'document_id', 'document_type', 'meeting_id', 'meeting_start_at', 'meeting_time_zone', 'retrieved_at', 'summary_status',
+      'title', 'town_id', 'town_name',
     ]);
   });
 });
@@ -215,6 +215,7 @@ describe('Documents page: keeps the API order under Newest first (SRS-209.1)', (
       document_type: 'Agenda',
       town_name: 'Salem',
       meeting_start_at: meetingStartAt,
+      meeting_time_zone: 'America/New_York',
     };
   }
 

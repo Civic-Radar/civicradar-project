@@ -136,8 +136,8 @@ const STORED_DOCUMENTS = [
 ];
 
 const STORED_TOWNS: Row[] = [
-  { town_id: TOWN_A, name: 'Town A', source_account_id: 'account-a', removed_at: null },
-  { town_id: TOWN_B, name: 'Town B', source_account_id: 'account-b', removed_at: null },
+  { town_id: TOWN_A, name: 'Town A', source_account_id: 'account-a', meeting_time_zone: 'America/New_York', removed_at: null },
+  { town_id: TOWN_B, name: 'Town B', source_account_id: 'account-b', meeting_time_zone: 'America/New_York', removed_at: null },
 ];
 
 function follow(...townIds: number[]) {
@@ -175,8 +175,8 @@ describe('GET /api/documents: town name on each entry (SRS-212.1)', () => {
     expect(response.status).toBe(200);
     expect(await response.json()).toEqual({
       documents: [
-        { document_id: 102, meeting_id: 1102, town_id: TOWN_A, title: 'Document 102', retrieved_at: '2026-10-05T12:00:00+00:00', summary_status: 'Complete', document_type: 'Agenda', town_name: 'Town A', meeting_start_at: '2026-10-05T16:00:00+00:00' },
-        { document_id: 101, meeting_id: 1101, town_id: TOWN_A, title: 'Document 101', retrieved_at: '2026-09-01T12:00:00+00:00', summary_status: 'Complete', document_type: 'Agenda', town_name: 'Town A', meeting_start_at: null },
+        { document_id: 102, meeting_id: 1102, town_id: TOWN_A, title: 'Document 102', retrieved_at: '2026-10-05T12:00:00+00:00', summary_status: 'Complete', document_type: 'Agenda', town_name: 'Town A', meeting_start_at: '2026-10-05T16:00:00+00:00', meeting_time_zone: 'America/New_York' },
+        { document_id: 101, meeting_id: 1101, town_id: TOWN_A, title: 'Document 101', retrieved_at: '2026-09-01T12:00:00+00:00', summary_status: 'Complete', document_type: 'Agenda', town_name: 'Town A', meeting_start_at: null, meeting_time_zone: 'America/New_York' },
       ],
     });
   });
@@ -202,7 +202,7 @@ describe('GET /api/documents: town name on each entry (SRS-212.1)', () => {
     await list();
 
     expect(callsTo('towns')).toEqual([
-      { table: 'towns', method: 'select', args: ['town_id, name'] },
+      { table: 'towns', method: 'select', args: ['town_id, name, meeting_time_zone'] },
       { table: 'towns', method: 'in', args: ['town_id', [TOWN_A, TOWN_B]] },
     ]);
   });
@@ -239,7 +239,7 @@ describe('GET /api/documents: town name on each entry (SRS-212.1)', () => {
 function entry(document_id: number, title: string, town_name: string | null): DocumentListEntry {
   return {
     document_id, title, town_id: 1, meeting_id: 9, retrieved_at: '2026-10-01T12:00:00+00:00', summary_status: 'Complete',
-    document_type: 'Agenda', town_name, meeting_start_at: '2026-10-01T16:00:00+00:00',
+    document_type: 'Agenda', town_name, meeting_start_at: '2026-10-01T16:00:00+00:00', meeting_time_zone: 'America/New_York',
   };
 }
 
