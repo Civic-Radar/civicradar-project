@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useState } from 'react';
+import { memo, useMemo, useState } from 'react';
 import { ArrowRight, CalendarDays, FileText, MapPin, SlidersHorizontal } from 'lucide-react';
 import SignedOutNotice from '../../components/ui/SignedOutNotice';
 import Alert from '../../components/ui/Alert';
@@ -15,7 +15,7 @@ import MeetingTimeToggle from './MeetingTimeToggle';
 import { splitMeetingsByDate } from './meetingsByDate';
 import { meetingsForUser } from './meetingsForUser';
 import { useMeetingTimeList } from './useMeetingTimeList';
-import { useMeetingsList, type Meeting } from './useMeetingsList';
+import { useMeetingsList, type Meeting, type MeetingTown } from './useMeetingsList';
 
 // SRS-220.4: a detail the source omits is marked as not provided.
 const NOT_PROVIDED = 'Not provided by the source';
@@ -26,18 +26,40 @@ const ALL_MY_TOWNS = 'All my towns';
 const NO_UPCOMING = 'No upcoming meetings for your towns.';
 const NO_PAST = 'No past meetings for your towns.';
 
+// The four formats a row shows. Creating an Intl.DateTimeFormat is slow, so each
+// one is made once per town time zone and reused for every row (SRS-220.11 keeps
+// switching between upcoming and past meetings quick).
+const ROW_FORMATS = {
+  month: { month: 'short' },
+  day: { day: 'numeric' },
+  date: { month: 'short', day: 'numeric', year: 'numeric' },
+  time: { hour: 'numeric', minute: '2-digit', timeZoneName: 'short' },
+} satisfies Record<string, Intl.DateTimeFormatOptions>;
+type RowFormat = keyof typeof ROW_FORMATS;
+const rowFormatters = new Map<string, Record<RowFormat, Intl.DateTimeFormat>>();
+
+function formattersFor(timeZone: string): Record<RowFormat, Intl.DateTimeFormat> {
+  let formatters = rowFormatters.get(timeZone);
+  if (!formatters) {
+    formatters = Object.fromEntries(
+      (Object.keys(ROW_FORMATS) as RowFormat[]).map((key) => [key, new Intl.DateTimeFormat('en-US', { timeZone, ...ROW_FORMATS[key] })]),
+    ) as Record<RowFormat, Intl.DateTimeFormat>;
+    rowFormatters.set(timeZone, formatters);
+  }
+  return formatters;
+}
+
 // Splits start_at into the date tile and the Date & time column, in the town's
 // local time, never the browser's. null when there is no parsed start time.
 function startParts(meeting: Meeting, timeZone: string | undefined) {
   if (!meeting.start_at || !timeZone) return null;
   const start = new Date(meeting.start_at);
-  const format = (options: Intl.DateTimeFormatOptions) =>
-    new Intl.DateTimeFormat('en-US', { timeZone, ...options }).format(start);
+  const formatters = formattersFor(timeZone);
   return {
-    month: format({ month: 'short' }),
-    day: format({ day: 'numeric' }),
-    date: format({ month: 'short', day: 'numeric', year: 'numeric' }),
-    time: format({ hour: 'numeric', minute: '2-digit', timeZoneName: 'short' }),
+    month: formatters.month.format(start),
+    day: formatters.day.format(start),
+    date: formatters.date.format(start),
+    time: formatters.time.format(start),
   };
 }
 
@@ -50,13 +72,15 @@ function plural(count: number, noun: string): string {
   return `${count} ${noun}${count === 1 ? '' : 's'}`;
 }
 
-// One meeting row; the whole row opens the meeting's details page.
+// One meeting row; the whole row opens the meeting's details page. content-visibility
+// lets the browser skip laying out and painting rows that are off screen, so showing
+// the other list (SRS-220.11) costs only the rows in view.
 function MeetingRow({ meeting, townName, timeZone }: { meeting: Meeting; townName: string | null; timeZone: string | undefined }) {
   const start = startParts(meeting, timeZone);
   const documentCount = meeting.document_count;
 
   return (
-    <li>
+    <li className="[contain-intrinsic-size:auto_104px] [content-visibility:auto]">
       <Link
         href={`/meetings/${meeting.meeting_id}`}
         className="flex items-start gap-4 p-4 transition-colors hover:bg-raised focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-accent md:items-center md:gap-6 md:px-6 md:py-5"
@@ -115,6 +139,52 @@ function MeetingRow({ meeting, townName, timeZone }: { meeting: Meeting; townNam
   );
 }
 
+// One list of meeting rows, or its empty message. Memoized: its props do not change
+// when the user switches between upcoming and past meetings, so it is not re-rendered.
+const MeetingTable = memo(function MeetingTable({
+  meetings,
+  townsById,
+  emptyText,
+}: {
+  meetings: Meeting[];
+  townsById: Map<number, MeetingTown>;
+  emptyText: string;
+}) {
+  return (
+    <div className="mt-3 overflow-hidden rounded-xl border border-line bg-card">
+      {meetings.length === 0 ? (
+        <div className="p-6 text-center">
+          <EmptyArt scene="tree" className="mx-auto h-auto w-full max-w-[240px]" />
+          <p className="mt-4 font-semibold text-fg-muted">{emptyText}</p>
+        </div>
+      ) : (
+        <>
+          <div className="hidden items-center gap-6 border-b border-line bg-raised px-6 py-4 text-sm text-fg-muted md:flex">
+            <span className="w-14 shrink-0" aria-hidden="true" />
+            <span className="flex-1">Meeting</span>
+            <span className="w-48 shrink-0">Date &amp; time</span>
+            <span className="w-36 shrink-0">Materials</span>
+            <span className="w-5 shrink-0" aria-hidden="true" />
+          </div>
+          <ul className="divide-y divide-line">
+            {meetings.map((meeting) => {
+              const town = townsById.get(meeting.town_id);
+              return (
+                <MeetingRow
+                  key={meeting.meeting_id}
+                  meeting={meeting}
+                  townName={town?.name ?? null}
+                  timeZone={town?.meeting_time_zone}
+                />
+              );
+            })}
+          </ul>
+        </>
+      )}
+    </div>
+  );
+});
+
 // Meetings page (SRS-220.3): the stored meetings of the towns the signed-in user follows,
 // split into upcoming and past meetings (SRS-220.11).
 export default function MeetingsPage() {
@@ -127,13 +197,20 @@ export default function MeetingsPage() {
 
   const towns = state.status === 'loaded' ? state.towns : [];
   const followedTownIds = state.status === 'loaded' ? state.followedTownIds : [];
-  const townsById = new Map(towns.map((town) => [town.town_id, town]));
-  // The town filter applies first, then the selected list.
-  const townMeetings =
-    state.status === 'loaded'
-      ? meetingsForUser(state.meetings, followedTownIds, selectedTownId ? Number(selectedTownId) : null)
-      : [];
-  const lists = splitMeetingsByDate(townMeetings, (townId) => townsById.get(townId)?.meeting_time_zone);
+  const townsById = useMemo(() => new Map(towns.map((town) => [town.town_id, town])), [towns]);
+  // The town filter applies first, then the selected list. Both lists are worked
+  // out once per load or town change, so switching between them only re-renders.
+  const townMeetings = useMemo(
+    () =>
+      state.status === 'loaded'
+        ? meetingsForUser(state.meetings, followedTownIds, selectedTownId ? Number(selectedTownId) : null)
+        : [],
+    [state, followedTownIds, selectedTownId],
+  );
+  const lists = useMemo(
+    () => splitMeetingsByDate(townMeetings, (townId) => townsById.get(townId)?.meeting_time_zone),
+    [townMeetings, townsById],
+  );
   const meetings = lists[timeList];
   const followedTowns = towns
     .filter((town) => followedTownIds.includes(town.town_id))
@@ -210,43 +287,23 @@ export default function MeetingsPage() {
             <p>{timeList === 'upcoming' ? 'Soonest first' : 'Most recent first'}</p>
           </div>
 
-          <div className="mt-3 overflow-hidden rounded-xl border border-line bg-card">
-            {meetings.length === 0 ? (
-              <div className="p-6 text-center">
-                <EmptyArt scene="tree" className="mx-auto h-auto w-full max-w-[240px]" />
-                <p className="mt-4 font-semibold text-fg-muted">
-                  {townMeetings.length === 0
+          {/* SRS-220.11: both lists are rendered once and the one not selected is hidden, so
+              switching between them only changes which list shows, without rebuilding rows. */}
+          {(['upcoming', 'past'] as const).map((list) => (
+            <div key={list} data-meeting-list={list} hidden={list !== timeList}>
+              <MeetingTable
+                meetings={lists[list]}
+                townsById={townsById}
+                emptyText={
+                  townMeetings.length === 0
                     ? 'No meetings are stored for your towns yet.'
-                    : timeList === 'upcoming'
+                    : list === 'upcoming'
                       ? NO_UPCOMING
-                      : NO_PAST}
-                </p>
-              </div>
-            ) : (
-              <>
-                <div className="hidden items-center gap-6 border-b border-line bg-raised px-6 py-4 text-sm text-fg-muted md:flex">
-                  <span className="w-14 shrink-0" aria-hidden="true" />
-                  <span className="flex-1">Meeting</span>
-                  <span className="w-48 shrink-0">Date &amp; time</span>
-                  <span className="w-36 shrink-0">Materials</span>
-                  <span className="w-5 shrink-0" aria-hidden="true" />
-                </div>
-                <ul className="divide-y divide-line">
-                  {meetings.map((meeting) => {
-                    const town = townsById.get(meeting.town_id);
-                    return (
-                      <MeetingRow
-                        key={meeting.meeting_id}
-                        meeting={meeting}
-                        townName={town?.name ?? null}
-                        timeZone={town?.meeting_time_zone}
-                      />
-                    );
-                  })}
-                </ul>
-              </>
-            )}
-          </div>
+                      : NO_PAST
+                }
+              />
+            </div>
+          ))}
         </>
       )}
     </main>

@@ -13,18 +13,27 @@ const FALLBACK_TIME_ZONE = 'America/New_York';
 
 type Dated = { town_id: number; start_at: string | null };
 
+// Creating an Intl.DateTimeFormat is slow, so one is made per time zone and reused.
+// An unknown zone is remembered as the fallback zone's formatter.
+const dayFormatters = new Map<string, Intl.DateTimeFormat>();
+
+function dayFormatter(timeZone: string): Intl.DateTimeFormat {
+  let formatter = dayFormatters.get(timeZone);
+  if (!formatter) {
+    try {
+      formatter = new Intl.DateTimeFormat('en-CA', { timeZone, year: 'numeric', month: '2-digit', day: '2-digit' });
+    } catch {
+      // An unknown zone name throws a RangeError.
+      formatter = dayFormatter(FALLBACK_TIME_ZONE);
+    }
+    dayFormatters.set(timeZone, formatter);
+  }
+  return formatter;
+}
+
 /** YYYY-MM-DD of the instant in the given zone (Eastern when the zone is missing or not valid). */
 export function calendarDate(instant: Date, timeZone: string | null | undefined): string {
-  const format = (zone: string) =>
-    new Intl.DateTimeFormat('en-CA', { timeZone: zone, year: 'numeric', month: '2-digit', day: '2-digit' }).format(instant);
-  if (timeZone) {
-    try {
-      return format(timeZone);
-    } catch {
-      // An unknown zone name throws a RangeError; use the fallback below.
-    }
-  }
-  return format(FALLBACK_TIME_ZONE);
+  return dayFormatter(timeZone || FALLBACK_TIME_ZONE).format(instant);
 }
 
 /**
@@ -41,14 +50,21 @@ export function splitMeetingsByDate<T extends Dated>(
   const past: Row[] = [];
   const undated: T[] = [];
 
+  // Today's date is worked out once per zone, not once per meeting.
+  const todayByZone = new Map<string, string>();
   meetings.forEach((meeting, index) => {
     const time = meeting.start_at ? Date.parse(meeting.start_at) : Number.NaN;
     if (Number.isNaN(time)) {
       undated.push(meeting);
       return;
     }
-    const zone = timeZoneOf(meeting.town_id);
-    (calendarDate(new Date(time), zone) >= calendarDate(now, zone) ? upcoming : past).push({ meeting, index, time });
+    const zone = timeZoneOf(meeting.town_id) || FALLBACK_TIME_ZONE;
+    let today = todayByZone.get(zone);
+    if (today === undefined) {
+      today = calendarDate(now, zone);
+      todayByZone.set(zone, today);
+    }
+    (calendarDate(new Date(time), zone) >= today ? upcoming : past).push({ meeting, index, time });
   });
 
   upcoming.sort((a, b) => a.time - b.time || a.index - b.index);
