@@ -11,13 +11,20 @@ import styles from './meetings.module.css';
 import EmptyArt from '../../components/art/EmptyArt';
 import LeafLoader from '../../components/art/LeafLoader';
 import { useIsAdministrator } from '../../admin/retrieval/useIsAdministrator';
+import MeetingTimeToggle from './MeetingTimeToggle';
+import { splitMeetingsByDate } from './meetingsByDate';
 import { meetingsForUser } from './meetingsForUser';
+import { useMeetingTimeList } from './useMeetingTimeList';
 import { useMeetingsList, type Meeting } from './useMeetingsList';
 
 // SRS-220.4: a detail the source omits is marked as not provided.
 const NOT_PROVIDED = 'Not provided by the source';
 
 const ALL_MY_TOWNS = 'All my towns';
+
+// SRS-220.11: shown when the selected list is empty.
+const NO_UPCOMING = 'No upcoming meetings for your towns.';
+const NO_PAST = 'No past meetings for your towns.';
 
 // Splits start_at into the date tile and the Date & time column, in the town's
 // local time, never the browser's. null when there is no parsed start time.
@@ -108,20 +115,26 @@ function MeetingRow({ meeting, townName, timeZone }: { meeting: Meeting; townNam
   );
 }
 
-// Meetings page (SRS-220.3): the stored meetings of the towns the signed-in user follows.
+// Meetings page (SRS-220.3): the stored meetings of the towns the signed-in user follows,
+// split into upcoming and past meetings (SRS-220.11).
 export default function MeetingsPage() {
   const state = useMeetingsList();
   const isAdministrator = useIsAdministrator();
   // Empty means All my towns.
   const [selectedTownId, setSelectedTownId] = useState('');
+  // Upcoming meetings or Past meetings (SRS-220.11).
+  const [timeList, setTimeList] = useMeetingTimeList();
 
   const towns = state.status === 'loaded' ? state.towns : [];
   const followedTownIds = state.status === 'loaded' ? state.followedTownIds : [];
-  const meetings =
+  const townsById = new Map(towns.map((town) => [town.town_id, town]));
+  // The town filter applies first, then the selected list.
+  const townMeetings =
     state.status === 'loaded'
       ? meetingsForUser(state.meetings, followedTownIds, selectedTownId ? Number(selectedTownId) : null)
       : [];
-  const townsById = new Map(towns.map((town) => [town.town_id, town]));
+  const lists = splitMeetingsByDate(townMeetings, (townId) => townsById.get(townId)?.meeting_time_zone);
+  const meetings = lists[timeList];
   const followedTowns = towns
     .filter((town) => followedTownIds.includes(town.town_id))
     .sort((a, b) => a.name.localeCompare(b.name));
@@ -180,6 +193,13 @@ export default function MeetingsPage() {
             </label>
           </div>
 
+          {/* SRS-220.11: Upcoming meetings (soonest first) or Past meetings (most recent first). */}
+          <MeetingTimeToggle
+            selected={timeList}
+            counts={{ upcoming: lists.upcoming.length, past: lists.past.length }}
+            onSelect={setTimeList}
+          />
+
           <div className="mt-6 flex flex-wrap items-center justify-between gap-2 text-sm text-fg-muted">
             <p className="flex items-center gap-2">
               <MapPin className="h-4 w-4 shrink-0" aria-hidden="true" />
@@ -187,15 +207,20 @@ export default function MeetingsPage() {
               <span aria-hidden="true">·</span>
               <span>{plural(meetings.length, 'meeting')}</span>
             </p>
-            {/* GET /api/meetings orders by start_at, newest first, and the page keeps that order. */}
-            <p>Newest meeting first</p>
+            <p>{timeList === 'upcoming' ? 'Soonest first' : 'Most recent first'}</p>
           </div>
 
           <div className="mt-3 overflow-hidden rounded-xl border border-line bg-card">
             {meetings.length === 0 ? (
               <div className="p-6 text-center">
                 <EmptyArt scene="tree" className="mx-auto h-auto w-full max-w-[240px]" />
-                <p className="mt-4 font-semibold text-fg-muted">No meetings are stored for your towns yet.</p>
+                <p className="mt-4 font-semibold text-fg-muted">
+                  {townMeetings.length === 0
+                    ? 'No meetings are stored for your towns yet.'
+                    : timeList === 'upcoming'
+                      ? NO_UPCOMING
+                      : NO_PAST}
+                </p>
               </div>
             ) : (
               <>
