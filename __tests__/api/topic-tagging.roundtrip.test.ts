@@ -263,7 +263,8 @@ describe('Topic tagging round trip (SRS-401.4)', () => {
     ]);
     expect(tagsFor(1)).toEqual([
       { meeting_id: 1, topic_id: 1, evidence_text: HOUSING_SENTENCE },
-      { meeting_id: 1, topic_id: 2, evidence_text: 'Public hearing on the Bridge Street parking plan.' },
+      // The whole item is saved, not one sentence of it (#511).
+      { meeting_id: 1, topic_id: 2, evidence_text: 'Call to order. Public hearing on the Bridge Street parking plan.' },
     ]);
   });
 });
