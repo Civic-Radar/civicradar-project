@@ -8,7 +8,7 @@ import Alert from '../../components/ui/Alert';
 import Badge from '../../components/ui/Badge';
 import SignedOutNotice from '../../components/ui/SignedOutNotice';
 import { meetingDateLabel } from '../../../lib/documentDates';
-import { SETUP_MESSAGE } from './documentsMessages';
+import { SETUP_LINK_HREF, SETUP_LINK_TEXT, SETUP_MESSAGE } from './documentsMessages';
 import { documentsOfType } from './documentsOfType';
 import { useDocuments, type DocumentListEntry } from './useDocuments';
 
@@ -66,6 +66,10 @@ export default function DocumentsPage() {
         >
           <MapPin className="h-8 w-8 text-accent" strokeWidth={1.5} aria-hidden="true" />
           <p id="documents-setup-message" className="font-semibold text-fg">{SETUP_MESSAGE}</p>
+          {/* SRS-201.4: a link to the town selection whenever the setup message shows. */}
+          <Link href={SETUP_LINK_HREF} className="inline-flex min-h-11 items-center text-sm font-semibold text-accent hover:underline">
+            {SETUP_LINK_TEXT}
+          </Link>
         </section>
       ) : (
         <>
