@@ -10,7 +10,9 @@ import SignedOutNotice from '../../components/ui/SignedOutNotice';
 import { meetingDateLabel } from '../../../lib/documentDates';
 import { EMPTY_LIST_MESSAGE, SETUP_LINK_HREF, SETUP_LINK_TEXT, SETUP_MESSAGE } from './documentsMessages';
 import { documentsOfType } from './documentsOfType';
+import TitleSearch from './TitleSearch';
 import { useDocuments, type DocumentListEntry } from './useDocuments';
+import { useTitleSearch } from './useTitleSearch';
 
 type DocumentType = DocumentListEntry['document_type'];
 
@@ -43,6 +45,8 @@ export default function DocumentsPage() {
   const state = useDocuments();
   // Empty means All documents.
   const [selectedType, setSelectedType] = useState('');
+  // The title search field (SRS-216.1). Running the search is SRS-216.2.
+  const titleSearch = useTitleSearch();
 
   const documents = state.status === 'loaded' ? documentsOfType(state.documents, selectedType) : [];
 
@@ -87,6 +91,8 @@ export default function DocumentsPage() {
                 ))}
               </select>
             </label>
+            {/* SRS-216.1: the Search by title field, above the count and the list. */}
+            <TitleSearch query={titleSearch.query} onQueryChange={titleSearch.type} onSubmit={() => {}} />
           </div>
 
           <div className="mt-6 flex flex-wrap items-center justify-between gap-2 text-sm text-fg-muted">
