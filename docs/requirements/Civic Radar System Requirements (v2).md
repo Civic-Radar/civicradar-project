@@ -820,6 +820,12 @@ Traces to: UR-220
 
 Traces to: UR-220
 
+**SRS-220.11, MS, Upcoming and past meetings.** The system shall display "Upcoming meetings" and "Past meetings" buttons above the meeting list on the meetings page, with "Upcoming meetings" selected each time the page loads; while "Upcoming meetings" is selected, list only the meetings dated today or later, soonest first; and while "Past meetings" is selected, list only the meetings dated before today, most recent first.
+
+**Acceptance Criteria:** Given today is 11/16/2026 and the user's towns have meetings on 11/10/2026, 11/18/2026 and 12/07/2026, When the user opens the meetings page, Then "Upcoming meetings" is selected and the 11/18/2026 meeting is listed above the 12/07/2026 meeting, with no 11/10/2026 meeting; and When the user selects "Past meetings", Then only the 11/10/2026 meeting is listed.
+
+Traces to: UR-220
+
 ## **UR-221 — Keep Meeting Data Current**
 
 **UR-221, MS — Keep meeting data current.** As a user, I want previously retrieved meetings refreshed, so that time changes, cancellations, new minutes, and new recordings are caught.
@@ -2018,7 +2024,7 @@ Every UR is expanded into at least one SRS requirement. Counts are in parenthese
 | UR-217 | Summarization Progress | MS | SRS-217.1 to SRS-217.4 (4) | SRS-NFR-13 |
 | UR-218 | PDF Load Failure Message | MS | SRS-218.1 to SRS-218.2 (2) | — |
 | UR-219 | Total Document Count | MS | SRS-219.1 to SRS-219.2 (2) | — |
-| UR-220 | Retrieve Meetings | MS | SRS-220.1 to SRS-220.10 (10) | — |
+| UR-220 | Retrieve Meetings | MS | SRS-220.1 to SRS-220.11 (11) | — |
 | UR-221 | Keep Meeting Data Current | MS | SRS-221.1 to SRS-221.3 (3) | SRS-NFR-15 |
 | UR-222 | Report Source Check Status | MS | SRS-222.1 to SRS-222.3 (3) | — |
 | UR-301 | Request Contact Extraction | AO | SRS-301.1 to SRS-301.8 (8) | — |
