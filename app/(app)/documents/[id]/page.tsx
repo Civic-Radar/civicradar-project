@@ -3,17 +3,22 @@
 import LeafLoader from '../../../components/art/LeafLoader';
 import Alert from '../../../components/ui/Alert';
 import SignedOutNotice from '../../../components/ui/SignedOutNotice';
+import BackControl from './BackControl';
 import DocumentSummary from './DocumentSummary';
 import { useDocument } from './useDocument';
 
 // Document detail page. Identification, the stored PDF shown in the page, and
 // the summary or the Failed message (SRS-203.1, SRS-203.2, SRS-204.2, SRS-210.2).
+// The Back control (SRS-203.4) shows above every state of the page.
 export default function DocumentDetailPage({ params }: { params: { id: string } }) {
   const state = useDocument(params.id);
 
   return (
     <main className="min-w-0 flex-1 p-4 text-fg sm:p-8">
       <div className="mx-auto max-w-[960px]">
+        <div className="mb-6">
+          <BackControl />
+        </div>
         {state.status === 'loading' ? (
           <LeafLoader />
         ) : state.status === 'signedOut' ? (
