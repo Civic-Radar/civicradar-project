@@ -8,3 +8,7 @@ export const SETUP_MESSAGE = 'Follow at least one town to see documents here.';
 // first section of the Preferences page, so the link opens the town selection.
 export const SETUP_LINK_TEXT = 'Choose towns to follow';
 export const SETUP_LINK_HREF = '/preferences';
+
+// SRS-201.2: shown when the user follows at least one town and the Towns I follow
+// scope contains zero documents.
+export const EMPTY_LIST_MESSAGE = 'No documents have been retrieved for the towns you follow yet.';
