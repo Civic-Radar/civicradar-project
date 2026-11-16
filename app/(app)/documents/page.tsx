@@ -2,12 +2,13 @@
 
 import Link from 'next/link';
 import { useState } from 'react';
-import { ChevronRight, FileText, ListFilter, Sparkles } from 'lucide-react';
+import { ChevronRight, FileText, ListFilter, MapPin, Sparkles } from 'lucide-react';
 import LeafLoader from '../../components/art/LeafLoader';
 import Alert from '../../components/ui/Alert';
 import Badge from '../../components/ui/Badge';
 import SignedOutNotice from '../../components/ui/SignedOutNotice';
 import { meetingDateLabel } from '../../../lib/documentDates';
+import { SETUP_MESSAGE } from './documentsMessages';
 import { documentsOfType } from './documentsOfType';
 import { useDocuments, type DocumentListEntry } from './useDocuments';
 
@@ -57,6 +58,15 @@ export default function DocumentsPage() {
         <SignedOutNotice className="mt-8" message="You must be logged in to view your documents." />
       ) : state.status === 'loadFailed' ? (
         <Alert tone="error" role="alert" className="mt-8">Your documents could not be loaded. Please try again.</Alert>
+      ) : !state.followsTowns ? (
+        // No type filter, count or list entries with the setup message (SRS-201.3).
+        <section
+          aria-labelledby="documents-setup-message"
+          className="mt-8 flex flex-col items-center gap-3 rounded-xl border border-line bg-card px-6 py-12 text-center"
+        >
+          <MapPin className="h-8 w-8 text-accent" strokeWidth={1.5} aria-hidden="true" />
+          <p id="documents-setup-message" className="font-semibold text-fg">{SETUP_MESSAGE}</p>
+        </section>
       ) : (
         <>
           <div className="mt-8 flex flex-wrap gap-3">

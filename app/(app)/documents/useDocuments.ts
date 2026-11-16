@@ -20,7 +20,8 @@ export type DocumentsState =
   | { status: 'loading' }
   | { status: 'signedOut' }
   | { status: 'loadFailed' }
-  | { status: 'loaded'; documents: DocumentListEntry[] };
+  // followsTowns is false when the user follows no town (SRS-201.3).
+  | { status: 'loaded'; documents: DocumentListEntry[]; followsTowns: boolean };
 
 // Loads the documents from the signed-in user's followed towns for the Documents page.
 // The API's error text is never shown.
@@ -44,7 +45,9 @@ export function useDocuments(): DocumentsState {
         else if (!res.ok) setState({ status: 'loadFailed' });
         else {
           const data = await res.json();
-          if (!ignore) setState({ status: 'loaded', documents: data.documents ?? [] });
+          if (!ignore) {
+            setState({ status: 'loaded', documents: data.documents ?? [], followsTowns: data.follows_towns !== false });
+          }
         }
       } catch {
         if (!ignore) setState({ status: 'loadFailed' });
