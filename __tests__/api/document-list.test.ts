@@ -236,10 +236,15 @@ const STORED = [
   doc(104, SALEM, '2026-10-05T12:00:00+00:00'),
 ];
 
-// Newest retrieved_at first, then highest document_id (the placeholder order until SRS-209.1).
-const TOWN_A_IDS = [104, 102, 103, 101, 105]; // 10-05 (104 before 102), 09-20, 09-01, 08-15
-const TOWN_B_IDS = [202, 201, 203]; // 10-10, 10-05, 07-01
-const TOWNS_A_AND_B_IDS = [202, 201, 104, 102, 103, 101, 105, 203]; // 10-10, 10-05 (201, 104, 102), 09-20, 09-01, 08-15, 07-01
+// Meeting date, newest first (SRS-209.1). Meeting starts are 09-04 (104), 09-03 (103),
+// 09-02 (102, 202), 09-01 (101, 201), none (105, 203). Documents whose meetings start
+// at the same time keep the database order, newest retrieved_at first, and the
+// undated ones go last in that same order.
+const TOWN_A_IDS = [104, 103, 102, 101, 105];
+// The database order the route asks for: newest retrieved_at, then highest document_id.
+const TOWN_A_DATABASE_ORDER = [104, 102, 103, 101, 105]; // 10-05 (104 before 102), 09-20, 09-01, 08-15
+const TOWN_B_IDS = [202, 201, 203];
+const TOWNS_A_AND_B_IDS = [104, 103, 202, 102, 201, 101, 105, 203]; // 202 (retrieved 10-10) before 102 (10-05), 201 (10-05) before 101 (09-01)
 
 function town(townId: number): Stored {
   return { town_id: townId, name: TOWN_NAMES[townId], source_account_id: `account-${townId}`, removed_at: null };
@@ -405,7 +410,7 @@ describe('GET /api/documents: what the route asks the database', () => {
     await list();
 
     expect(callsTo('meetings', 'in')).toEqual([
-      { table: 'meetings', method: 'in', args: ['meeting_id', TOWN_A_IDS.map((id) => 1000 + id)] },
+      { table: 'meetings', method: 'in', args: ['meeting_id', TOWN_A_DATABASE_ORDER.map((id) => 1000 + id)] },
     ]);
   });
 
@@ -437,18 +442,18 @@ describe('GET /api/documents: what the route asks the database', () => {
     expect(ids.every((id) => typeof id === 'number')).toBe(true);
   });
 
-  it('orders by retrieved_at descending, then document_id descending', async () => {
+  it('reads newest retrieved_at first, then document_id, and returns the documents by meeting date (SRS-209.1)', async () => {
     follow(USER, SALEM, BROOKLINE);
 
     const response = await list();
     const ids = (await response.json()).documents.map((row: { document_id: number }) => row.document_id);
 
+    // The database order stays total, so ties in meeting date have a fixed order.
     expect(callsTo('documents', 'order').map((call) => call.args)).toEqual([
       ['retrieved_at', { ascending: false }],
       ['document_id', { ascending: false }],
     ]);
-    // 201, 104 and 102 share one retrieved_at, so only the second order puts them in this sequence.
-    expect(ids.slice(1, 4)).toEqual([201, 104, 102]);
+    expect(ids).toEqual(TOWNS_A_AND_B_IDS);
   });
 
   it('returns exactly the seven selected keys, town_name and meeting_start_at on each row and nothing else', async () => {
@@ -589,7 +594,7 @@ describe('stand-in guard rails', () => {
     const total = client().from('documents').select('document_id').in('town_id', [SALEM])
       .order('retrieved_at', { ascending: false })
       .order('document_id', { ascending: false });
-    expect(await total).toEqual({ data: TOWN_A_IDS.map((id) => ({ document_id: id })), error: null });
+    expect(await total).toEqual({ data: TOWN_A_DATABASE_ORDER.map((id) => ({ document_id: id })), error: null });
   });
 
   it('returns an error for an unknown column', async () => {

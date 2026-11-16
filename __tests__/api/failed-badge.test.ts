@@ -178,9 +178,11 @@ describe('GET /api/documents: summary status on each entry (SRS-210.3)', () => {
 
     expect(response.status).toBe(200);
     expect(body.documents.map((row: DocumentListEntry) => [row.document_id, row.summary_status])).toEqual([
+      // Sorted by meeting date (SRS-209.1): only 301's meeting has a start time, so it
+      // comes first and the undated rest keep the route's newest-retrieved order.
+      [301, 'Failed'],
       [304, 'Complete'],
       [302, 'Pending'],
-      [301, 'Failed'],
       [303, 'Complete'],
     ]);
   });
@@ -188,7 +190,7 @@ describe('GET /api/documents: summary status on each entry (SRS-210.3)', () => {
   it('adds summary_status to the existing fields and returns no summary text', async () => {
     const body = await (await list()).json();
 
-    expect(body.documents[2]).toEqual({
+    expect(body.documents[0]).toEqual({
       document_id: 301,
       title: 'Document 301',
       town_id: TOWN_A,

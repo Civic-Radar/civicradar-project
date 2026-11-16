@@ -187,8 +187,10 @@ describe('GET /api/documents: town name on each entry (SRS-212.1)', () => {
     const body = await (await list()).json();
 
     expect(body.documents.map((row: DocumentListEntry) => [row.document_id, row.town_id, row.town_name])).toEqual([
-      [201, TOWN_B, 'Town B'],
+      // Sorted by meeting date (SRS-209.1): only 102's meeting has a start time, so it
+      // comes first and the undated rest keep the route's newest-retrieved order.
       [102, TOWN_A, 'Town A'],
+      [201, TOWN_B, 'Town B'],
       [101, TOWN_A, 'Town A'],
       [202, TOWN_B, 'Town B'],
     ]);
@@ -226,8 +228,8 @@ describe('GET /api/documents: town name on each entry (SRS-212.1)', () => {
     const body = await (await list()).json();
 
     expect(body.documents.map((row: DocumentListEntry) => [row.document_id, row.town_name])).toEqual([
+      [102, 'Town A'], // the only dated document comes first (SRS-209.1)
       [201, null],
-      [102, 'Town A'],
       [101, 'Town A'],
       [202, null],
     ]);
