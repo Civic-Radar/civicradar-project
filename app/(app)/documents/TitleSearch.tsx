@@ -5,16 +5,24 @@ import { inputClasses } from '../../components/ui/TextField';
 // SRS-216.1: the exact label of the title search field.
 export const TITLE_SEARCH_LABEL = 'Search by title';
 
+// SRS-216.4: shown while a search is active, for browsers whose search field
+// has no clear button of its own.
+export const CLEAR_SEARCH_LABEL = 'Clear search';
+
 // The title search field above the document list (SRS-216.1). The page owns the
 // state and passes it in, so the form itself holds none.
 export default function TitleSearch({
   query,
   onQueryChange,
   onSubmit,
+  searchActive = false,
+  onClear = () => {},
 }: {
   query: string;
   onQueryChange: (value: string) => void;
   onSubmit: () => void;
+  searchActive?: boolean;
+  onClear?: () => void;
 }) {
   return (
     <form
@@ -44,6 +52,15 @@ export default function TitleSearch({
       <button type="submit" className={buttonClasses({ variant: 'secondary' })}>
         Search
       </button>
+      {searchActive ? (
+        <button
+          type="button"
+          onClick={onClear}
+          className="inline-flex min-h-11 shrink-0 items-center px-2 text-sm font-semibold text-accent hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+        >
+          {CLEAR_SEARCH_LABEL}
+        </button>
+      ) : null}
     </form>
   );
 }
