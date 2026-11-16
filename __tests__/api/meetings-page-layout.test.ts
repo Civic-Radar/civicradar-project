@@ -61,6 +61,13 @@ vi.mock('../../lib/supabase', () => ({
   }),
 }));
 
+// This file is not about the upcoming and past lists (SRS-220.11), so every meeting is
+// treated as upcoming, in the order the page passes it.
+vi.mock('../../app/(app)/meetings/meetingsByDate', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../../app/(app)/meetings/meetingsByDate')>();
+  return { ...actual, splitMeetingsByDate: <T>(meetings: T[]) => ({ upcoming: meetings, past: [] as T[] }) };
+});
+
 import MeetingsPage from '../../app/(app)/meetings/page';
 import { GET } from '../../app/api/meetings/route';
 
@@ -149,7 +156,8 @@ describe('Meetings page header', () => {
     const markup = render([meeting({ meeting_id: 1, town_id: SALEM.town_id })]);
 
     expect(markup).toMatch(/<a\b[^>]*href="\/admin\/retrieval"[^>]*>[\s\S]*?Retrieval tool<\/a>/);
-    expect(count(markup, 'button')).toBe(0);
+    // The Upcoming and Past meetings buttons (SRS-220.11, aria-pressed) are not retrieval controls.
+    expect(markup.match(/<button\b(?![^>]*aria-pressed)/g) ?? []).toHaveLength(0);
     expect(markup).not.toContain('Run retrieval');
   });
 
@@ -162,7 +170,8 @@ describe('Meetings page header', () => {
 
     expect(markup).not.toContain('/admin/retrieval');
     expect(markup).not.toContain('Retrieval tool');
-    expect(count(markup, 'button')).toBe(0);
+    // The Upcoming and Past meetings buttons (SRS-220.11, aria-pressed) are not retrieval controls.
+    expect(markup.match(/<button\b(?![^>]*aria-pressed)/g) ?? []).toHaveLength(0);
     expect(markup).not.toContain('Run retrieval');
   });
 });
@@ -188,7 +197,9 @@ describe('Meetings page controls and status line', () => {
     ]);
 
     expect(textOf(markup)).toContain('All my towns·2 meetings');
-    expect(textOf(markup)).toContain('Newest meeting first');
+    // Upcoming meetings is selected when the page loads (SRS-220.11).
+    expect(textOf(markup)).toContain('Soonest first');
+    expect(textOf(markup)).not.toContain('Newest meeting first');
   });
 
   it('says 1 meeting for a single meeting', () => {
