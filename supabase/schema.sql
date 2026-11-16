@@ -47,10 +47,11 @@
 --      Unavailable and removes its topic tags in one transaction, unless the
 --      meeting's agenda changed after it was read (SRS-401.10). Only the
 --      service role may run it.
---  11. public.unsuccessful_check_towns() lists the user's followed towns whose
---      most recent finished check was not successful, or that have no
---      finished check, so the matching result can be marked Incomplete
---      (SRS-401.11). Only the service role may run it.
+--  11. public.unsuccessful_check_towns() lists the towns of the user's
+--      required checks (each followed town and the town of each directly
+--      followed meeting) whose most recent finished check was not successful,
+--      or that have no finished check, so the matching result can be marked
+--      Incomplete (SRS-401.11, #510). Only the service role may run it.
 --  12. public.mark_meeting_for_tagging(), fired by the
 --      agenda_items_mark_for_tagging trigger, sets a meeting back to Pending
 --      when the agenda text topic tagging reads changes, so the next scheduled
@@ -990,9 +991,13 @@ grant execute on function public.match_meetings_with_reasons (UUID) to service_r
 -- Function: unsuccessful_check_towns
 -- Reviewed by: EG (Erick Gonzalez)
 -- Supports: SRS-401.11, SRS-401.3, SRS-501.4
--- Purpose: Returns the user's followed, non-removed towns whose most recent
---          finished check was not successful, each as a JSON object holding
---          town_id and name, sorted by name. The most recent finished check is
+-- Purpose: Returns the towns of the user's required checks (Definition 15)
+--          whose most recent finished check was not successful, each as a
+--          JSON object holding town_id and name, sorted by name, each town
+--          once. Those towns are each followed, non-removed town and the
+--          non-removed town of each meeting the user follows directly (#510):
+--          a failed check there means that meeting may be out of date even
+--          when the town itself is not followed. The most recent finished check is
 --          the ended one that started last; a check still running is not
 --          counted until it ends. A check is successful when it has ended and
 --          none of its source_check_collections rows is 'Failed' (Definition
@@ -1006,8 +1011,7 @@ set
   public -- Supabase: pin the search path (linter 0011)
   as $$
   SELECT jsonb_build_object('town_id', t.town_id, 'name', t.name)
-  FROM user_followed_towns uft
-  JOIN towns t ON t.town_id = uft.town_id AND t.removed_at IS NULL
+  FROM towns t
   LEFT JOIN LATERAL (
     SELECT sc.check_id
     FROM source_checks sc
@@ -1015,7 +1019,20 @@ set
     ORDER BY sc.started_at DESC, sc.check_id DESC
     LIMIT 1
   ) latest ON true
-  WHERE uft.user_id = p_user_id
+  WHERE t.removed_at IS NULL
+    AND (
+      EXISTS (
+        SELECT 1
+        FROM user_followed_towns uft
+        WHERE uft.user_id = p_user_id AND uft.town_id = t.town_id
+      )
+      OR EXISTS (
+        SELECT 1
+        FROM user_followed_meetings ufm
+        JOIN meetings m ON m.meeting_id = ufm.meeting_id
+        WHERE ufm.user_id = p_user_id AND m.town_id = t.town_id
+      )
+    )
     AND (
       latest.check_id IS NULL
       OR EXISTS (
