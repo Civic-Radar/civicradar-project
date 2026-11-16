@@ -8,7 +8,7 @@ import Alert from '../../components/ui/Alert';
 import Badge from '../../components/ui/Badge';
 import SignedOutNotice from '../../components/ui/SignedOutNotice';
 import { meetingDateLabel } from '../../../lib/documentDates';
-import { SETUP_LINK_HREF, SETUP_LINK_TEXT, SETUP_MESSAGE } from './documentsMessages';
+import { EMPTY_LIST_MESSAGE, SETUP_LINK_HREF, SETUP_LINK_TEXT, SETUP_MESSAGE } from './documentsMessages';
 import { documentsOfType } from './documentsOfType';
 import { useDocuments, type DocumentListEntry } from './useDocuments';
 
@@ -97,6 +97,14 @@ export default function DocumentsPage() {
               Newest first
             </p>
           </div>
+
+          {/* SRS-201.2: the followed towns have no documents at all, so the message replaces the list.
+              A type filter that matches nothing is not this case: the scope still has documents. */}
+          {state.documents.length === 0 ? (
+            <p className="mt-3 rounded-xl border border-line bg-card px-6 py-12 text-center font-semibold text-fg">
+              {EMPTY_LIST_MESSAGE}
+            </p>
+          ) : null}
 
           <ul className="mt-3 divide-y divide-line overflow-hidden rounded-xl border border-line bg-card empty:border-0">
             {documents.map((doc) => (
