@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { tagAgendaText, type AgendaItemText } from '../../lib/topicTagger';
+import { EVIDENCE_LIMIT, tagAgendaText, type AgendaItemText } from '../../lib/topicTagger';
 
 // The eight starter topics from supabase/seed_topics.sql.
 const CATALOG = [
@@ -57,14 +57,6 @@ describe('Topic tagger (SRS-401.4)', () => {
     expect(topicNames('Budget hearing schedule.')).toEqual([]);
   });
 
-  it('returns the sentence that contains the match', () => {
-    const text = 'Opening remarks by the Mayor. The council will vote on the housing plan. Adjournment follows.';
-
-    expect(tagAgendaText([item(1, text)], CATALOG)).toEqual([
-      { topic_id: 1, topic_name: 'Housing', agenda_item_id: 1, evidence_text: 'The council will vote on the housing plan.' },
-    ]);
-  });
-
   it('returns one tag per topic, from the first matching item', () => {
     const tags = tagAgendaText([item(10, 'First housing item.'), item(11, 'Second housing item.')], CATALOG);
 
@@ -85,5 +77,113 @@ describe('Topic tagger (SRS-401.4)', () => {
     expect(tagAgendaText([item(1, 'Approval of minutes.')], CATALOG)).toEqual([]);
     expect(tagAgendaText([item(1, HOUSING_SENTENCE)], [])).toEqual([]);
     expect(tagAgendaText([], CATALOG)).toEqual([]);
+  });
+});
+
+// Issue #511 (SRS-401.5): the passage saved with a tag is the agenda text that
+// produced it. Text is never split into sentences, so an abbreviation such as
+// "St." or "No." cannot cut the passage short.
+describe('Agenda passage saved with a tag (#511)', () => {
+  function passage(text: string, catalog = CATALOG): string {
+    return tagAgendaText([item(1, text)], catalog)[0].evidence_text;
+  }
+
+  // A long agenda item: `before` and `after` are filler words around `middle`.
+  function longItem(before: number, middle: string, after: number): string {
+    const filler = (count: number, word: string) => Array.from({ length: count }, (_, i) => `${word}${i}`).join(' ');
+    return [filler(before, 'before'), middle, filler(after, 'after')].filter((part) => part !== '').join(' ');
+  }
+
+  it('keeps the whole line when it has an abbreviation before the match', () => {
+    expect(passage('Vote on St. Joseph housing project.')).toBe('Vote on St. Joseph housing project.');
+  });
+
+  it.each([
+    'Approve Order No. 14 on housing fees.',
+    'Request by J. Smith for a housing variance at 5 Elm Ave. Vote expected.',
+    'Hearing on housing, e.g. accessory units. Then adjourn.',
+    'Housing at 12 Main St. Discussion to follow.',
+  ])('keeps the whole item: %s', (text) => {
+    expect(passage(text)).toBe(text);
+  });
+
+  it('keeps every sentence of an item that fits in the limit', () => {
+    const text = 'Opening remarks by the Mayor. The council will vote on the housing plan. Adjournment follows.';
+
+    expect(passage(text)).toBe(text);
+  });
+
+  it('keeps an item that is exactly at the limit, and trims one that is a character over', () => {
+    const atLimit = `housing ${'x'.repeat(EVIDENCE_LIMIT - 8)}`;
+    const overLimit = `housing ${'x '.repeat(EVIDENCE_LIMIT / 2)}end`;
+
+    expect(atLimit).toHaveLength(EVIDENCE_LIMIT);
+    expect(passage(atLimit)).toBe(atLimit);
+    expect(overLimit.length).toBeGreaterThan(EVIDENCE_LIMIT);
+    expect(passage(overLimit).endsWith('…')).toBe(true);
+  });
+
+  it('saves real text around the match from a long item, cut at whole words', () => {
+    const text = longItem(60, 'the affordable housing contribution', 60);
+    const saved = passage(text);
+    const body = saved.slice(1, -1);
+
+    expect(saved.startsWith('…')).toBe(true);
+    expect(saved.endsWith('…')).toBe(true);
+    expect(body.length).toBeLessThanOrEqual(EVIDENCE_LIMIT);
+    expect(body).toContain('the affordable housing contribution');
+    // The passage is a piece of the item itself, starting and ending at a word.
+    const at = text.indexOf(body);
+    expect(at).toBeGreaterThan(0);
+    expect(text[at - 1]).toBe(' ');
+    expect(text[at + body.length]).toBe(' ');
+    expect(body).toBe(body.trim());
+  });
+
+  it('never cuts a word in half, wherever the match sits', () => {
+    for (let padding = 0; padding < 12; padding += 1) {
+      const text = longItem(60, ['x'.repeat(padding), 'housing', 'y'.repeat(padding)].filter((word) => word !== '').join(' '), 60);
+      const body = passage(text).slice(1, -1);
+      const at = text.indexOf(body);
+
+      expect(at).toBeGreaterThan(0);
+      expect(text[at - 1]).toBe(' ');
+      expect(text[at + body.length]).toBe(' ');
+    }
+  });
+
+  it('puts the match near the middle of the passage', () => {
+    const saved = passage(longItem(60, 'housing', 60));
+    const middle = saved.indexOf('housing') + 'housing'.length / 2;
+
+    expect(Math.abs(middle - saved.length / 2)).toBeLessThan(20);
+  });
+
+  it('marks only the end when the match is at the start of a long item', () => {
+    const saved = passage(longItem(0, 'Housing trust fund report', 80));
+
+    expect(saved.startsWith('Housing trust fund report')).toBe(true);
+    expect(saved.endsWith('…')).toBe(true);
+    expect(saved.length).toBeLessThanOrEqual(EVIDENCE_LIMIT + 1);
+  });
+
+  it('marks only the start when the match is at the end of a long item', () => {
+    const saved = passage(longItem(80, 'report on housing.', 0));
+
+    expect(saved.startsWith('…')).toBe(true);
+    expect(saved.endsWith('report on housing.')).toBe(true);
+    expect(saved.length).toBeLessThanOrEqual(EVIDENCE_LIMIT + 1);
+  });
+
+  it('builds the passage around the first match in the item', () => {
+    const text = `${longItem(0, 'Parking study update.', 60)} Transportation plan review.`;
+    const saved = passage(text, [{ topic_id: 2, name: 'Transportation & Parking' }]);
+
+    expect(saved.startsWith('Parking study update.')).toBe(true);
+    expect(saved).not.toContain('Transportation plan review');
+  });
+
+  it('writes line breaks and repeated spaces as single spaces', () => {
+    expect(passage('  Housing update\n\n  from the   planning office.  ')).toBe('Housing update from the planning office.');
   });
 });
