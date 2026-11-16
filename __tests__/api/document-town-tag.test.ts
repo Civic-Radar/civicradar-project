@@ -178,6 +178,7 @@ describe('GET /api/documents: town name on each entry (SRS-212.1)', () => {
         { document_id: 102, meeting_id: 1102, town_id: TOWN_A, title: 'Document 102', retrieved_at: '2026-10-05T12:00:00+00:00', summary_status: 'Complete', document_type: 'Agenda', town_name: 'Town A', meeting_start_at: '2026-10-05T16:00:00+00:00', meeting_time_zone: 'America/New_York' },
         { document_id: 101, meeting_id: 1101, town_id: TOWN_A, title: 'Document 101', retrieved_at: '2026-09-01T12:00:00+00:00', summary_status: 'Complete', document_type: 'Agenda', town_name: 'Town A', meeting_start_at: null, meeting_time_zone: 'America/New_York' },
       ],
+      follows_towns: true,
     });
   });
 
@@ -246,7 +247,7 @@ function entry(document_id: number, title: string, town_name: string | null): Do
 // Vitest compiles this project's JSX to React.createElement, and the page does
 // not import React, so React is stubbed as a global for the render.
 function renderLoaded(documents: DocumentListEntry[]): string {
-  hook.state = { status: 'loaded', documents };
+  hook.state = { status: 'loaded', documents, followsTowns: true };
   return renderToStaticMarkup(React.createElement(DocumentsPage));
 }
 

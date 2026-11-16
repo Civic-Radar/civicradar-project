@@ -324,7 +324,7 @@ describe('GET /api/documents: which documents are listed (SRS-201.1)', () => {
 
     expect(response.status).toBe(200);
     expect(db.documents).toHaveLength(8);
-    expect(body).toEqual({ documents: TOWN_A_IDS.map(listed) });
+    expect(body).toEqual({ documents: TOWN_A_IDS.map(listed), follows_towns: true });
     expect(body.documents).toHaveLength(5);
     expect(body.documents.every((row: { town_id: number }) => row.town_id === SALEM)).toBe(true);
     expect(getUserMock()).toHaveBeenCalledWith('valid-token');
@@ -337,7 +337,7 @@ describe('GET /api/documents: which documents are listed (SRS-201.1)', () => {
     const body = await response.json();
 
     expect(response.status).toBe(200);
-    expect(body).toEqual({ documents: TOWNS_A_AND_B_IDS.map(listed) });
+    expect(body).toEqual({ documents: TOWNS_A_AND_B_IDS.map(listed), follows_towns: true });
     expect(body.documents).toHaveLength(8);
   });
 
@@ -346,7 +346,7 @@ describe('GET /api/documents: which documents are listed (SRS-201.1)', () => {
 
     expect(response.status).toBe(200);
     expect(db.documents).toHaveLength(8);
-    expect(await response.json()).toEqual({ documents: [] });
+    expect(await response.json()).toEqual({ documents: [], follows_towns: false });
     expect(callsTo('documents')).toEqual([]);
     expect(db.calls.map((call) => `${call.table}.${call.method}`)).toEqual([
       'user_followed_towns.select',
@@ -363,7 +363,7 @@ describe('GET /api/documents: which documents are listed (SRS-201.1)', () => {
     const response = await list(token);
 
     expect(response.status).toBe(200);
-    expect(await response.json()).toEqual({ documents: ids.map(listed) });
+    expect(await response.json()).toEqual({ documents: ids.map(listed), follows_towns: true });
     expect(callsTo('user_followed_towns', 'eq')[0].args).toEqual(['user_id', userId]);
   });
 
@@ -373,7 +373,7 @@ describe('GET /api/documents: which documents are listed (SRS-201.1)', () => {
     const response = await list('valid-token', undefined, `?user_id=${OTHER_USER}`);
 
     expect(response.status).toBe(200);
-    expect(await response.json()).toEqual({ documents: TOWN_A_IDS.map(listed) });
+    expect(await response.json()).toEqual({ documents: TOWN_A_IDS.map(listed), follows_towns: true });
     expect(callsTo('user_followed_towns', 'eq')).toEqual([
       { table: 'user_followed_towns', method: 'eq', args: ['user_id', USER] },
     ]);
@@ -461,7 +461,7 @@ describe('GET /api/documents: what the route asks the database', () => {
 
     const body = await (await list()).json();
 
-    expect(Object.keys(body)).toEqual(['documents']);
+    expect(Object.keys(body)).toEqual(['documents', 'follows_towns']);
     for (const row of body.documents) {
       expect(Object.keys(row).sort()).toEqual(RETURNED_KEYS);
     }

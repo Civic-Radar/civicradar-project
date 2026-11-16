@@ -224,6 +224,7 @@ describe('Documents page: keeps the API order under Newest first (SRS-209.1)', (
     vi.stubGlobal('React', React);
     hook.state = {
       status: 'loaded',
+      followsTowns: true,
       documents: [
         entry(3, '2026-09-15T16:00:00+00:00'),
         entry(2, '2026-09-08T16:00:00+00:00'),

@@ -238,7 +238,7 @@ function withoutPill(markup: string): string {
 // Vitest compiles this project's JSX to React.createElement, and the page does
 // not import React, so React is stubbed as a global for the render.
 function renderLoaded(documents: DocumentListEntry[]): string {
-  hook.state = { status: 'loaded', documents };
+  hook.state = { status: 'loaded', documents, followsTowns: true };
   return renderToStaticMarkup(React.createElement(DocumentsPage));
 }
 
