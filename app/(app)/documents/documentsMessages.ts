@@ -15,3 +15,7 @@ export const EMPTY_LIST_MESSAGE = 'No documents have been retrieved for the town
 
 // SRS-216.3: shown when a submitted title search matches zero documents.
 export const NO_RESULTS_MESSAGE = 'No documents match your search.';
+
+// SRS-209.4: shown when the selected list (Upcoming meetings or Past meetings) is empty.
+export const NO_UPCOMING_MESSAGE = 'No upcoming meetings to show.';
+export const NO_PAST_MESSAGE = 'No past meetings to show.';

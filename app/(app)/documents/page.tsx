@@ -8,11 +8,22 @@ import Alert from '../../components/ui/Alert';
 import Badge from '../../components/ui/Badge';
 import SignedOutNotice from '../../components/ui/SignedOutNotice';
 import { meetingDateLabel } from '../../../lib/documentDates';
-import { EMPTY_LIST_MESSAGE, NO_RESULTS_MESSAGE, SETUP_LINK_HREF, SETUP_LINK_TEXT, SETUP_MESSAGE } from './documentsMessages';
+import { splitByMeetingDate } from '../../../lib/meetingTimeline';
+import {
+  EMPTY_LIST_MESSAGE,
+  NO_PAST_MESSAGE,
+  NO_RESULTS_MESSAGE,
+  NO_UPCOMING_MESSAGE,
+  SETUP_LINK_HREF,
+  SETUP_LINK_TEXT,
+  SETUP_MESSAGE,
+} from './documentsMessages';
+import MeetingListToggle from './MeetingListToggle';
 import { documentsMatchingTitle } from './documentsMatchingTitle';
 import { documentsOfType } from './documentsOfType';
 import TitleSearch from './TitleSearch';
 import { useDocuments, type DocumentListEntry } from './useDocuments';
+import { useMeetingList } from './useMeetingList';
 import { useTitleSearch } from './useTitleSearch';
 
 type DocumentType = DocumentListEntry['document_type'];
@@ -41,21 +52,26 @@ function StatusPill({ status }: { status: DocumentListEntry['summary_status'] })
   );
 }
 
-// Documents page (SRS-201.1). Lists the documents from the user's followed towns, in the API's order.
+// Documents page (SRS-201.1). Lists the documents from the user's followed towns, split into
+// upcoming and past meetings (SRS-209.4).
 export default function DocumentsPage() {
   const state = useDocuments();
   // Empty means All documents.
   const [selectedType, setSelectedType] = useState('');
   // The title search (SRS-216.1, SRS-216.2, clearing it SRS-216.4).
   const titleSearch = useTitleSearch();
+  // Upcoming meetings or Past meetings (SRS-209.4).
+  const [meetingList, setMeetingList] = useMeetingList();
 
   // The loaded documents are exactly the current scope (the followed towns), so the
   // title search never lists a document from another town (SRS-216.2). The type
-  // filter applies together with it.
-  const documents =
+  // filter applies together with it, and then the selected list (SRS-209.4).
+  const matching =
     state.status === 'loaded'
       ? documentsMatchingTitle(documentsOfType(state.documents, selectedType), titleSearch.submittedTerm)
       : [];
+  const lists = splitByMeetingDate(matching);
+  const documents = lists[meetingList];
 
   return (
     <main className="min-w-0 flex-1 p-4 text-fg sm:p-8">
@@ -108,12 +124,18 @@ export default function DocumentsPage() {
             />
           </div>
 
+          {/* SRS-209.4: Upcoming meetings (soonest first) or Past meetings (most recent first). */}
+          <MeetingListToggle
+            selected={meetingList}
+            counts={{ upcoming: lists.upcoming.length, past: lists.past.length }}
+            onSelect={setMeetingList}
+          />
+
           <div className="mt-6 flex flex-wrap items-center justify-between gap-2 text-sm text-fg-muted">
             <p>{documents.length} {documents.length === 1 ? 'document' : 'documents'}</p>
-            {/* GET /api/documents lists the newest retrieved first, and the page keeps that order. */}
             <p className="flex items-center gap-2">
               <ListFilter className="h-4 w-4" aria-hidden="true" />
-              Newest first
+              {meetingList === 'upcoming' ? 'Soonest first' : 'Most recent first'}
             </p>
           </div>
 
@@ -126,9 +148,16 @@ export default function DocumentsPage() {
           ) : null}
 
           {/* SRS-216.3: a submitted search found nothing in a scope that has documents. */}
-          {state.documents.length > 0 && titleSearch.submittedTerm !== '' && documents.length === 0 ? (
+          {state.documents.length > 0 && titleSearch.submittedTerm !== '' && matching.length === 0 ? (
             <p role="status" className="mt-3 rounded-xl border border-line bg-card px-6 py-12 text-center font-semibold text-fg">
               {NO_RESULTS_MESSAGE}
+            </p>
+          ) : null}
+
+          {/* SRS-209.4: documents match, but none in the selected list. */}
+          {matching.length > 0 && documents.length === 0 ? (
+            <p role="status" className="mt-3 rounded-xl border border-line bg-card px-6 py-12 text-center font-semibold text-fg">
+              {meetingList === 'upcoming' ? NO_UPCOMING_MESSAGE : NO_PAST_MESSAGE}
             </p>
           ) : null}
 
