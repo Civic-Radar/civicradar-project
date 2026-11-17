@@ -118,7 +118,8 @@ function stubAgendas(agendas: Record<string, unknown>) {
 // Fake Supabase client for the route. agenda_items applies the table's unique
 // key (meeting_id, source_item_id): an upsert on it updates the sent columns
 // and keeps every other column, so baselined_at and removed_at stay unless
-// they are sent. Every table touched is recorded.
+// they are sent. It also answers the read and update saveAgendaItems makes to
+// mark items the source no longer lists (#508). Every table touched is recorded.
 function createFakeSupabase() {
   const tables: string[] = [];
   const meetings = new Map<string, Row>();
@@ -215,6 +216,20 @@ function createFakeSupabase() {
             }
             return { data: null, error: null };
           },
+          select: () => ({
+            eq: async (_column: string, meetingId: number) => ({
+              data: agendaItems.filter((row) => row.meeting_id === meetingId).map((row) => ({ ...row })),
+              error: null,
+            }),
+          }),
+          update: (values: Row) => ({
+            in: async (_column: string, ids: number[]) => {
+              for (const row of agendaItems) {
+                if (ids.includes(row.agenda_item_id as number)) Object.assign(row, values);
+              }
+              return { data: null, error: null };
+            },
+          }),
         };
       }
 
@@ -436,6 +451,22 @@ describe('Agenda item retrieval (SRS-220.9)', () => {
       expect(fake.agendaItems).toHaveLength(5);
       expect(fake.agendaItems.map((row) => row.agenda_item_id)).toEqual(firstIds);
       expect(fake.agendaItems.every((row) => row.baselined_at === baselinedAt && row.removed_at === null)).toBe(true);
+      expect(console.error).not.toHaveBeenCalledWith(expect.stringContaining('failed at save'));
+    });
+
+    it('marks an item the source no longer lists as removed on the next retrieval (#508)', async () => {
+      stubAgendas({ '9001': FIXTURE });
+      useListing([MEETING_100]);
+      await runRetrieval(TOWN_A.town_id);
+      const dropped = fake.agendaItems[0];
+      fake.agendaItems.push({ ...dropped, agenda_item_id: 999, source_item_id: 'gone-from-source' });
+
+      const response = await runRetrieval(TOWN_A.town_id);
+
+      expect(response.status).toBe(200);
+      expect(fake.agendaItems.find((row) => row.agenda_item_id === 999)?.removed_at).not.toBeNull();
+      expect(fake.agendaItems.filter((row) => row.agenda_item_id !== 999).every((row) => row.removed_at === null)).toBe(true);
+      expect(console.error).not.toHaveBeenCalledWith(expect.stringContaining('failed at save'));
     });
 
     it('logs a failed agenda listing and still stores the other meetings and the documents', async () => {
