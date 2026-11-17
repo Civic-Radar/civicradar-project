@@ -106,6 +106,52 @@ export async function findInProgressAttempts(supabase: SupabaseClient, limit: nu
   return (data ?? []).map(toAttempt);
 }
 
+// The most Pending documents one findDocumentsWithoutAttempt call reads.
+const MAX_PENDING_DOCUMENTS_READ = 1000;
+
+// Pending documents retrieved before the stale window that have no summary
+// attempt at all, oldest first, at most limit. A failed first-attempt insert
+// leaves a document like this, and no In progress attempt would ever bring it
+// back (SRS-204.1, #513). The window gives a running retrieval time to record
+// the attempt itself. Throws on any failed read.
+export async function findDocumentsWithoutAttempt(supabase: SupabaseClient, limit: number): Promise<number[]> {
+  if (limit <= 0) {
+    return [];
+  }
+
+  const staleBefore = new Date(Date.now() - STALE_ATTEMPT_MINUTES * 60 * 1000).toISOString();
+
+  const { data: pending, error: pendingError } = await supabase
+    .from('documents')
+    .select('document_id')
+    .eq('summary_status', 'Pending')
+    .lt('retrieved_at', staleBefore)
+    .order('retrieved_at', { ascending: true })
+    .order('document_id', { ascending: true })
+    .limit(MAX_PENDING_DOCUMENTS_READ);
+
+  if (pendingError) {
+    throw new Error(`Could not read Pending documents: ${pendingError.message}`);
+  }
+
+  const pendingIds = (pending ?? []).map((row: { document_id: number }) => row.document_id);
+  if (pendingIds.length === 0) {
+    return [];
+  }
+
+  const { data: withAttempts, error: attemptsError } = await supabase
+    .from('summary_attempts')
+    .select('document_id')
+    .in('document_id', pendingIds);
+
+  if (attemptsError) {
+    throw new Error(`Could not read summary attempts: ${attemptsError.message}`);
+  }
+
+  const hasAttempt = new Set((withAttempts ?? []).map((row: { document_id: number }) => row.document_id));
+  return pendingIds.filter((id) => !hasAttempt.has(id)).slice(0, limit);
+}
+
 // The In progress attempt of a document. The unique index on running attempts
 // allows at most one. Throws on a failed read or when there is none.
 async function findRunningAttempt(supabase: SupabaseClient, documentId: number): Promise<InProgressAttempt> {

@@ -263,11 +263,13 @@ export function createSummaryStarter(supabase: SupabaseClient, townId: number) {
   let recorded = 0;
 
   return {
-    // Never throws. A failed insert is logged and the document has no attempt.
+    // Never throws. A failed insert is tried once more (#513). If that fails
+    // too, it is logged and the document has no attempt until POST
+    // /api/summaries/process picks up Pending documents with none.
     async recordAttempt(documentId: number): Promise<void> {
       let attempt: InProgressAttempt;
       try {
-        attempt = await insertFirstAttempt(supabase, documentId);
+        attempt = await insertFirstAttempt(supabase, documentId).catch(() => insertFirstAttempt(supabase, documentId));
       } catch (error: unknown) {
         console.error(`Summary start: document ${documentId} has no summary attempt: ${errorMessage(error)}`);
         return;
