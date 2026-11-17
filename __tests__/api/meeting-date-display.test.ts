@@ -150,7 +150,7 @@ describe('Documents page: meeting date on each entry (SRS-202.2)', () => {
 
   function render(documents: DocumentListEntry[]): string {
     vi.stubGlobal('React', React);
-    hook.state = { status: 'loaded', documents };
+    hook.state = { status: 'loaded', documents, followsTowns: true };
     return renderToStaticMarkup(React.createElement(DocumentsPage)).replace(/<[^>]*>/g, ' ');
   }
 
