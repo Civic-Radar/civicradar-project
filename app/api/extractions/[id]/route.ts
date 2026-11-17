@@ -12,6 +12,7 @@
 //   404  no extraction with that id
 import { getSupabaseClient } from '../../../../lib/supabase';
 import { ACCESS_DENIED_MESSAGE, failureCauseMessage } from '../../../../lib/extractions';
+import { failStaleExtractions } from '../../../../lib/extraction/staleExtractions';
 
 // Always read the current row so a status change shows up on the next request.
 export const dynamic = 'force-dynamic';
@@ -38,6 +39,10 @@ export async function GET(request: Request, { params }: { params: { id: string }
 
   const { data: { user }, error: authError } = await supabase.auth.getUser(token);
   if (authError || !user) return Response.json({ error: 'Invalid or expired token.' }, { status: 401 });
+
+  // Bug #517: an extraction left Processing by a stopped server is ended as Failed,
+  // so the status shown moves on and the failure message and Retry appear.
+  await failStaleExtractions(supabase, user.id);
 
   const { data: extraction, error } = await supabase
     .from('extractions')
