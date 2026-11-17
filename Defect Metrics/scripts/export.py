@@ -19,7 +19,9 @@ sev = [dict(name=s, found=len(g), closed=sum(1 for r in g if r['closed']), open=
             open_issues=[r['n'] for r in g if r['open']]) for s in SEVERITIES for g in [[r for r in rows if r['severity'] == s]]]
 closed = [r for r in rows if r['closed']]
 people = [dict(who=w, ours=sum(r['author'] == l for r in rows), other=sum(c_[1] == l for c_ in other['counted']),
-               fixed=sum(l in r['assignees'] for r in closed), open=sum(r['open'] and l in r['assignees'] for r in rows)) for w, l in PEOPLE]
+               fixed=sum(l in r['assignees'] for r in closed), open=sum(r['open'] and l in r['assignees'] for r in rows),
+               filed_issues=[r['n'] for r in rows if r['author'] == l], other_issues=[c_[0] for c_ in other['counted'] if c_[1] == l],
+               fixed_issues=[r['n'] for r in closed if l in r['assignees']], open_issues=[r['n'] for r in rows if r['open'] and l in r['assignees']]) for w, l in PEOPLE]
 testing = sum(r['author'] not in {l for _, l in PEOPLE} for r in rows)
 names = {'YA': 'YA: dashboard, search', 'EG': 'EG: matching, tagging', 'KJ': 'KJ: catalog, accounts', 'MS': 'MS: documents', 'AO': 'AO: extraction'}
 by = defaultdict(list)

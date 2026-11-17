@@ -1,8 +1,8 @@
 # Civic Radar: GitHub issues report (v3)
 
-Repository: [Civic-Radar/civicradar-project](https://github.com/Civic-Radar/civicradar-project/issues). Pulled November 17, 2026 at 10:34 AM ET.
+Repository: [Civic-Radar/civicradar-project](https://github.com/Civic-Radar/civicradar-project/issues). Pulled November 17, 2026 at 11:32 AM ET.
 
-Every issue, open and closed: **524 issues** (pull requests are not included). Issue numbers skip because pull requests share the same numbering.
+Every issue, open and closed: **543 issues** (pull requests are not included). Issue numbers skip because pull requests share the same numbering.
 
 Same layout as [issues-report-v2.md](issues-report-v2.md) (November 12), regenerated from GitHub.
 
@@ -12,7 +12,7 @@ Same layout as [issues-report-v2.md](issues-report-v2.md) (November 12), regener
 - **Labels** shows the team labels that matter for the metrics: Defects and Not Implemented yet.
 - **Closed as** is GitHub's close reason: Completed, Not planned, or Duplicate. It is empty for open issues.
 - **Dates** are in Eastern time (YYYY-MM-DD).
-- **Severity** and **SRS item** come from the bug report form (fields "Severity" and "SRS requirement"). Only bug reports have them: 40 of the 524. For every other issue these columns show "—". "(blank)" means the form was used but the field was left empty.
+- **Severity** and **SRS item** come from the bug report form (fields "Severity" and "SRS requirement"). Only bug reports have them: 40 of the 543. For every other issue these columns show "—". "(blank)" means the form was used but the field was left empty.
 - Values are copied exactly as written in each issue, including test or placeholder text.
 
 ## All issues
@@ -524,7 +524,7 @@ Same layout as [issues-report-v2.md](issues-report-v2.md) (November 12), regener
 | #647 | SRS-502.9, YA, Official source link | marcos-j-salazar | marcos-j-salazar |  | Closed | Not planned | 2026-11-16 | 2026-11-16 | — | — |
 | #648 | Task 502.9-1 Link meetings with nothing published to the town's CivicClerk portal | marcos-j-salazar | marcos-j-salazar |  | Closed | Not planned | 2026-11-16 | 2026-11-16 | — | — |
 | #649 | Task 502.9-2 Write tests for the official source link | marcos-j-salazar | marcos-j-salazar |  | Closed | Not planned | 2026-11-16 | 2026-11-16 | — | — |
-| #654 | [Bug]: Failed extraction has no Retry control | yampomah | antikvng | Not Implemented yet | Closed | Completed | 2026-11-16 | 2026-11-17 | Minor | SRS-307.5 |
+| #654 | [Bug]: Failed extraction has no Retry control | yampomah | antikvng | Defects | Closed | Completed | 2026-11-16 | 2026-11-17 | Minor | SRS-307.5 |
 | #657 | SRS-301.8, AO, Extractable documents | antikvng | antikvng |  | Closed | Completed | 2026-11-17 | 2026-11-17 | — | — |
 | #658 | Task 301.8-5 Show an error message when the extraction page fails to load (UI) | antikvng | antikvng |  | Closed | Completed | 2026-11-17 | 2026-11-17 | — | — |
 | #659 | Task 301.8-6 Write tests: a failed load request ends with an error message, not endless loading (Test) | antikvng | antikvng |  | Closed | Completed | 2026-11-17 | 2026-11-17 | — | — |
@@ -543,6 +543,25 @@ Same layout as [issues-report-v2.md](issues-report-v2.md) (November 12), regener
 | #672 | SRS-305.3, AO, Deletion cancel | antikvng | antikvng |  | Closed | Completed | 2026-11-17 | 2026-11-17 | — | — |
 | #673 | Task 305.3-1 Keep the extraction unchanged when the deletion confirmation is cancelled (UI) | antikvng | antikvng |  | Closed | Completed | 2026-11-17 | 2026-11-17 | — | — |
 | #674 | Task 305.3-2 Write tests: cancelling closes the confirmation and deletes nothing (Test) | antikvng | antikvng |  | Closed | Completed | 2026-11-17 | 2026-11-17 | — | — |
+| #681 | SRS-306.2, AO, Progress indicator | antikvng | antikvng |  | Open |  | 2026-11-17 |  | — | — |
+| #682 | Task 306.2-1 Show a progress indicator on a Queued or Processing extraction (UI) | antikvng | antikvng |  | Open |  | 2026-11-17 |  | — | — |
+| #683 | Task 306.2-2 Write tests: the indicator shows only while Queued or Processing (Test) | antikvng | antikvng |  | Open |  | 2026-11-17 |  | — | — |
+| #684 | SRS-307.3, AO, Unknown failure cause | antikvng | antikvng |  | Open |  | 2026-11-17 |  | — | — |
+| #685 | Task 307.3-1 Show "Something went wrong. Please try again." for an unknown failure cause (API + UI) | antikvng | antikvng |  | Open |  | 2026-11-17 |  | — | — |
+| #686 | Task 307.3-2 Write tests: an Other failure shows the message, a known cause does not (Test) | antikvng | antikvng |  | Open |  | 2026-11-17 |  | — | — |
+| #687 | SRS-305.5, AO, Deletion success message | antikvng | antikvng |  | Open |  | 2026-11-17 |  | — | — |
+| #688 | Task 305.5-1 Show "Extraction deleted." after a deletion succeeds (UI) | antikvng | antikvng |  | Open |  | 2026-11-17 |  | — | — |
+| #689 | Task 305.5-2 Write tests: the message shows after a successful deletion only (Test) | antikvng | antikvng |  | Open |  | 2026-11-17 |  | — | — |
+| #690 | SRS-305.6, AO, Deletion failure message | antikvng | antikvng |  | Open |  | 2026-11-17 |  | — | — |
+| #691 | Task 305.6-1 Show "The extraction could not be deleted. Please try again." when a deletion fails (UI) | antikvng | antikvng |  | Open |  | 2026-11-17 |  | — | — |
+| #692 | Task 305.6-2 Write tests: a failed deletion shows the message and keeps the extraction (Test) | antikvng | antikvng |  | Open |  | 2026-11-17 |  | — | — |
+| #693 | SRS-309.1, AO, Contact search | antikvng | antikvng |  | Open |  | 2026-11-17 |  | — | — |
+| #694 | Task 309.1-1 Add a contact search box to the Officials tab (UI) | antikvng | antikvng |  | Open |  | 2026-11-17 |  | — | — |
+| #695 | Task 309.1-2 Match officials by name, title, or role, ignoring letter case (Logic) | antikvng | antikvng |  | Open |  | 2026-11-17 |  | — | — |
+| #696 | Task 309.1-3 Write tests: searching "clerk" lists only the City Clerk (Test) | antikvng | antikvng |  | Open |  | 2026-11-17 |  | — | — |
+| #697 | SRS-309.2, AO, Contact search no results | antikvng | antikvng |  | Open |  | 2026-11-17 |  | — | — |
+| #698 | Task 309.2-1 Show "No contacts match your search." when a search matches nobody (UI) | antikvng | antikvng |  | Open |  | 2026-11-17 |  | — | — |
+| #699 | Task 309.2-2 Write tests: a search with no matches shows the message (Test) | antikvng | antikvng |  | Open |  | 2026-11-17 |  | — | — |
 
 ## Issues missing information
 
