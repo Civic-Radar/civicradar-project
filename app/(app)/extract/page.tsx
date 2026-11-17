@@ -25,6 +25,7 @@ import { buttonClasses } from '../../components/ui/Button';
 import { cardClasses } from '../../components/ui/Card';
 import { DAILY_LIMIT_MESSAGE, STATUS_STYLES, documentTypeLabel, formatDateTime, formatFileSize, formatMeetingDate, readableDocumentName, versionLabels, withoutDates } from '../../../lib/extractions';
 import type { ExtractableDocument, Extraction } from '../../../lib/extractions';
+import { loadExtractionPage } from '../../../lib/extractionPageData';
 
 const MEETINGS_PER_PAGE = 8;
 
@@ -80,6 +81,8 @@ export default function ExtractPage() {
   // SRS-301.7: the server refused a request because today's limit was reached.
   const [limitReached, setLimitReached] = useState(false);
   const [error, setError] = useState('');
+  // The page's first load failed, so the empty list isn't "no documents yet".
+  const [loadFailed, setLoadFailed] = useState(false);
   const [success, setSuccess] = useState('');
 
   useEffect(() => {
@@ -91,27 +94,22 @@ export default function ExtractPage() {
 
   async function loadAll(accessToken: string) {
     setLoading(true);
-    const headers = { Authorization: `Bearer ${accessToken}` };
-    const [docsRes, extRes] = await Promise.all([
-      fetch('/api/extractions/documents', { headers }),
-      fetch('/api/extractions', { headers }),
-    ]);
-    const docsData = await docsRes.json();
-    const extData = await extRes.json();
+    // Always resolves, so a failed request shows a message instead of leaving the page on "Loading…".
+    const data = await loadExtractionPage(accessToken);
     setLoading(false);
 
-    if (docsRes.status === 401 || extRes.status === 401) {
+    if (data.status === 'signedOut') {
       localStorage.removeItem('access_token');
       setToken(null);
       return;
     }
-    if (!docsRes.ok) { setError(docsData.error || 'Could not load documents.'); return; }
-    if (!extRes.ok) { setError(extData.error || 'Could not load your extractions.'); return; }
+    if (data.status === 'error') { setError(data.message); setLoadFailed(true); return; }
+    setLoadFailed(false);
 
-    setDocuments(docsData.documents);
-    setFollowsAnyTown(docsData.followsAnyTown !== false);
-    setTowns(docsData.towns ?? []);
-    setExtractions(extData.extractions);
+    setDocuments(data.documents);
+    setFollowsAnyTown(data.followsAnyTown);
+    setTowns(data.towns);
+    setExtractions(data.extractions);
   }
 
   async function refreshExtractions() {
@@ -239,7 +237,9 @@ export default function ExtractPage() {
             <div className="flex min-h-[260px] flex-col items-center justify-center gap-4 px-6 py-16 text-center text-fg-muted">
               <BookOpen aria-hidden="true" className="h-[30px] w-[30px] text-accent" />
               <p className="max-w-[450px] text-sm leading-relaxed">
-                {followsAnyTown ? (
+                {loadFailed ? (
+                  'The documents could not be loaded. Reload the page to try again.'
+                ) : followsAnyTown ? (
                   'No documents yet for meetings that have already taken place in the towns you follow.'
                 ) : (
                   <>
@@ -432,7 +432,10 @@ export default function ExtractPage() {
         <section className={cardClasses('sm:p-7')}>
           <h2 className="text-lg font-semibold">My extraction requests</h2>
           {extractions.length === 0 ? (
-            <p className="mt-4 text-xs leading-relaxed text-fg-muted">You haven&apos;t requested any extractions yet.</p>
+            <p className="mt-4 text-xs leading-relaxed text-fg-muted">
+              {/* Bug #528: after a failed load the list is unknown, not empty. */}
+              {loadFailed ? 'Your extraction requests could not be loaded. Reload the page to try again.' : 'You haven’t requested any extractions yet.'}
+            </p>
           ) : (
             <ul className="mt-4 divide-y divide-line">
               {extractions.map((e) => (
