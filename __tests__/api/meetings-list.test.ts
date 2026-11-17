@@ -17,6 +17,13 @@ vi.mock('../../app/(app)/meetings/useMeetingsList', () => ({
   useMeetingsList: () => hook.state,
 }));
 
+// This file is not about the upcoming and past lists (SRS-220.11), so every meeting is
+// treated as upcoming, in the order the page passes it.
+vi.mock('../../app/(app)/meetings/meetingsByDate', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../../app/(app)/meetings/meetingsByDate')>();
+  return { ...actual, splitMeetingsByDate: <T>(meetings: T[]) => ({ upcoming: meetings, past: [] as T[] }) };
+});
+
 import MeetingsPage from '../../app/(app)/meetings/page';
 import { meetingsForUser } from '../../app/(app)/meetings/meetingsForUser';
 
@@ -199,6 +206,7 @@ describe('No retrieval control on the meetings page', () => {
     const markup = renderLoaded(followed);
 
     expect(markup).not.toContain('Run retrieval');
-    expect(markup).not.toContain('<button');
+    // The Upcoming and Past meetings buttons (SRS-220.11, aria-pressed) are not retrieval controls.
+    expect(markup.match(/<button\b(?![^>]*aria-pressed)/g)).toBeNull();
   });
 });
