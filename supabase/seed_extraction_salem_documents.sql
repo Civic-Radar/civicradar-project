@@ -15,8 +15,9 @@
 --   * documents use the CivicClerk file id, so they never duplicate a file that
 --     document retrieval (SRS-208.2) saved. If retrieval later reaches one of
 --     these files, it logs that file as failed and moves on.
--- storage_path, file_size_bytes and file_sha256 are placeholders until document
--- retrieval stores the real file.
+-- storage_path is where document retrieval stores each file,
+-- <town_id>/<file id>.pdf (SRS-208.3). file_size_bytes and file_sha256 are
+-- placeholders until document retrieval stores the real file.
 -- =============================================================================
 do $$
 declare
@@ -67,15 +68,15 @@ begin
   values
     (v_meeting_1193, v_town_id, '1169',
      'Joint Public Hearing with the Planning Board Monday October 19, 2026', 'Agenda',
-     'https://salemma.portal.civicclerk.com/event/1193/overview', 'civicclerk/salemma/1169.pdf',
+     'https://salemma.portal.civicclerk.com/event/1193/overview', v_town_id::text || '/1169.pdf',
      'application/pdf', 0, encode(sha256('civicclerk-salemma-1169'::bytea), 'hex')),
     (v_meeting_1191, v_town_id, '1164',
      'Salem City Council Regular Meeting September 10, 2026', 'Agenda',
-     'https://salemma.portal.civicclerk.com/event/1191/overview', 'civicclerk/salemma/1164.pdf',
+     'https://salemma.portal.civicclerk.com/event/1191/overview', v_town_id::text || '/1164.pdf',
      'application/pdf', 0, encode(sha256('civicclerk-salemma-1164'::bytea), 'hex')),
     (v_meeting_1191, v_town_id, '1168',
      'Salem City Council Regular Meeting September 10, 2026 - Minutes', 'Minutes',
-     'https://salemma.portal.civicclerk.com/event/1191/overview', 'civicclerk/salemma/1168.pdf',
+     'https://salemma.portal.civicclerk.com/event/1191/overview', v_town_id::text || '/1168.pdf',
      'application/pdf', 0, encode(sha256('civicclerk-salemma-1168'::bytea), 'hex'))
   on conflict (town_id, source_file_id) do nothing;
 end $$;

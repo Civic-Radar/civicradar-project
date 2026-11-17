@@ -21,6 +21,12 @@ export class StoragePathExistsError extends Error {
   }
 }
 
+// Where retrieval stores a document's file: <town_id>/<source_file_id>.<ext>.
+// Readers fall back to it when a row's storage_path has no file (#514).
+export function standardStoragePath(townId: number, sourceFileId: string, mimeType: string): string {
+  return `${townId}/${sourceFileId}.${extensionFor(mimeType)}`;
+}
+
 // Uploads a downloaded file to <town_id>/<source_file_id>.<ext> and returns
 // the value for documents.storage_path. Never overwrites: an existing path
 // throws StoragePathExistsError, and any other upload error throws.
@@ -35,7 +41,7 @@ export async function storeDocumentFile(
     throw new Error(`Invalid source file id for storage path: ${JSON.stringify(sourceFileId)}`);
   }
 
-  const path = `${townId}/${sourceFileId}.${extensionFor(mimeType)}`;
+  const path = standardStoragePath(townId, sourceFileId, mimeType);
 
   const { error } = await supabase.storage
     .from(DOCUMENTS_BUCKET)

@@ -46,7 +46,7 @@ import { GET } from '../../app/api/documents/[id]/route';
 import { getSupabaseClient } from '../../lib/supabase';
 
 const SELECTED_COLUMNS =
-  'document_id, meeting_id, town_id, title, document_type, source_url, retrieved_at, summary_status, summary_text, summary_generated_at, storage_path, mime_type';
+  'document_id, meeting_id, town_id, title, document_type, source_url, retrieved_at, summary_status, summary_text, summary_generated_at, source_file_id, storage_path, mime_type';
 const LOAD_ERROR = 'This document could not be loaded. Please try again.';
 const dbError = { message: 'relation "documents" does not exist (42P01)' };
 

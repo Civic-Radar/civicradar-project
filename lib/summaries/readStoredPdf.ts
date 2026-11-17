@@ -11,6 +11,9 @@ const PDF_HEADER = '%PDF-';
 export interface StoredPdfInput {
   storagePath: string; // documents.storage_path
   mimeType: string; // documents.mime_type
+  // Read when storagePath has no file: the standard path retrieval uses,
+  // <town_id>/<source_file_id>.pdf (SRS-211.1, #514).
+  fallbackPath?: string;
 }
 
 // ok: false is a stored file the model cannot be given. Missing configuration
@@ -61,13 +64,19 @@ export async function readStoredPdf(
     return { ok: false, reason: 'not_pdf', detail: 'mime_type' };
   }
 
-  const { data, error } = await supabase.storage.from(DOCUMENTS_BUCKET).download(input.storagePath);
+  let path = input.storagePath;
+  let { data, error } = await supabase.storage.from(DOCUMENTS_BUCKET).download(path);
+
+  if (error && isMissingObject(error) && input.fallbackPath && input.fallbackPath !== input.storagePath) {
+    path = input.fallbackPath;
+    ({ data, error } = await supabase.storage.from(DOCUMENTS_BUCKET).download(path));
+  }
 
   if (error) {
     if (isMissingObject(error)) {
       return { ok: false, reason: 'missing' };
     }
-    throw new Error(`Storage download failed for ${input.storagePath}: ${error.message}`);
+    throw new Error(`Storage download failed for ${path}: ${error.message}`);
   }
 
   let pdfBytes: Uint8Array;

@@ -1,5 +1,5 @@
 import { getAuthenticatedUser, getToken, type SupabaseClient } from '../../../../lib/residentAuth';
-import { DOCUMENTS_BUCKET } from '../../../../lib/retrieval/storeDocumentFile';
+import { DOCUMENTS_BUCKET, standardStoragePath } from '../../../../lib/retrieval/storeDocumentFile';
 
 // Always read the current row; never serve a build-time snapshot.
 export const dynamic = 'force-dynamic';
@@ -16,23 +16,45 @@ function parseDocumentId(value: string): number | null {
   return /^\d+$/.test(value) && Number.isSafeInteger(id) ? id : null;
 }
 
-// Short-lived Storage link to the stored PDF for the in-page viewer (SRS-203.2).
-// Null when the file is not a PDF, has no stored path, or cannot be signed.
-// A failure is logged by document id only, never with the Storage message.
-async function storedPdfUrl(
-  supabase: SupabaseClient,
-  documentId: number,
-  storagePath: string | null,
-  mimeType: string | null,
-): Promise<string | null> {
-  if (mimeType !== 'application/pdf' || !storagePath) return null;
+interface StoredFileRow {
+  town_id: number;
+  source_file_id?: string | null;
+  storage_path: string | null;
+  mime_type: string | null;
+}
+
+// The paths to try, in order: the row's storage_path, then the standard path
+// retrieval uses, for rows whose recorded path has no file (SRS-211.1, #514).
+function storedPdfPaths(row: StoredFileRow): string[] {
+  const paths = row.storage_path ? [row.storage_path] : [];
+  if (row.source_file_id) {
+    const standard = standardStoragePath(row.town_id, row.source_file_id, 'application/pdf');
+    if (!paths.includes(standard)) paths.push(standard);
+  }
+  return paths;
+}
+
+async function signedUrl(supabase: SupabaseClient, path: string): Promise<string | null> {
   try {
-    const { data, error } = await supabase.storage
-      .from(DOCUMENTS_BUCKET)
-      .createSignedUrl(storagePath, PDF_LINK_SECONDS);
+    const { data, error } = await supabase.storage.from(DOCUMENTS_BUCKET).createSignedUrl(path, PDF_LINK_SECONDS);
     if (!error && data?.signedUrl) return data.signedUrl;
   } catch {
     // Same outcome as an error result.
+  }
+  return null;
+}
+
+// Short-lived Storage link to the stored PDF for the in-page viewer (SRS-203.2).
+// Null when the file is not a PDF, has no stored path, or cannot be signed at
+// any of its paths. A failure is logged once, by document id only, never with
+// the Storage message.
+async function storedPdfUrl(supabase: SupabaseClient, documentId: number, row: StoredFileRow): Promise<string | null> {
+  if (row.mime_type !== 'application/pdf') return null;
+  const paths = storedPdfPaths(row);
+  if (paths.length === 0) return null;
+  for (const path of paths) {
+    const url = await signedUrl(supabase, path);
+    if (url) return url;
   }
   console.error(`Stored PDF link could not be created for document ${documentId}.`);
   return null;
@@ -57,7 +79,7 @@ export async function GET(request: Request, { params }: { params: { id: string }
   const { data: document, error } = await supabase!
     .from('documents')
     .select(
-      'document_id, meeting_id, town_id, title, document_type, source_url, retrieved_at, summary_status, summary_text, summary_generated_at, storage_path, mime_type',
+      'document_id, meeting_id, town_id, title, document_type, source_url, retrieved_at, summary_status, summary_text, summary_generated_at, source_file_id, storage_path, mime_type',
     )
     .eq('document_id', documentId)
     .maybeSingle();
@@ -69,7 +91,7 @@ export async function GET(request: Request, { params }: { params: { id: string }
   // Complete or Failed (table check), so the page can tell Failed from Pending.
   // The table checks guarantee Complete means the text and time are set.
   const complete = document.summary_status === 'Complete';
-  const pdfUrl = await storedPdfUrl(supabase!, documentId, document.storage_path, document.mime_type);
+  const pdfUrl = await storedPdfUrl(supabase!, documentId, document);
   return Response.json({
     document: {
       document_id: document.document_id,

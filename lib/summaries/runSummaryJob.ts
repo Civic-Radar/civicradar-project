@@ -8,6 +8,7 @@ import {
   type FinishResult,
   type InProgressAttempt,
 } from './attempts';
+import { standardStoragePath } from '../retrieval/storeDocumentFile';
 import { readStoredPdf, type StoredPdfResult } from './readStoredPdf';
 import { summarizeDocument, type SummaryResult } from './summarize';
 
@@ -49,6 +50,7 @@ export type SummaryJobOutcome =
 interface SummaryDocumentRow {
   document_id: number;
   town_id: number;
+  source_file_id?: string | null;
   title: string;
   document_type: DocumentType;
   storage_path: string;
@@ -63,7 +65,7 @@ function errorMessage(error: unknown): string {
 async function loadDocument(supabase: SupabaseClient, documentId: number): Promise<SummaryDocumentRow> {
   const { data, error } = await supabase
     .from('documents')
-    .select('document_id, town_id, title, document_type, storage_path, mime_type, summary_status')
+    .select('document_id, town_id, source_file_id, title, document_type, storage_path, mime_type, summary_status')
     .eq('document_id', documentId)
     .maybeSingle();
 
@@ -107,7 +109,13 @@ async function produceSummary(
 
   let stored: StoredPdfResult;
   try {
-    stored = await readStoredPdf(supabase, { storagePath: document.storage_path, mimeType: document.mime_type });
+    stored = await readStoredPdf(supabase, {
+      storagePath: document.storage_path,
+      mimeType: document.mime_type,
+      fallbackPath: document.source_file_id
+        ? standardStoragePath(document.town_id, document.source_file_id, document.mime_type)
+        : undefined,
+    });
   } catch (error: unknown) {
     return failed('read', 'error', errorMessage(error));
   }
