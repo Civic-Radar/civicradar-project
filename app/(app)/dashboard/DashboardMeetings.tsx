@@ -187,6 +187,23 @@ function MeetingCards({ meetings }: { meetings: Meeting[] }) {
             </div>
           ) : null}
 
+          {/* SRS-401.5 (#512): the agenda passage behind the first matched tag,
+              kept to two lines so the card stays short. The whole passage shows
+              on hover, and every tag's passage is on the meeting details page. */}
+          {meeting.matched_topics.length > 0 ? (
+            <div aria-label="Why this meeting matched" className="flex flex-col gap-1 text-xs leading-relaxed text-fg-muted">
+              <p title={meeting.matched_topics[0].evidence_text} className="line-clamp-2">
+                <span className="font-semibold text-fg">{meeting.matched_topics[0].topic}:</span>{" "}
+                {meeting.matched_topics[0].evidence_text}
+              </p>
+              {meeting.matched_topics.length > 1 ? (
+                <p className="text-fg-subtle">
+                  +{meeting.matched_topics.length - 1} more {meeting.matched_topics.length === 2 ? "topic" : "topics"}
+                </p>
+              ) : null}
+            </div>
+          ) : null}
+
           <div className="mt-auto flex flex-col gap-2 border-t border-line pt-3 text-xs text-fg-muted md:border-t-0 md:pt-1">
             <p className="flex items-start gap-2">
               <MapPin aria-hidden="true" className="mt-px h-3.5 w-3.5 shrink-0" />
