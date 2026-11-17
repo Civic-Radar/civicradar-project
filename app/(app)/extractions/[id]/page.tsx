@@ -19,10 +19,16 @@
 //
 // SRS-307.2, AO, Known failure cause: a failed extraction also says why when the
 // file could not be read, was over the size limit, or was missing.
+//
+// SRS-307.5, AO, Retry control: a Failed extraction shows a Retry button.
+// SRS-307.6, AO, Retry attempt: Retry creates a new extraction request for the
+// same document and opens it. The failed one stays in the user's list.
 
 import { BookOpen } from 'lucide-react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { RETRYING_LABEL, RETRY_LABEL, retryExtraction, showsRetryControl } from '../../../../lib/extractionRetry';
 import { alertClasses } from '../../../components/ui/Alert';
 import { buttonClasses } from '../../../components/ui/Button';
 import { cardClasses } from '../../../components/ui/Card';
@@ -49,6 +55,10 @@ export default function ExtractionPage({ params }: { params: { id: string } }) {
   const [error, setError] = useState('');
   // SRS-310.2: the extraction belongs to another user.
   const [denied, setDenied] = useState(false);
+  // SRS-307.5 / SRS-307.6: a retry is being requested; why it could not be.
+  const [retrying, setRetrying] = useState(false);
+  const [retryError, setRetryError] = useState('');
+  const router = useRouter();
 
   const load = useCallback(
     async (accessToken: string) => {
@@ -109,6 +119,27 @@ export default function ExtractionPage({ params }: { params: { id: string } }) {
     const timer = setInterval(() => load(token), REFRESH_MS);
     return () => clearInterval(timer);
   }, [token, extraction, load]);
+
+  // SRS-307.6: Retry creates a new attempt for the same document, then opens it.
+  // The new attempt is Queued, so its page starts reading the document.
+  async function retry() {
+    if (!token || !extraction || retrying) return;
+    setRetrying(true);
+    setRetryError('');
+
+    const result = await retryExtraction(extraction, token);
+    if (result.status === 'created') {
+      router.push(`/extractions/${result.extractionId}`);
+      return;
+    }
+    setRetrying(false);
+    if (result.status === 'signedOut') {
+      localStorage.removeItem('access_token');
+      setToken(null);
+      return;
+    }
+    setRetryError(result.message);
+  }
 
   if (loading) {
     return (
@@ -256,6 +287,24 @@ export default function ExtractionPage({ params }: { params: { id: string } }) {
             {/* SRS-307.2: the cause, when it is a known one */}
             {extraction.failure_message ? (
               <p data-testid="failure-cause" className="mt-1">{extraction.failure_message}</p>
+            ) : null}
+          </div>
+        ) : null}
+
+        {/* SRS-307.5: a Failed extraction can be retried */}
+        {showsRetryControl(extraction?.status) ? (
+          <div className="space-y-3">
+            <button
+              type="button"
+              data-testid="retry-extraction"
+              onClick={retry}
+              disabled={retrying}
+              className={buttonClasses({ variant: 'primary' })}
+            >
+              {retrying ? RETRYING_LABEL : RETRY_LABEL}
+            </button>
+            {retryError ? (
+              <p role="alert" data-testid="retry-error" className={alertClasses('error')}>{retryError}</p>
             ) : null}
           </div>
         ) : null}
