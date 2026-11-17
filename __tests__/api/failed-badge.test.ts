@@ -163,7 +163,7 @@ beforeEach(() => {
   db.calls.length = 0;
   db.follows.splice(0, db.follows.length, { user_id: USER, town_id: TOWN_A });
   db.documents.splice(0, db.documents.length, ...STORED_DOCUMENTS.map((row) => ({ ...row })));
-  db.towns.splice(0, db.towns.length, { town_id: TOWN_A, name: 'Town A', removed_at: null });
+  db.towns.splice(0, db.towns.length, { town_id: TOWN_A, name: 'Town A', meeting_time_zone: 'America/New_York', removed_at: null });
   db.meetings.splice(0, db.meetings.length, { meeting_id: 1301, start_at: '2026-10-05T16:00:00+00:00' });
 });
 
@@ -200,6 +200,7 @@ describe('GET /api/documents: summary status on each entry (SRS-210.3)', () => {
       document_type: 'Agenda',
       town_name: 'Town A',
       meeting_start_at: '2026-10-05T16:00:00+00:00',
+      meeting_time_zone: 'America/New_York',
     });
     expect(JSON.stringify(body)).not.toContain('summary_text');
   });
@@ -220,7 +221,7 @@ describe('GET /api/documents: summary status on each entry (SRS-210.3)', () => {
 function entry(document_id: number, title: string, summary_status: SummaryStatus, town_name: string | null = 'Town A'): DocumentListEntry {
   return {
     document_id, title, town_id: TOWN_A, meeting_id: 9, retrieved_at: '2026-10-01T12:00:00+00:00', summary_status,
-    document_type: 'Agenda', town_name, meeting_start_at: '2026-10-01T16:00:00+00:00',
+    document_type: 'Agenda', town_name, meeting_start_at: '2026-10-01T16:00:00+00:00', meeting_time_zone: 'America/New_York',
   };
 }
 

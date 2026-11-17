@@ -194,8 +194,8 @@ const SELECTED_FOLLOWS = 'town_id';
 const SELECTED_DOCUMENTS = 'document_id, title, town_id, meeting_id, retrieved_at, summary_status, document_type';
 const SELECTED_MEETINGS = 'meeting_id, start_at';
 const RETURNED_KEYS = [
-  'document_id', 'document_type', 'meeting_id', 'meeting_start_at', 'retrieved_at', 'summary_status', 'title',
-  'town_id', 'town_name',
+  'document_id', 'document_type', 'meeting_id', 'meeting_start_at', 'meeting_time_zone', 'retrieved_at', 'summary_status',
+  'title', 'town_id', 'town_name',
 ];
 const TOWN_NAMES: Record<number, string> = { [SALEM]: 'Town A', [BROOKLINE]: 'Town B' };
 const LOAD_ERROR = 'Documents could not be loaded. Please try again.';
@@ -247,7 +247,7 @@ const TOWN_B_IDS = [202, 201, 203];
 const TOWNS_A_AND_B_IDS = [104, 103, 202, 102, 201, 101, 105, 203]; // 202 (retrieved 10-10) before 102 (10-05), 201 (10-05) before 101 (09-01)
 
 function town(townId: number): Stored {
-  return { town_id: townId, name: TOWN_NAMES[townId], source_account_id: `account-${townId}`, removed_at: null };
+  return { town_id: townId, name: TOWN_NAMES[townId], source_account_id: `account-${townId}`, meeting_time_zone: 'America/New_York', removed_at: null };
 }
 
 // Each document's meeting (meeting_id 1000 + document_id). Meeting 1105 has no parsed
@@ -267,7 +267,7 @@ function listed(id: number) {
   const meeting_start_at = STORED_MEETINGS.find((meeting) => meeting.meeting_id === meeting_id)?.start_at ?? null;
   return {
     document_id, title, town_id, meeting_id, retrieved_at, summary_status, document_type,
-    town_name: TOWN_NAMES[town_id as number], meeting_start_at,
+    town_name: TOWN_NAMES[town_id as number], meeting_start_at, meeting_time_zone: 'America/New_York',
   };
 }
 
