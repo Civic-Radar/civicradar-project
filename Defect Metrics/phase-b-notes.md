@@ -9,7 +9,7 @@ Data pulled from GitHub on **November 17, 2026 at 11:32 AM ET**, after the team'
 | Slide | Required item | What is on it |
 |---|---|---|
 | 2 | Found versus closed | Line chart of running totals (axes: date, defects), table of totals per day, takeaways |
-| 3 | Defects by person | Filed (our repo + against the SSU team), fixed, and the 4 reports filed but not counted, per person, table, takeaways |
+| 3 | Defects by person | Filed (our repo + against the SSU team) and fixed per person, table, takeaways |
 | 4 | Lines of code in the repo | Whole repo by language and folder (32,880 lines, 58% tests) |
 | 5 | Defect density | Lines of code table (what was counted and left out), 28 ÷ 12.7 KLOC = 2.2, McConnell's 1 to 25 range |
 | 6 | Defect clusters | How many SRS items have 1 or 2 defects (23 items have a defect), table of the 5 items with 2 |
@@ -63,4 +63,4 @@ python3 export.py <YYYY-MM-DD today> <lines of code> "Data: GitHub issues, <date
 node deck.js deckdata.json "../Civic Radar Defect Metrics.pptx" <path to apply_theme.js>
 ```
 
-`checks.py` reruns the GitHub search cross-checks. `other.json` lists our reports in the SSU team's repo (update it if more are filed). `deck.js` needs `npm install pptxgenjs` and builds the original layout; the committed deck was edited by hand afterwards (whole-repo lines-of-code slide, SRS distribution slide, the not-counted bars), so rebuilding from the script alone will not reproduce it exactly.
+`checks.py` reruns the GitHub search cross-checks. `other.json` lists our reports in the SSU team's repo (update it if more are filed). `deck.js` needs `npm install pptxgenjs` and builds the original layout; the committed deck was edited by hand afterwards (whole-repo lines-of-code slide and the SRS distribution slide), so rebuilding from the script alone will not reproduce it exactly.
