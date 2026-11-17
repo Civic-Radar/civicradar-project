@@ -432,7 +432,10 @@ export default function ExtractPage() {
         <section className={cardClasses('sm:p-7')}>
           <h2 className="text-lg font-semibold">My extraction requests</h2>
           {extractions.length === 0 ? (
-            <p className="mt-4 text-xs leading-relaxed text-fg-muted">You haven&apos;t requested any extractions yet.</p>
+            <p className="mt-4 text-xs leading-relaxed text-fg-muted">
+              {/* Bug #528: after a failed load the list is unknown, not empty. */}
+              {loadFailed ? 'Your extraction requests could not be loaded. Reload the page to try again.' : 'You haven’t requested any extractions yet.'}
+            </p>
           ) : (
             <ul className="mt-4 divide-y divide-line">
               {extractions.map((e) => (
