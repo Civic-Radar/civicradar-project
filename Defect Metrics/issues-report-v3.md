@@ -1,8 +1,8 @@
 # Civic Radar: GitHub issues report (v3)
 
-Repository: [Civic-Radar/civicradar-project](https://github.com/Civic-Radar/civicradar-project/issues). Pulled November 16, 2026 at 10:56 PM ET.
+Repository: [Civic-Radar/civicradar-project](https://github.com/Civic-Radar/civicradar-project/issues). Pulled November 17, 2026 at 10:34 AM ET.
 
-Every issue, open and closed: **505 issues** (pull requests are not included). Issue numbers skip because pull requests share the same numbering.
+Every issue, open and closed: **524 issues** (pull requests are not included). Issue numbers skip because pull requests share the same numbering.
 
 Same layout as [issues-report-v2.md](issues-report-v2.md) (November 12), regenerated from GitHub.
 
@@ -12,7 +12,7 @@ Same layout as [issues-report-v2.md](issues-report-v2.md) (November 12), regener
 - **Labels** shows the team labels that matter for the metrics: Defects and Not Implemented yet.
 - **Closed as** is GitHub's close reason: Completed, Not planned, or Duplicate. It is empty for open issues.
 - **Dates** are in Eastern time (YYYY-MM-DD).
-- **Severity** and **SRS item** come from the bug report form (fields "Severity" and "SRS requirement"). Only bug reports have them: 39 of the 505. For every other issue these columns show "—". "(blank)" means the form was used but the field was left empty.
+- **Severity** and **SRS item** come from the bug report form (fields "Severity" and "SRS requirement"). Only bug reports have them: 40 of the 524. For every other issue these columns show "—". "(blank)" means the form was used but the field was left empty.
 - Values are copied exactly as written in each issue, including test or placeholder text.
 
 ## All issues
@@ -405,7 +405,7 @@ Same layout as [issues-report-v2.md](issues-report-v2.md) (November 12), regener
 | #500 | [Bug]: Return from detail page | hershey111 | marcos-j-salazar | Not Implemented yet | Closed | Completed | 2026-11-10 | 2026-11-16 | Critical | SRS-203.4 |
 | #501 | [Bug]: Title search within scope | hershey111 | marcos-j-salazar | Not Implemented yet | Closed | Completed | 2026-11-10 | 2026-11-16 | Critical | SRS-216.2 |
 | #502 | [Bug]: Clear search | hershey111 | marcos-j-salazar | Not Implemented yet | Closed | Completed | 2026-11-10 | 2026-11-16 | Critical | SRS-216.4 |
-| #503 | [Bug]: Deleting cancel | hershey111 | antikvng | Not Implemented yet | Open |  | 2026-11-10 |  | Critical | SRS-305.3 |
+| #503 | [Bug]: Deleting cancel | hershey111 | antikvng | Not Implemented yet | Closed | Completed | 2026-11-10 | 2026-11-17 | Critical | SRS-305.3 |
 | #504 | SRS-101.3 | hershey111 | KailunJu |  | Closed | Not planned | 2026-11-10 | 2026-11-12 | (blank) | (blank) |
 | #505 | SRS-101.2 | hershey111 | KailunJu |  | Closed | Not planned | 2026-11-10 | 2026-11-12 | (blank) | (blank) |
 | #506 | SRS-216.3 | hershey111 | yampomah |  | Closed | Not planned | 2026-11-10 | 2026-11-16 | — | — |
@@ -415,20 +415,20 @@ Same layout as [issues-report-v2.md](issues-report-v2.md) (November 12), regener
 | #510 | [Bug]: Matching result marked Complete when the town of a directly followed meeting had a failed check | KailunJu | Eriein | Defects | Closed | Completed | 2026-11-10 | 2026-11-16 | Minor | SRS-401.11 (also affects SRS-401.3) |
 | #511 | [Bug]: Matching-reason agenda passage is cut short at abbreviations like "St." and "Ave." | KailunJu | Eriein | Defects | Closed | Completed | 2026-11-10 | 2026-11-16 | Minor | SRS-401.5 |
 | #512 | [Bug]: Dashboard shows matched topic names but not the agenda text that produced them | KailunJu | Eriein | Not Implemented yet | Closed | Completed | 2026-11-10 | 2026-11-16 | Cosmetic | SRS-401.5 |
-| #513 | [Bug]: Documents can stay on "Summary pending" forever when the first summary attempt isn't saved | Eriein | marcos-j-salazar | Defects | Open |  | 2026-11-10 |  | Major | SRS-204.1 |
-| #514 | [Bug]: Three Salem documents show "The PDF is not available." because their files are missing from storage | Eriein | marcos-j-salazar | Defects | Open |  | 2026-11-10 |  | Minor | SRS-211.1 |
+| #513 | [Bug]: Documents can stay on "Summary pending" forever when the first summary attempt isn't saved | Eriein | marcos-j-salazar | Defects | Closed | Completed | 2026-11-10 | 2026-11-16 | Major | SRS-204.1 |
+| #514 | [Bug]: Three Salem documents show "The PDF is not available." because their files are missing from storage | Eriein | marcos-j-salazar | Defects | Closed | Completed | 2026-11-10 | 2026-11-16 | Minor | SRS-211.1 |
 | #515 | [Bug]: Meeting dates on the Documents list change with the viewer's time zone | Eriein | marcos-j-salazar | Defects | Closed | Completed | 2026-11-10 | 2026-11-16 | Minor | SRS-202.2 |
 | #516 | [Bug]: Documents list says "Newest first" but isn't sorted by meeting date | Eriein | marcos-j-salazar | Not Implemented yet | Closed | Completed | 2026-11-10 | 2026-11-16 | Minor | SRS-209.1 |
-| #517 | [Bug]: Extraction stays "Processing" forever if the server stops mid-run | marcos-j-salazar | antikvng | Defects | Open |  | 2026-11-10 |  | Critical | SRS-306.1 (also affects SRS-306.3, SRS-307.1, SRS-307.5) |
+| #517 | [Bug]: Extraction stays "Processing" forever if the server stops mid-run | marcos-j-salazar | antikvng | Defects | Closed | Completed | 2026-11-10 | 2026-11-17 | Critical | SRS-306.1 (also affects SRS-306.3, SRS-307.1, SRS-307.5) |
 | #519 | [Bug]: Re-adding a removed town is refused as a duplicate source account identifier | antikvng | KailunJu | Defects | Closed | Completed | 2026-11-12 | 2026-11-12 | Minor | SRS-104.2 |
 | #521 | [Bug]: Users are silently signed out after about an hour; Profile then asks them to create a profile again | marcos-j-salazar | KailunJu | Defects | Closed | Completed | 2026-11-12 | 2026-11-13 | Major | None covers session length directly (accounts area, UR-1xx). Shows up on every signed-in page. |
 | #522 | [Bug]: An "Official" search result opens the Officials page, which doesn't list that official | marcos-j-salazar | yampomah | Defects | Open |  | 2026-11-12 |  | Major | SRS-507.2 |
-| #523 | [Bug]: Search can leave out the best matches because it reads only 25 unordered rows per kind before ranking | marcos-j-salazar | yampomah | Defects | Open |  | 2026-11-12 |  | Minor | SRS-506.2 |
+| #523 | [Bug]: Search can leave out the best matches because it reads only 25 unordered rows per kind before ranking | marcos-j-salazar | yampomah | Defects | Closed | Completed | 2026-11-12 | 2026-11-16 | Minor | SRS-506.2 |
 | #524 | [Bug]: Documents page shows a blank list instead of the empty-list message when followed towns have no documents | marcos-j-salazar | marcos-j-salazar | Defects | Closed | Completed | 2026-11-12 | 2026-11-16 | Minor | SRS-201.2 |
 | #525 | [Bug]: No link to the catalog management page; administrators must type /admin/towns | marcos-j-salazar | KailunJu | Defects | Closed | Completed | 2026-11-12 | 2026-11-13 | Minor | SRS-104.1 (also affects SRS-510.1) |
 | #526 | [Bug]: "Why this is on your radar" lists every followed topic, not the ones this meeting matched | marcos-j-salazar | Eriein | Defects | Closed | Completed | 2026-11-12 | 2026-11-16 | Minor | SRS-401.5 |
-| #527 | [Bug]: After a reload, Request extraction is enabled again even though the daily limit is reached | marcos-j-salazar | antikvng | Defects | Open |  | 2026-11-12 |  | Minor | SRS-301.7 |
-| #528 | [Bug]: Extraction page stays on "Loading…" forever when a load request fails | marcos-j-salazar | antikvng | Defects | Open |  | 2026-11-12 |  | Minor | SRS-301.8 (also affects SRS-301.1) |
+| #527 | [Bug]: After a reload, Request extraction is enabled again even though the daily limit is reached | marcos-j-salazar | antikvng | Defects | Closed | Completed | 2026-11-12 | 2026-11-17 | Minor | SRS-301.7 |
+| #528 | [Bug]: Extraction page stays on "Loading…" forever when a load request fails | marcos-j-salazar | antikvng | Defects | Closed | Completed | 2026-11-12 | 2026-11-17 | Minor | SRS-301.8 (also affects SRS-301.1) |
 | #529 | [Bug]: Sign-in button stays on "Signing in…" when the login request fails | marcos-j-salazar | KailunJu | Defects | Closed | Completed | 2026-11-12 | 2026-11-13 | Minor | None covers sign-in errors directly (accounts area, UR-1xx). |
 | #533 | SRS-104.5, KJ, Catalog changes without redeployment | KailunJu | KailunJu |  | Closed | Completed | 2026-11-13 | 2026-11-13 | — | — |
 | #534 | Task 101.9-1 Remove a topic from every resident's followed topics when it is removed | KailunJu | KailunJu |  | Closed | Completed | 2026-11-13 | 2026-11-13 | — | — |
@@ -446,14 +446,14 @@ Same layout as [issues-report-v2.md](issues-report-v2.md) (November 12), regener
 | #546 | Task 102.3-3 Write tests: a successful check with no changes shows "Checked — no new information" | KailunJu | KailunJu |  | Closed | Completed | 2026-11-13 | 2026-11-13 | — | — |
 | #547 | Task 104.5-1 Confirm resident selection lists read the catalog from the database on every request | KailunJu | KailunJu |  | Closed | Completed | 2026-11-13 | 2026-11-13 | — | — |
 | #548 | Task 104.5-2 Write a test: a saved catalog change appears in resident lists on the next load | KailunJu | KailunJu |  | Closed | Completed | 2026-11-13 | 2026-11-13 | — | — |
-| #555 | [Bug]: Dashboard shows at most 6 meetings, so relevant and directly followed meetings are left off | marcos-j-salazar | yampomah | Defects | Open |  | 2026-11-14 |  | Major | SRS-501.1 |
-| #556 | [Bug]: Dashboard says "No matching meetings found." when every matching meeting is in the past | marcos-j-salazar | yampomah | Defects | Open |  | 2026-11-14 |  | Minor | SRS-501.5 |
-| #557 | [Bug]: Search results list is empty after a new search when a type filter from the previous search is still selected | marcos-j-salazar | yampomah | Defects | Open |  | 2026-11-14 |  | Major | SRS-507.1 |
-| #558 | [Bug]: Search drops apostrophes, so words like "Mayor's" never match the same word in agenda items | marcos-j-salazar | yampomah | Defects | Open |  | 2026-11-14 |  | Minor | SRS-506.2 |
+| #555 | [Bug]: Dashboard shows at most 6 meetings, so relevant and directly followed meetings are left off | marcos-j-salazar | yampomah | Defects | Closed | Completed | 2026-11-14 | 2026-11-16 | Major | SRS-501.1 |
+| #556 | [Bug]: Dashboard says "No matching meetings found." when every matching meeting is in the past | marcos-j-salazar | yampomah | Defects | Closed | Completed | 2026-11-14 | 2026-11-16 | Minor | SRS-501.5 |
+| #557 | [Bug]: Search results list is empty after a new search when a type filter from the previous search is still selected | marcos-j-salazar | yampomah | Defects | Closed | Completed | 2026-11-14 | 2026-11-16 | Major | SRS-507.1 |
+| #558 | [Bug]: Search drops apostrophes, so words like "Mayor's" never match the same word in agenda items | marcos-j-salazar | yampomah | Defects | Closed | Completed | 2026-11-14 | 2026-11-16 | Minor | SRS-506.2 |
 | #559 | [Bug]: Navigation has no Officials control; "Contacts" opens the extraction request page instead of the officials directory | marcos-j-salazar | yampomah | Defects | Open |  | 2026-11-14 |  | Minor | SRS-510.2 (also SRS-510.1) |
 | #560 | [Bug]: "View the official agenda" and "Open document" open the meeting's CivicClerk event page, not the document | marcos-j-salazar | yampomah | Defects | Open |  | 2026-11-14 |  | Minor | SRS-502.6 (also SRS-502.4) |
-| #561 | [Bug]: Search box and results disagree for one-character queries (stale results, empty page after Back) | marcos-j-salazar | yampomah | Defects | Open |  | 2026-11-14 |  | Minor | SRS-507.1 |
-| #562 | [Bug]: Dashboard start time format does not match SRS-501.2 ("November 16, 2026 at 7:00 PM EST" instead of "11/16/2026 7:00 PM ET") | marcos-j-salazar | yampomah | Defects | Open |  | 2026-11-14 |  | Cosmetic | SRS-501.2 |
+| #561 | [Bug]: Search box and results disagree for one-character queries (stale results, empty page after Back) | marcos-j-salazar | yampomah | Defects | Closed | Completed | 2026-11-14 | 2026-11-16 | Minor | SRS-507.1 |
+| #562 | [Bug]: Dashboard start time format does not match SRS-501.2 ("November 16, 2026 at 7:00 PM EST" instead of "11/16/2026 7:00 PM ET") | marcos-j-salazar | yampomah | Defects | Closed | Completed | 2026-11-14 | 2026-11-16 | Cosmetic | SRS-501.2 |
 | #563 | [Bug]: Meeting details page has no update history link, although update records exist for the meeting | marcos-j-salazar | yampomah | Not Implemented yet | Open |  | 2026-11-14 |  | Minor | SRS-503.1 (also SRS-503.2) |
 | #564 | SRS-209.1, MS, Newest-first sort | marcos-j-salazar | marcos-j-salazar |  | Closed | Completed | 2026-11-16 | 2026-11-16 | — | — |
 | #565 | Task 209.1-1 Sort GET /api/documents by meeting date, newest first | marcos-j-salazar | marcos-j-salazar |  | Closed | Completed | 2026-11-16 | 2026-11-16 | — | — |
@@ -512,18 +512,37 @@ Same layout as [issues-report-v2.md](issues-report-v2.md) (November 12), regener
 | #633 | Task 401.4-9 Write tests for agenda items that discuss a topic in other words | Eriein | Eriein |  | Closed | Completed | 2026-11-16 | 2026-11-16 | — | — |
 | #635 | Task 401.4-10 Mark agenda items the source no longer lists as removed | Eriein | Eriein |  | Closed | Completed | 2026-11-16 | 2026-11-16 | — | — |
 | #636 | Task 401.4-11 Write tests for agenda items removed at the source | Eriein | Eriein |  | Closed | Completed | 2026-11-16 | 2026-11-16 | — | — |
-| #638 | SRS-204.1, MS, Summary generation start | marcos-j-salazar | marcos-j-salazar |  | Open |  | 2026-11-16 |  | — | — |
-| #639 | Task 204.1-1 Give a first summary attempt to Pending documents that have none | marcos-j-salazar | marcos-j-salazar |  | Open |  | 2026-11-16 |  | — | — |
-| #640 | Task 204.1-2 Retry a failed first-attempt insert once during retrieval | marcos-j-salazar | marcos-j-salazar |  | Open |  | 2026-11-16 |  | — | — |
-| #641 | Task 204.1-3 Write tests for documents with no summary attempt | marcos-j-salazar | marcos-j-salazar |  | Open |  | 2026-11-16 |  | — | — |
-| #642 | SRS-211.1, MS, PDF access for any summary status | marcos-j-salazar | marcos-j-salazar |  | Open |  | 2026-11-16 |  | — | — |
-| #643 | Task 211.1-1 Show the PDF from the standard stored path when the recorded path has no file | marcos-j-salazar | marcos-j-salazar |  | Open |  | 2026-11-16 |  | — | — |
-| #644 | Task 211.1-2 Read the same standard path when summarizing | marcos-j-salazar | marcos-j-salazar |  | Open |  | 2026-11-16 |  | — | — |
-| #645 | Task 211.1-3 Correct the stored paths in the Salem seed script | marcos-j-salazar | marcos-j-salazar |  | Open |  | 2026-11-16 |  | — | — |
-| #646 | Task 211.1-4 Write tests for the standard stored path | marcos-j-salazar | marcos-j-salazar |  | Open |  | 2026-11-16 |  | — | — |
+| #638 | SRS-204.1, MS, Summary generation start | marcos-j-salazar | marcos-j-salazar |  | Closed | Completed | 2026-11-16 | 2026-11-16 | — | — |
+| #639 | Task 204.1-1 Give a first summary attempt to Pending documents that have none | marcos-j-salazar | marcos-j-salazar |  | Closed | Completed | 2026-11-16 | 2026-11-16 | — | — |
+| #640 | Task 204.1-2 Retry a failed first-attempt insert once during retrieval | marcos-j-salazar | marcos-j-salazar |  | Closed | Completed | 2026-11-16 | 2026-11-16 | — | — |
+| #641 | Task 204.1-3 Write tests for documents with no summary attempt | marcos-j-salazar | marcos-j-salazar |  | Closed | Completed | 2026-11-16 | 2026-11-16 | — | — |
+| #642 | SRS-211.1, MS, PDF access for any summary status | marcos-j-salazar | marcos-j-salazar |  | Closed | Completed | 2026-11-16 | 2026-11-16 | — | — |
+| #643 | Task 211.1-1 Show the PDF from the standard stored path when the recorded path has no file | marcos-j-salazar | marcos-j-salazar |  | Closed | Completed | 2026-11-16 | 2026-11-16 | — | — |
+| #644 | Task 211.1-2 Read the same standard path when summarizing | marcos-j-salazar | marcos-j-salazar |  | Closed | Completed | 2026-11-16 | 2026-11-16 | — | — |
+| #645 | Task 211.1-3 Correct the stored paths in the Salem seed script | marcos-j-salazar | marcos-j-salazar |  | Closed | Completed | 2026-11-16 | 2026-11-16 | — | — |
+| #646 | Task 211.1-4 Write tests for the standard stored path | marcos-j-salazar | marcos-j-salazar |  | Closed | Completed | 2026-11-16 | 2026-11-16 | — | — |
 | #647 | SRS-502.9, YA, Official source link | marcos-j-salazar | marcos-j-salazar |  | Closed | Not planned | 2026-11-16 | 2026-11-16 | — | — |
 | #648 | Task 502.9-1 Link meetings with nothing published to the town's CivicClerk portal | marcos-j-salazar | marcos-j-salazar |  | Closed | Not planned | 2026-11-16 | 2026-11-16 | — | — |
 | #649 | Task 502.9-2 Write tests for the official source link | marcos-j-salazar | marcos-j-salazar |  | Closed | Not planned | 2026-11-16 | 2026-11-16 | — | — |
+| #654 | [Bug]: Failed extraction has no Retry control | yampomah | antikvng | Not Implemented yet | Closed | Completed | 2026-11-16 | 2026-11-17 | Minor | SRS-307.5 |
+| #657 | SRS-301.8, AO, Extractable documents | antikvng | antikvng |  | Closed | Completed | 2026-11-17 | 2026-11-17 | — | — |
+| #658 | Task 301.8-5 Show an error message when the extraction page fails to load (UI) | antikvng | antikvng |  | Closed | Completed | 2026-11-17 | 2026-11-17 | — | — |
+| #659 | Task 301.8-6 Write tests: a failed load request ends with an error message, not endless loading (Test) | antikvng | antikvng |  | Closed | Completed | 2026-11-17 | 2026-11-17 | — | — |
+| #660 | SRS-301.7, AO, Daily extraction limit | antikvng | antikvng |  | Closed | Completed | 2026-11-17 | 2026-11-17 | — | — |
+| #661 | Task 301.7-5 Keep the daily limit message and disabled control after a reload (API + UI) | antikvng | antikvng |  | Closed | Completed | 2026-11-17 | 2026-11-17 | — | — |
+| #662 | Task 301.7-6 Write tests: the page loads whether today's limit is reached (Test) | antikvng | antikvng |  | Closed | Completed | 2026-11-17 | 2026-11-17 | — | — |
+| #663 | SRS-306.1, AO, Extraction status display | antikvng | antikvng |  | Closed | Completed | 2026-11-17 | 2026-11-17 | — | — |
+| #664 | Task 306.1-7 End an extraction left Processing by a stopped server as Failed (API) | antikvng | antikvng |  | Closed | Completed | 2026-11-17 | 2026-11-17 | — | — |
+| #665 | Task 306.1-8 Write tests: a stale Processing extraction ends as Failed, a running one is left alone (Test) | antikvng | antikvng |  | Closed | Completed | 2026-11-17 | 2026-11-17 | — | — |
+| #666 | SRS-307.6, AO, Retry attempt | antikvng | antikvng |  | Closed | Completed | 2026-11-17 | 2026-11-17 | — | — |
+| #667 | Task 307.6-1 Create a new extraction attempt for the same document on Retry (API) | antikvng | antikvng |  | Closed | Completed | 2026-11-17 | 2026-11-17 | — | — |
+| #668 | Task 307.6-2 Write tests: Retry creates one new attempt for the same document (Test) | antikvng | antikvng |  | Closed | Completed | 2026-11-17 | 2026-11-17 | — | — |
+| #669 | SRS-307.5, AO, Retry control | antikvng | antikvng |  | Closed | Completed | 2026-11-17 | 2026-11-17 | — | — |
+| #670 | Task 307.5-1 Display a Retry control on a Failed extraction (UI) | antikvng | antikvng |  | Closed | Completed | 2026-11-17 | 2026-11-17 | — | — |
+| #671 | Task 307.5-2 Write tests: Retry is shown only when the status is Failed (Test) | antikvng | antikvng |  | Closed | Completed | 2026-11-17 | 2026-11-17 | — | — |
+| #672 | SRS-305.3, AO, Deletion cancel | antikvng | antikvng |  | Closed | Completed | 2026-11-17 | 2026-11-17 | — | — |
+| #673 | Task 305.3-1 Keep the extraction unchanged when the deletion confirmation is cancelled (UI) | antikvng | antikvng |  | Closed | Completed | 2026-11-17 | 2026-11-17 | — | — |
+| #674 | Task 305.3-2 Write tests: cancelling closes the confirmation and deletes nothing (Test) | antikvng | antikvng |  | Closed | Completed | 2026-11-17 | 2026-11-17 | — | — |
 
 ## Issues missing information
 

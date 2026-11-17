@@ -57,6 +57,8 @@ def defect_rows(issues):
             found=et_date(i['createdAt']),
             closed=et_date(i['closedAt']) if i['state'] == 'CLOSED' and i['stateReason'] == 'COMPLETED' else '',
             open=i['state'] == 'OPEN',
+            days=(datetime.datetime.fromisoformat(i['closedAt'].replace('Z', '+00:00')) - datetime.datetime.fromisoformat(i['createdAt'].replace('Z', '+00:00'))).total_seconds() / 86400
+                 if i['state'] == 'CLOSED' and i['stateReason'] == 'COMPLETED' else None,
         ))
     return sorted(rows, key=lambda r: r['n'])
 
@@ -182,31 +184,50 @@ def tables(issues, pulled, today, loc):
         out.append(f'- Closed on {d}: {nums(closed_on[d])}.')
     out.append('')
 
-    out += ['### Defects by severity', '', '| Severity | Found | Closed | Still open | Issues |', '|---|---|---|---|---|']
+    def avg_days(g):
+        d = [r['days'] for r in g if r['days'] is not None]
+        return f'{sum(d) / len(d):.1f}' if d else '—'
+    out += ['### Defects by severity, and time to fix', '',
+            'Time to fix = closed time minus created time, in days, for defects closed as Completed only.', '',
+            '| Severity | Found | Closed | Still open | Average days to fix | Issues |', '|---|---|---|---|---|---|']
     for s in SEVERITIES:
         g = [r for r in rows if r['severity'] == s]
         c = sum(1 for r in g if r['closed'])
-        out.append(f'| {s} | {len(g)} | {c} | {len(g) - c} | {nums(g)} |')
-    out += [f'| **Total** | **{total}** | **{len(closed)}** | **{total - len(closed)}** | |', '']
+        out.append(f'| {s} | {len(g)} | {c} | {len(g) - c} | {avg_days(g)} | {nums(g)} |')
+    out += [f'| **Total** | **{total}** | **{len(closed)}** | **{total - len(closed)}** | **{avg_days(rows)}** | |', '']
 
     # 2. By person
+    try:
+        other = load('other.json')
+    except FileNotFoundError:
+        other = dict(repo='', team='', counted=[], left_out=[])
+    oth = {who: [c for c in other['counted'] if c[1] == login] for who, login in PEOPLE}
     out += ['## 2. Defects by person', '',
-            '**Filed** = defects the person opened. **Fixed** = defects closed as Completed and assigned to that person.', '',
-            '| Team member | GitHub | Filed | Fixed | Still open, assigned |', '|---|---|---|---|---|']
+            '**Filed** = defects the person reported: in our repo (Defects label), plus the ones they filed against the team we tested '
+            f'([{other["repo"]}](https://github.com/{other["repo"]}/issues)). **Fixed** = our defects closed as Completed and assigned to that person.', '',
+            '| Team member | GitHub | Filed in our repo | Filed against the team we tested | Total filed | Fixed | Still open, assigned |',
+            '|---|---|---|---|---|---|---|']
     filed = {who: [r for r in rows if r['author'] == login] for who, login in PEOPLE}
     fixed = {who: [r for r in closed if login in r['assignees']] for who, login in PEOPLE}
     still = {who: [r for r in rows if r['open'] and login in r['assignees']] for who, login in PEOPLE}
     for who, login in PEOPLE:
-        out.append(f'| {who} | {login} | {len(filed[who])} | {len(fixed[who])} | {len(still[who])} |')
+        out.append(f'| {who} | {login} | {len(filed[who])} | {len(oth[who])} | {len(filed[who]) + len(oth[who])} | {len(fixed[who])} | {len(still[who])} |')
     team_filed = sum(len(v) for v in filed.values())
+    team_oth = sum(len(v) for v in oth.values())
     team_fixed = sum(len(v) for v in fixed.values())
-    out += [f'| **Team total** | | **{team_filed}** | **{team_fixed}** | |', '']
+    out += [f'| **Team total** | | **{team_filed}** | **{team_oth}** | **{team_filed + team_oth}** | **{team_fixed}** | |', '']
+    if other['counted']:
+        out += [f'Filed against the team we tested ({other["repo"]}), counted:', '', '| # | Filed by | Title | Status |', '|---|---|---|---|']
+        out += [f'| #{n} | {LOGIN_TO.get(a, a)} | {cell(t)} | {st} |' for n, a, t, st in other['counted']]
+        out += ['', 'Left out, with the reason:', '', '| # | Filed by | Why it is not counted |', '|---|---|---|']
+        out += [f'| #{n} | {LOGIN_TO.get(a, a)} | {cell(w)} |' for n, a, w in other['left_out']]
+        out.append('')
     outside = Counter(r['author'] for r in rows if r['author'] not in LOGIN_TO)
     if outside:
         out.append('Filed by the team that tested our app: ' + ', '.join(f'{a} ({n})' for a, n in outside.items())
                    + f'. {team_filed} + {sum(outside.values())} = {total} found.')
         out.append('')
-    out += ['Issues behind each count:', '', '| Team member | Filed | Fixed | Still open, assigned |', '|---|---|---|---|']
+    out += ['Issues behind each count (our repo):', '', '| Team member | Filed | Fixed | Still open, assigned |', '|---|---|---|---|']
     for who, _ in PEOPLE:
         out.append(f'| {who} | {nums(filed[who])} | {nums(fixed[who])} | {nums(still[who])} |')
     for a in outside:
@@ -281,7 +302,7 @@ def tables(issues, pulled, today, loc):
         for what, q, gh, ours in sc['rows']:
             out.append(f'| {what} | `{q}` | {gh} | {ours} | {"✓" if gh == ours else "✗"} |')
         out += ['', f'Spot check: {", ".join("#" + str(n) for n in sc["spot"])} were opened one by one on GitHub. '
-                'Filed by, assignees, labels, status, close reason and dates match the report for all five.', '']
+                f'Filed by, assignees, labels, status, close reason, dates, severity and SRS item match the report for all {len(sc["spot"])}.', '']
 
     if sc and sc.get('cleanup'):
         out += ['## Data clean-up', '', 'Problems found while checking the data, and what was done about each.', '',

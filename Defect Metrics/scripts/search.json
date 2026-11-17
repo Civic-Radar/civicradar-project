@@ -1,11 +1,11 @@
 {
- "searched": "November 16, 2026, 10:56 PM ET",
+ "searched": "November 17, 2026, 10:40 AM ET",
  "rows": [
   [
    "Every issue",
    "is:issue",
-   505,
-   505
+   524,
+   524
   ],
   [
    "Defects found",
@@ -16,14 +16,14 @@
   [
    "Defects closed as Completed",
    "is:issue label:Defects is:closed reason:completed",
-   11,
-   11
+   23,
+   23
   ],
   [
    "Defects still open",
    "is:issue label:Defects is:open",
-   16,
-   16
+   4,
+   4
   ],
   [
    "Defects closed as Not planned",
@@ -34,8 +34,8 @@
   [
    "Labeled Not Implemented yet",
    "is:issue label:\"Not Implemented yet\"",
-   10,
-   10
+   11,
+   11
   ],
   [
    "Defects filed by MS",
@@ -44,24 +44,25 @@
    18
   ],
   [
-   "Defects filed on 2026-11-14",
-   "is:issue label:Defects created:2026-11-14",
-   8,
-   8
+   "Defects fixed by YA",
+   "is:issue label:Defects is:closed reason:completed assignee:yampomah",
+   7,
+   7
   ],
   [
-   "Open defects assigned to YA",
-   "is:issue label:Defects is:open assignee:yampomah",
-   11,
-   11
+   "Defects fixed by AO",
+   "is:issue label:Defects is:closed reason:completed assignee:antikvng",
+   3,
+   3
   ]
  ],
  "spot": [
   498,
   517,
-  521,
-  526,
-  555
+  523,
+  528,
+  555,
+  562
  ],
  "cleanup": [
   [
@@ -75,6 +76,11 @@
    "Closed as Not planned (MS, 11/16), like #504 and #505"
   ],
   [
+   "SSU team repo",
+   "15 reports we filed against the team we tested; 8 were form tests, duplicates or withdrawn",
+   "Counted the 7 real ones in Filed; listed the 8 left out"
+  ],
+  [
    "#521, #529",
    "Bug reports that name no SRS item (accounts area, UR-1xx)",
    "Not changed: counted under \"No SRS item (accounts)\"; KJ can add the closest SRS-1xx item"
@@ -82,7 +88,7 @@
   [
    "#498",
    "Two assignees (marcos-j-salazar, yampomah)",
-   "Not changed: still open, so no fix is counted twice yet"
+   "Not changed: still open, so no fix is counted twice"
   ]
  ]
 }

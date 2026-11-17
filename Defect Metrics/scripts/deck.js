@@ -1,5 +1,7 @@
-// Builds "Civic Radar Defect Metrics.pptx" from phaseb/deckdata.json.
-// node deck.js <deckdata.json> <out.pptx> <applyTheme.js path>
+// Builds "Civic Radar Defect Metrics.pptx" from deckdata.json (written by export.py).
+// Follows the CSC 351 Defect Metrics lecture example: one slide per required item, chart on
+// the left with its table of numbers under it, takeaways on the right.
+// node deck.js <deckdata.json> <out.pptx> <apply_theme.js path>
 const pptxgen = require('pptxgenjs');
 const fs = require('fs');
 const [, , dataPath, outPath, applyThemePath] = process.argv;
@@ -7,14 +9,9 @@ const { applyTheme } = require(applyThemePath);
 const D = JSON.parse(fs.readFileSync(dataPath, 'utf8'));
 
 const THEME = {
-  name: 'Civic Radar QA',
-  headFontFace: 'Cambria',
-  bodyFontFace: 'Calibri',
-  colors: {
-    dk1: '0B0B0B', lt1: 'FFFFFF', dk2: '17283B', lt2: 'EEF1F5',
-    accent1: '2A78D6', accent2: 'EB6834', accent3: '1BAF7A', accent4: 'EDA100',
-    accent5: '6250D6', accent6: '52514E', hlink: '2A78D6', folHlink: '6250D6',
-  },
+  name: 'Civic Radar QA', headFontFace: 'Cambria', bodyFontFace: 'Calibri',
+  colors: { dk1: '0B0B0B', lt1: 'FFFFFF', dk2: '17283B', lt2: 'EEF1F5', accent1: '2A78D6', accent2: 'EB6834',
+    accent3: '1BAF7A', accent4: 'EDA100', accent5: '6250D6', accent6: '52514E', hlink: '2A78D6', folHlink: '6250D6' },
 };
 const HEX = { ink: '0B0B0B', ink2: '52514E', muted: '898781', grid: 'E1E0D9', axis: 'C3C2B7',
   blue: '2A78D6', orange: 'EB6834', aqua: '1BAF7A', navy: '17283B', tint: 'EEF1F5', white: 'FFFFFF' };
@@ -26,280 +23,242 @@ pres.subject = 'CSC 351 Sprint 5 QA metrics';
 pres.author = 'Civic Radar team';
 pres.theme = { headFontFace: THEME.headFontFace, bodyFontFace: THEME.bodyFontFace };
 const C = pres.SchemeColor;
-
-const AS_OF = 'Data: GitHub issues, Nov 16, 2026, 10:56 PM ET';
 const W = 13.333, M = 0.6;
+const LEFT_W = 8.1;                 // chart + table column
+const RX = M + LEFT_W + 0.4;        // takeaways column
+const RW = W - M - RX;
+const KLOC = D.loc / 1000;
+const DENSITY = D.total / KLOC;
 
 pres.defineSlideMaster({
-  title: 'TITLE_DARK',
-  background: { color: HEX.navy },
+  title: 'TITLE_DARK', background: { color: HEX.navy },
   objects: [
     { placeholder: { options: { name: 'title', type: 'title', x: M, y: 2.3, w: W - 2 * M, h: 1.4, fontSize: 44, bold: true, color: C.background1, valign: 'bottom', align: 'left', margin: 0 }, text: '' } },
     { placeholder: { options: { name: 'body', type: 'body', x: M, y: 3.9, w: W - 2 * M, h: 1.6, fontSize: 20, color: C.background2, valign: 'top', margin: 0 }, text: '' } },
   ],
 });
 pres.defineSlideMaster({
-  title: 'CLOSING_DARK',
-  background: { color: HEX.navy },
+  title: 'CONTENT', background: { color: HEX.white },
   objects: [
-    { placeholder: { options: { name: 'title', type: 'title', x: M, y: 1.2, w: W - 2 * M, h: 1.1, fontSize: 40, bold: true, color: C.background1, valign: 'bottom', align: 'left', margin: 0 }, text: '' } },
-    { placeholder: { options: { name: 'body', type: 'body', x: M, y: 2.7, w: W - 2 * M, h: 3.6, fontSize: 22, color: C.background1, valign: 'top', margin: 0 }, text: '' } },
-  ],
-});
-pres.defineSlideMaster({
-  title: 'CONTENT',
-  background: { color: HEX.white },
-  objects: [
-    { placeholder: { options: { name: 'title', type: 'title', x: M, y: 0.35, w: W - 2 * M, h: 0.8, fontSize: 30, bold: true, color: C.text2, valign: 'middle', align: 'left', margin: 0 }, text: '' } },
-    { text: { text: 'Civic Radar · Sprint 5 QA metrics', options: { x: M, y: 7.05, w: 6, h: 0.3, fontSize: 10, color: C.accent6, margin: 0 } } },
+    { placeholder: { options: { name: 'title', type: 'title', x: M, y: 0.35, w: W - 2 * M, h: 0.8, fontSize: 32, bold: true, color: C.text2, valign: 'middle', align: 'left', margin: 0 }, text: '' } },
+    { text: { text: 'Civic Radar · CSC 351 Sprint 5 · Defect metrics', options: { x: M, y: 7.05, w: 6, h: 0.3, fontSize: 10, color: C.accent6, margin: 0 } } },
   ],
   slideNumber: { x: W - M - 0.6, y: 7.05, w: 0.6, h: 0.3, fontSize: 10, color: C.accent6, align: 'right' },
 });
 
 // ---------- helpers ----------
 const chartText = { catAxisLabelFontFace: '+mn-lt', valAxisLabelFontFace: '+mn-lt', legendFontFace: '+mn-lt', dataLabelFontFace: '+mn-lt',
-  catAxisLabelColor: HEX.ink2, valAxisLabelColor: HEX.muted, legendColor: HEX.ink2, catAxisLabelFontSize: 13, valAxisLabelFontSize: 12,
-  legendFontSize: 13, dataLabelFontSize: 12 };
-function gridOpts() { return { valGridLine: { color: HEX.grid, size: 0.75 }, catGridLine: { style: 'none' }, catAxisLineColor: HEX.axis, valAxisLineShow: false }; }
+  catAxisLabelColor: HEX.ink2, valAxisLabelColor: HEX.muted, legendColor: HEX.ink2, catAxisLabelFontSize: 12, valAxisLabelFontSize: 11,
+  legendFontSize: 12, dataLabelFontSize: 11, valAxisTitleFontSize: 12, catAxisTitleFontSize: 12, valAxisTitleColor: HEX.ink2, catAxisTitleColor: HEX.ink2,
+  valAxisTitleFontFace: '+mn-lt', catAxisTitleFontFace: '+mn-lt' };
+const gridOpts = () => ({ valGridLine: { color: HEX.grid, size: 0.75 }, catGridLine: { style: 'none' }, catAxisLineColor: HEX.axis, valAxisLineShow: false });
+const axes = (x, y) => ({ showCatAxisTitle: true, catAxisTitle: x, showValAxisTitle: true, valAxisTitle: y });
 
 function caption(slide, text, y = 6.62) {
-  slide.addText(text, { x: M, y, w: W - 2 * M, h: 0.3, fontSize: 11, italic: true, color: C.accent6, margin: 0, isTextBox: true, objectName: 'Data source' });
+  slide.addText(text, { x: M, y, w: W - 2 * M, h: 0.3, fontSize: 10, italic: true, color: C.accent6, margin: 0, isTextBox: true, objectName: 'Data source' });
 }
 
-// A compact table: first row is the header, first column is the row label.
 function table(slide, rows, opts) {
-  const head = { bold: true, color: HEX.white, fill: { color: HEX.navy }, align: 'center' };
   const data = rows.map((r, i) => r.map((v, j) => {
     const cell = typeof v === 'object' && v !== null && 'text' in v ? v : { text: String(v) };
     const o = { align: j === 0 ? 'left' : 'center', color: HEX.ink, ...(cell.options || {}) };
-    if (i === 0) Object.assign(o, head, j === 0 ? { align: 'left' } : {});
+    if (i === 0) Object.assign(o, { bold: true, color: HEX.white, fill: { color: HEX.navy } });
     else if (i % 2 === 0) o.fill = { color: HEX.tint };
     if (opts.boldLast && i === rows.length - 1) o.bold = true;
     return { text: cell.text, options: o };
   }));
-  slide.addTable(data, { x: opts.x ?? M, y: opts.y, w: opts.w ?? W - 2 * M, colW: opts.colW, fontSize: opts.fontSize ?? 12,
-    rowH: opts.rowH ?? 0.27, margin: [2, 6, 2, 6], border: { type: 'solid', pt: 0.5, color: 'D5D8DE' }, valign: 'middle', objectName: opts.name });
+  slide.addTable(data, { x: opts.x ?? M, y: opts.y, w: opts.w ?? LEFT_W, colW: opts.colW, fontSize: opts.fontSize ?? 11,
+    rowH: opts.rowH ?? 0.25, margin: [1, 5, 1, 5], border: { type: 'solid', pt: 0.5, color: 'D5D8DE' }, valign: 'middle', objectName: opts.name });
 }
 
-function stat(slide, x, y, w, value, label, color, name) {
-  slide.addShape(pres.shapes.ROUNDED_RECTANGLE, { x, y, w, h: 1.75, rectRadius: 0.12, fill: { color: C.background2 }, line: { color: C.background2 }, objectName: name + ' card' });
-  slide.addText(value, { x: x + 0.25, y: y + 0.18, w: w - 0.5, h: 0.95, fontSize: 54, bold: true, fontFace: 'Cambria', color, margin: 0, isTextBox: true, objectName: name + ' value' });
-  slide.addText(label, { x: x + 0.25, y: y + 1.1, w: w - 0.5, h: 0.5, fontSize: 15, color: C.text1, margin: 0, isTextBox: true, objectName: name + ' label' });
+function takeaways(slide, items, opts = {}) {
+  slide.addText(items.map((t, i) => ({ text: t, options: { bullet: true, breakLine: i < items.length - 1 } })),
+    { x: opts.x ?? RX, y: opts.y ?? 1.45, w: opts.w ?? RW, h: opts.h ?? 4.9, fontSize: opts.fontSize ?? 16, color: C.text1, margin: 0,
+      paraSpaceAfter: 12, valign: 'top', isTextBox: true, objectName: opts.name ?? 'Takeaways' });
 }
+
+const evenCols = (first, n, w = LEFT_W) => [first, ...Array(n).fill((w - first) / n)];
 
 // ---------- 1. Title ----------
 pres.addSection({ title: 'Overview' });
 let s = pres.addSlide({ masterName: 'TITLE_DARK', sectionTitle: 'Overview' });
 s.addText('Civic Radar defect metrics', { placeholder: 'title' });
-s.addText('CSC 351 · Sprint 5 QA\nDefects found and fixed, where they cluster, and how we checked the data', { placeholder: 'body' });
-s.addText(AS_OF, { x: M, y: 6.6, w: 8, h: 0.35, fontSize: 12, color: C.background2, margin: 0, isTextBox: true, objectName: 'Data source' });
-s.addNotes('Civic Radar defect metrics for Sprint 5. Everything here is pulled from our GitHub issues on November 16, 2026, and every total was checked against GitHub\'s own search.');
+s.addText('CSC 351 · Sprint 5 QA\nFound versus closed, defects by person, density, clusters, and how we checked our data', { placeholder: 'body' });
+s.addText(`${D.as_of}. Every total checked against GitHub.`, { x: M, y: 6.6, w: 9, h: 0.35, fontSize: 12, color: C.background2, margin: 0, isTextBox: true, objectName: 'Data source' });
+s.addNotes('Our defect metrics for Sprint 5, pulled from our GitHub issues and checked against GitHub before charting.');
 
-// ---------- 2. Summary ----------
-const pctClosed = Math.round(100 * D.closed / D.total);
-const density = D.total / (D.loc / 1000);
-s = pres.addSlide({ masterName: 'CONTENT', sectionTitle: 'Overview' });
-s.addText(`${D.total} defects found, ${D.closed} closed so far`, { placeholder: 'title' });
-const cw = (W - 2 * M - 3 * 0.3) / 4;
-stat(s, M, 1.55, cw, String(D.total), 'Defects found (Nov 10 to 16)', C.accent1, 'Found');
-stat(s, M + (cw + 0.3), 1.55, cw, String(D.closed), `Closed as fixed (${pctClosed}%)`, C.accent2, 'Closed');
-stat(s, M + 2 * (cw + 0.3), 1.55, cw, String(D.open), 'Still open', C.accent3, 'Open');
-stat(s, M + 3 * (cw + 0.3), 1.55, cw, density.toFixed(1), 'Defects per 1,000 lines of code', C.text2, 'Density');
-s.addText([
-  { text: 'What counts as a defect: ', options: { bold: true } },
-  { text: `a bug report with the team's Defects label. The ${D.niy} reports labeled Not Implemented yet are features not built yet, so they are shown separately, not counted.`, options: { breakLine: true } },
-  { text: 'Found ', options: { bold: true } }, { text: '= defects filed. ' },
-  { text: 'Closed ', options: { bold: true } }, { text: '= defects closed as Completed. Dates are Eastern time.' },
-], { x: M, y: 3.7, w: W - 2 * M, h: 1.2, fontSize: 16, color: C.text1, margin: 0, paraSpaceAfter: 8, valign: 'top', isTextBox: true, objectName: 'Definitions' });
-s.addText([
-  { text: 'Takeaways', options: { bold: true, fontSize: 18, color: C.text2, breakLine: true } },
-  { text: 'Most defects were found in three testing bursts (Nov 10, 12 and 14), and fixes started landing Nov 12.', options: { bullet: true, breakLine: true } },
-  { text: 'Defects cluster in the dashboard and search area (11 of 27), all still open.', options: { bullet: true, breakLine: true } },
-  { text: 'Density is at the low end of the industry range of 1 to 25 per KLOC.', options: { bullet: true } },
-], { x: M, y: 4.85, w: W - 2 * M, h: 1.7, fontSize: 16, color: C.text1, margin: 0, paraSpaceAfter: 6, valign: 'top', isTextBox: true, objectName: 'Takeaways' });
-caption(s, AS_OF + '. Defects label only.');
-s.addNotes(`${D.total} defects found, ${D.closed} closed (${pctClosed}%), ${D.open} open. Density ${density.toFixed(1)} per KLOC on ${D.loc.toLocaleString('en-US')} lines of code.`);
-
-// ---------- 3. Found vs closed ----------
+// ---------- 2. Found versus closed over time ----------
 pres.addSection({ title: 'Metrics' });
 const T = D.timeline;
 s = pres.addSlide({ masterName: 'CONTENT', sectionTitle: 'Metrics' });
-s.addText('Found vs. closed: fixes are catching up', { placeholder: 'title' });
+s.addText('Found versus closed over time', { placeholder: 'title' });
 s.addChart(pres.charts.LINE, [
   { name: 'Total found', labels: T.map(t => t.label), values: T.map(t => t.f) },
   { name: 'Total closed', labels: T.map(t => t.label), values: T.map(t => t.c) },
-], { x: M, y: 1.2, w: W - 2 * M, h: 3.45, chartColors: [HEX.blue, HEX.orange], lineSize: 2, lineDataSymbol: 'circle', lineDataSymbolSize: 8,
-  showLegend: true, legendPos: 't', showValue: true, dataLabelPosition: 't', dataLabelColor: HEX.ink2, valAxisMinVal: 0, valAxisMaxVal: 30, valAxisMajorUnit: 5,
-  ...chartText, ...gridOpts(), objectName: 'Found vs closed chart' });
+], { x: M, y: 1.2, w: LEFT_W, h: 3.75, chartColors: [HEX.blue, HEX.orange], lineSize: 2, lineDataSymbol: 'circle', lineDataSymbolSize: 7,
+  showLegend: true, legendPos: 'b', showValue: true, dataLabelPosition: 't', dataLabelColor: HEX.ink2, valAxisMinVal: 0, valAxisMaxVal: 30, valAxisMajorUnit: 5,
+  ...axes('Date (Eastern time)', 'Defects (running total)'), ...chartText, ...gridOpts(), objectName: 'Found versus closed chart' });
 table(s, [
-  ['Date', ...T.map(t => t.label)],
-  ['Found that day', ...T.map(t => t.nf)],
-  ['Closed that day', ...T.map(t => t.nc)],
+  ['Date', ...T.map(t => t.short)],
   ['Total found', ...T.map(t => t.f)],
   ['Total closed', ...T.map(t => t.c)],
   ['Still open', ...T.map(t => t.f - t.c)],
-], { y: 4.8, colW: [1.93, ...T.map(() => (W - 2 * M - 1.93) / T.length)], name: 'Found vs closed table', boldLast: true });
-caption(s, AS_OF + '. Running totals from the first defect.');
-s.addNotes('Defects arrived in three bursts: 9 on Nov 10, 10 on Nov 12 and 8 on Nov 14, when I tested other members\' areas. Closing started Nov 12 and jumped on Nov 16 when the Sprint 5 fixes merged. The gap between the lines is what is still open: 16.');
+], { y: 5.1, colW: evenCols(1.3, T.length), name: 'Found versus closed table', boldLast: true });
+const openSev = D.severity.filter(x => x.open > 0).map(x => `${x.open} ${x.name}`).join(', ');
+const openNums = D.severity.flatMap(x => x.open_issues).map(n => '#' + n).join(', ');
+takeaways(s, [
+  `${D.total} found, ${D.closed} closed, ${D.open} still open`,
+  `Found in three bursts of testing: Nov 10, 12 and 14`,
+  `Fixing caught up Nov 16 and 17: ${T.slice(-2).reduce((a, t) => a + t.nc, 0)} defects closed in two days`,
+  `The ${D.open} open defects are ${openSev} (${openNums}). None are Critical`,
+  'Found has been flat since Nov 14. Nobody filed new defects while we fixed, so this is not proof that none are left',
+]);
+caption(s, `${D.as_of}. Defects = bug reports with the Defects label. Closed = closed as Completed.`);
+s.addNotes(`Running totals, not daily counts. The gap between the lines is the backlog: ${D.open} open now. Found is flat since Nov 14 because nobody filed new bugs while we fixed; it does not mean there are none left.`);
 
-// ---------- 4. Severity ----------
-s = pres.addSlide({ masterName: 'CONTENT', sectionTitle: 'Metrics' });
-s.addText('By severity: most defects are Minor', { placeholder: 'title' });
-const sev = D.severity; const sevRev = [...sev].reverse();
-s.addChart(pres.charts.BAR, [
-  { name: 'Closed', labels: sevRev.map(r => r.name), values: sevRev.map(r => r.closed) },
-  { name: 'Still open', labels: sevRev.map(r => r.name), values: sevRev.map(r => r.open) },
-], { x: M, y: 1.2, w: W - 2 * M, h: 3.6, barDir: 'bar', barGrouping: 'stacked', barGapWidthPct: 60,
-  chartColors: [HEX.orange, HEX.aqua], showLegend: true, legendPos: 't', showValue: true, dataLabelPosition: 'ctr', dataLabelColor: HEX.white,
-  dataLabelFormatCode: '#;;;', valAxisMinVal: 0, valAxisMajorUnit: 5, ...chartText, ...gridOpts(), objectName: 'Severity chart' });
-table(s, [
-  ['Severity', 'Found', 'Closed', 'Still open'],
-  ...sev.map(r => [r.name, r.closed + r.open, r.closed, r.open]),
-  ['Total', D.total, D.closed, D.open],
-], { y: 4.95, colW: [3.5, 2.87, 2.87, 2.89], name: 'Severity table', boldLast: true });
-caption(s, AS_OF + '. Severity as written on each bug report.');
-s.addNotes('18 of 27 are Minor. The one Critical defect is #517, an extraction that stays Processing forever if the server stops mid-run; it is still open.');
-
-// ---------- 5. By person ----------
-s = pres.addSlide({ masterName: 'CONTENT', sectionTitle: 'Metrics' });
-s.addText('By person: who filed and who fixed', { placeholder: 'title' });
+// ---------- 3. Defects by person ----------
 const P = D.people;
-s.addChart(pres.charts.BAR, [
-  { name: 'Filed', labels: P.map(p => p.who), values: P.map(p => p.filed) },
-  { name: 'Fixed', labels: P.map(p => p.who), values: P.map(p => p.fixed) },
-], { x: M, y: 1.2, w: W - 2 * M, h: 3.55, barDir: 'col', barGrouping: 'clustered', barGapWidthPct: 70, chartColors: [HEX.blue, HEX.orange],
-  showLegend: true, legendPos: 't', showValue: true, dataLabelPosition: 'outEnd', dataLabelColor: HEX.ink, valAxisMinVal: 0, valAxisMaxVal: 20, valAxisMajorUnit: 5,
-  ...chartText, ...gridOpts(), objectName: 'By person chart' });
-table(s, [
-  ['', ...P.map(p => p.who)],
-  ['Filed', ...P.map(p => p.filed)],
-  ['Fixed', ...P.map(p => p.fixed)],
-  ['Still open, assigned', ...P.map(p => p.who === 'Testing team' ? '—' : p.open)],
-], { y: 4.9, colW: [2.33, ...P.map(() => (W - 2 * M - 2.33) / P.length)], name: 'By person table' });
-caption(s, AS_OF + '. Filed = opened the defect. Fixed = closed as Completed and assigned to them. "Testing team" is the other team.');
-s.addNotes('Filed is who opened the defect; fixed is who it was assigned to when it was closed as Completed. KJ and EG have fixed every defect assigned to them. All 11 of YA\'s are still open.');
-
-// ---------- 6. By area ----------
+const totalOther = P.reduce((a, p) => a + p.other, 0);
 s = pres.addSlide({ masterName: 'CONTENT', sectionTitle: 'Metrics' });
-s.addText('Where defects cluster: dashboard and search', { placeholder: 'title' });
-const A = D.areas; const Arev = [...A].reverse();
+s.addText('Defects by person', { placeholder: 'title' });
+s.addChart(pres.charts.BAR, [
+  { name: 'Filed', labels: P.map(p => p.who), values: P.map(p => p.ours + p.other) },
+  { name: 'Fixed', labels: P.map(p => p.who), values: P.map(p => p.fixed) },
+], { x: M, y: 1.2, w: LEFT_W, h: 3.55, barDir: 'col', barGrouping: 'clustered', barGapWidthPct: 70, chartColors: [HEX.blue, HEX.orange],
+  showLegend: true, legendPos: 'b', showValue: true, dataLabelPosition: 'outEnd', dataLabelColor: HEX.ink, valAxisMinVal: 0, valAxisMaxVal: 20, valAxisMajorUnit: 5,
+  ...axes('Team member', 'Defects'), ...chartText, ...gridOpts(), objectName: 'Defects by person chart' });
+table(s, [
+  ['', ...P.map(p => p.who), 'Team'],
+  ['Filed in our repo', ...P.map(p => p.ours), P.reduce((a, p) => a + p.ours, 0)],
+  ['Filed against SSU team', ...P.map(p => p.other), totalOther],
+  ['Total filed', ...P.map(p => p.ours + p.other), P.reduce((a, p) => a + p.ours + p.other, 0)],
+  ['Fixed', ...P.map(p => p.fixed), P.reduce((a, p) => a + p.fixed, 0)],
+], { y: 4.9, colW: evenCols(2.1, P.length + 1), name: 'Defects by person table', boldLast: true });
+takeaways(s, [
+  `Filed: defects each person reported, including the ${totalOther} filed against the team we tested (SSU starter app)`,
+  'Fixed: our defects closed as Completed and assigned to that person',
+  `Fixed adds up to ${P.reduce((a, p) => a + p.fixed, 0)}, the team's total closed. No defect was closed as a duplicate or not planned`,
+  `The team that tested us filed ${D.testing} of our ${D.total} defects, so filed adds up to ${P.reduce((a, p) => a + p.ours, 0)} + ${D.testing} = ${D.total} in our repo`,
+], { fontSize: 15 });
+caption(s, `${D.as_of}. Against the SSU team: ${D.other.repo}, 7 real reports counted; form tests, duplicates and 1 withdrawn report left out.`);
+s.addNotes('Each person explains their own bar. MS filed most of our defects by testing other members\' areas. YA fixed the most (7). Filed against the SSU team counts only real reports: we left out our three form test issues, AO\'s three duplicates and one report MS withdrew.');
+
+// ---------- 4. Defect density ----------
+s = pres.addSlide({ masterName: 'CONTENT', sectionTitle: 'Metrics' });
+s.addText('Defect density', { placeholder: 'title' });
+table(s, [
+  ['What we counted', 'Files', 'Lines of code'],
+  ['TypeScript (app/, lib/, instrumentation.ts)', '151', '11,208'],
+  ['SQL (schema, seed and backfill scripts)', '7', '1,093'],
+  ['CSS', '2', '374'],
+  ['Total', '160', `${D.loc.toLocaleString('en-US')} (${KLOC.toFixed(1)} KLOC)`],
+], { x: M, y: 1.45, w: 6.4, colW: [3.7, 0.9, 1.8], name: 'Lines of code table', boldLast: true, fontSize: 14, rowH: 0.42 });
+s.addText('Not counted: tests (__tests__, supabase/tests), config and generated files, node_modules, .next, public, and .json, .md and lock files',
+  { x: M, y: 3.7, w: 6.4, h: 0.6, fontSize: 12, italic: true, color: C.accent6, margin: 0, isTextBox: true, objectName: 'Not counted' });
+const DX = 7.6, DW = W - M - DX;
+s.addText(`${D.total} defects ÷ ${KLOC.toFixed(1)} KLOC`, { x: DX, y: 1.5, w: DW, h: 0.5, fontSize: 22, color: C.text1, margin: 0, isTextBox: true, objectName: 'Calculation' });
+s.addText(`= ${DENSITY.toFixed(1)} per KLOC`, { x: DX, y: 2.0, w: DW, h: 0.8, fontSize: 40, bold: true, fontFace: 'Cambria', color: C.accent3, margin: 0, isTextBox: true, objectName: 'Density value' });
+s.addText('McConnell: 1 to 25 per KLOC in delivered software', { x: DX, y: 3.05, w: DW, h: 0.35, fontSize: 14, color: C.accent6, margin: 0, isTextBox: true, objectName: 'Range label' });
+const bx = DX, bw = DW, by = 3.5, sx = v => bx + bw * (v - 1) / 24;
+s.addShape(pres.shapes.RECTANGLE, { x: bx, y: by, w: bw, h: 0.5, fill: { color: C.accent3, transparency: 85 }, line: { color: C.accent3, width: 1 }, objectName: 'McConnell range' });
+s.addShape(pres.shapes.RECTANGLE, { x: sx(DENSITY) - 0.04, y: by - 0.12, w: 0.08, h: 0.74, fill: { color: C.text2 }, line: { color: C.text2 }, objectName: 'Our marker' });
+s.addText('1', { x: bx - 0.1, y: by + 0.55, w: 0.3, h: 0.3, fontSize: 12, color: C.accent6, margin: 0, isTextBox: true, objectName: 'Range start' });
+s.addText('25', { x: bx + bw - 0.3, y: by + 0.55, w: 0.3, h: 0.3, fontSize: 12, color: C.accent6, align: 'right', margin: 0, isTextBox: true, objectName: 'Range end' });
+s.addText(`Us: ${DENSITY.toFixed(1)}`, { x: sx(DENSITY) - 0.5, y: by + 0.75, w: 1.2, h: 0.3, fontSize: 13, bold: true, color: C.text1, align: 'center', margin: 0, isTextBox: true, objectName: 'Our label' });
+takeaways(s, [
+  'We are in the low part of the industry range',
+  'Our count is defects found before release, so this is a rough comparison only',
+  'Counted with cloc on main (commit 6bd95e3, Nov 17), the same command as the Nov 13 count',
+], { x: M, y: 4.6, w: W - 2 * M, h: 1.6, fontSize: 15, name: 'Density takeaways' });
+caption(s, 'npx cloc app lib supabase instrumentation.ts --exclude-dir=tests --exclude-ext=json,md,lock');
+s.addNotes(`${D.total} defects over ${KLOC.toFixed(1)} thousand lines is ${DENSITY.toFixed(1)} per KLOC, near the low end of McConnell's 1 to 25. We counted only code we wrote: TypeScript, SQL and CSS, no tests, config, generated files or libraries.`);
+
+// ---------- 5. Defects by SRS item ----------
+const S = D.srs;
+s = pres.addSlide({ masterName: 'CONTENT', sectionTitle: 'Metrics' });
+s.addText('Defects by SRS item', { placeholder: 'title' });
+const Srev = [...S].reverse();
+s.addChart(pres.charts.BAR, [{ name: 'Defects', labels: Srev.map(x => `${x.srs} (${x.area})`), values: Srev.map(x => x.n) }],
+  { x: M, y: 1.15, w: 6.6, h: 5.4, barDir: 'bar', barGapWidthPct: 35, chartColors: [HEX.blue], showLegend: false, showValue: true,
+    dataLabelPosition: 'outEnd', dataLabelColor: HEX.ink, valAxisMinVal: 0, valAxisMaxVal: 3, valAxisMajorUnit: 1,
+    ...axes('SRS item (area)', 'Defects'), ...chartText, catAxisLabelFontSize: 10, ...gridOpts(), objectName: 'Defects by SRS item chart' });
+const half = Math.ceil(S.length / 2);
+const srsRows = (part) => [['SRS item', 'Area', 'Defects'], ...part.map(x => [x.srs, x.area, x.n])];
+table(s, srsRows(S.slice(0, half)), { x: 7.45, y: 1.2, w: 2.55, colW: [1.25, 0.6, 0.7], name: 'SRS table part 1', fontSize: 10, rowH: 0.22 });
+table(s, [...srsRows(S.slice(half)), ['Total', '', D.total]], { x: 10.18, y: 1.2, w: 2.55, colW: [1.25, 0.6, 0.7], name: 'SRS table part 2', fontSize: 10, rowH: 0.22, boldLast: true });
+s.addText(`${S.length} SRS items have a defect. No item has more than 2. The ${S.filter(x => x.n > 1).length} items with 2: ${S.filter(x => x.n > 1).map(x => x.srs).join(', ')}.`,
+  { x: 7.45, y: 4.3, w: W - M - 7.45, h: 1.1, fontSize: 13, color: C.text1, margin: 0, valign: 'top', isTextBox: true, objectName: 'SRS note' });
+caption(s, `${D.as_of}. Each defect once, under the first SRS number in its report. "No SRS item": #521 and #529 (accounts), which name none.`);
+s.addNotes('Largest first. The counts add up to the total found. Defects are spread thin across SRS items; the cluster shows up when we group them by area, on the next slide.');
+
+// ---------- 6. Where our defects clustered ----------
+const A = D.areas, Arev = [...A].reverse();
+const top = A[0];
+s = pres.addSlide({ masterName: 'CONTENT', sectionTitle: 'Metrics' });
+s.addText('Where our defects clustered', { placeholder: 'title' });
 s.addChart(pres.charts.BAR, [
   { name: 'Closed', labels: Arev.map(a => a.name), values: Arev.map(a => a.closed) },
   { name: 'Still open', labels: Arev.map(a => a.name), values: Arev.map(a => a.open) },
-], { x: M, y: 1.2, w: 7.6, h: 3.6, barDir: 'bar', barGrouping: 'stacked', barGapWidthPct: 55,
-  chartColors: [HEX.orange, HEX.aqua], showLegend: true, legendPos: 't', showValue: true, dataLabelPosition: 'ctr', dataLabelColor: HEX.white,
-  dataLabelFormatCode: '#;;;', valAxisMinVal: 0, valAxisMaxVal: 12, valAxisMajorUnit: 2, ...chartText, ...gridOpts(), objectName: 'By area chart' });
-s.addShape(pres.shapes.ROUNDED_RECTANGLE, { x: 8.55, y: 1.35, w: W - M - 8.55, h: 3.3, rectRadius: 0.12, fill: { color: C.background2 }, line: { color: C.background2 }, objectName: 'SRS hot spots card' });
-s.addText([
-  { text: 'SRS items with 2 defects each', options: { bold: true, fontSize: 17, color: C.text2, breakLine: true } },
-  ...D.topsrs.map((t, i) => ({ text: `${t.srs}: ${t.issues.map(n => '#' + n).join(', ')}`, options: { bullet: true, breakLine: i < D.topsrs.length - 1 } })),
-], { x: 8.8, y: 1.55, w: W - M - 9.05, h: 2.95, fontSize: 15, color: C.text1, margin: 0, paraSpaceAfter: 6, valign: 'top', isTextBox: true, objectName: 'SRS hot spots' });
+], { x: M, y: 1.2, w: LEFT_W, h: 3.7, barDir: 'bar', barGrouping: 'stacked', barGapWidthPct: 55, chartColors: [HEX.orange, HEX.aqua],
+  showLegend: true, legendPos: 'b', showValue: true, dataLabelPosition: 'ctr', dataLabelColor: HEX.white, dataLabelFormatCode: '#;;;',
+  valAxisMinVal: 0, valAxisMaxVal: 12, valAxisMajorUnit: 2, ...axes('Area (owner, SRS group)', 'Defects'), ...chartText, ...gridOpts(), objectName: 'By area chart' });
 table(s, [
-  ['Area', ...A.map(a => a.code)],
-  ['Defects', ...A.map(a => a.closed + a.open)],
-  ['Closed', ...A.map(a => a.closed)],
-  ['Still open', ...A.map(a => a.open)],
-  ['Share', ...A.map(a => Math.round(100 * (a.closed + a.open) / D.total) + '%')],
-], { y: 4.95, colW: [2.33, ...A.map(() => (W - 2 * M - 2.33) / A.length)], name: 'By area table' });
-caption(s, AS_OF + '. Each defect once, under the area that owns its first SRS item.');
-s.addNotes('Each defect is counted once, under the area that owns its SRS item. YA\'s dashboard, meeting details and search area has 11 of 27 (41%), none closed yet. EG and KJ have closed all of theirs. No single SRS item has more than 2.');
+  ['Area', ...A.map(a => a.code), 'Total'],
+  ['Defects', ...A.map(a => a.closed + a.open), D.total],
+  ['Closed', ...A.map(a => a.closed), D.closed],
+  ['Still open', ...A.map(a => a.open), D.open],
+  ['Share', ...A.map(a => Math.round(100 * (a.closed + a.open) / D.total) + '%'), '100%'],
+], { y: 5.05, colW: evenCols(1.6, A.length + 1), name: 'By area table' });
+takeaways(s, [
+  `Dashboard, meeting details and search (YA, SRS-5xx) had ${top.closed + top.open} of our ${D.total} defects (${Math.round(100 * (top.closed + top.open) / D.total)}%)`,
+  `${top.closed} of those are fixed; ${top.open} are still open`,
+  'The dashboard and search show data from every other area, so they are where problems are easiest to see',
+  'So that area should get the most retesting before the final release',
+]);
+caption(s, `${D.as_of}. Area = the team member whose SRS group owns the defect's SRS item.`);
+s.addNotes('Grouped by area, the cluster is clear: YA\'s dashboard, meeting details and search area. 8 of the 11 were filed by MS in one testing pass on Nov 14.');
 
-// ---------- 7. Density ----------
-s = pres.addSlide({ masterName: 'CONTENT', sectionTitle: 'Metrics' });
-s.addText(`Density: ${density.toFixed(1)} defects per KLOC, low in the industry range`, { placeholder: 'title' });
-const L = M + 0.3, R = W - M - 0.3, Y = 2.45;
-const sx = v => L + (R - L) * v / 25;
-s.addShape(pres.shapes.ROUNDED_RECTANGLE, { x: sx(1), y: Y - 0.45, w: sx(25) - sx(1), h: 0.9, rectRadius: 0.1, fill: { color: C.accent1, transparency: 85 }, line: { color: C.accent1, transparency: 85 }, objectName: 'McConnell range band' });
-s.addText("McConnell's range for delivered software: 1 to 25 defects per KLOC", { x: sx(1), y: Y - 0.95, w: sx(25) - sx(1), h: 0.4, fontSize: 15, color: C.accent6, align: 'center', margin: 0, isTextBox: true, objectName: 'Range label' });
-s.addShape(pres.shapes.LINE, { x: L, y: Y, w: R - L, h: 0, line: { color: HEX.axis, width: 2 }, objectName: 'Scale line' });
-[0, 1, 5, 10, 15, 20, 25].forEach(v => {
-  s.addShape(pres.shapes.LINE, { x: sx(v), y: Y - 0.08, w: 0, h: 0.16, line: { color: HEX.axis, width: 2 }, objectName: `Tick ${v}` });
-  s.addText(String(v), { x: sx(v) - 0.3, y: Y + 0.55, w: 0.6, h: 0.3, fontSize: 13, color: C.accent6, align: 'center', margin: 0, isTextBox: true, objectName: `Tick label ${v}` });
-});
-s.addShape(pres.shapes.OVAL, { x: sx(density) - 0.14, y: Y - 0.14, w: 0.28, h: 0.28, fill: { color: C.accent2 }, line: { color: C.background1, width: 2 }, objectName: 'Civic Radar marker' });
-s.addText(`Civic Radar: ${density.toFixed(1)}`, { x: sx(density) + 0.2, y: Y - 0.42, w: 3, h: 0.35, fontSize: 18, bold: true, color: C.text1, margin: 0, isTextBox: true, objectName: 'Civic Radar label' });
-table(s, [
-  ['What we counted', 'Files', 'Lines of code'],
-  ['TypeScript: app/, lib/, instrumentation.ts', '148', '10,873'],
-  ['SQL: schema, seed and backfill scripts', '7', '1,093'],
-  ['CSS', '2', '374'],
-  ['Total', '157', `${D.loc.toLocaleString('en-US')} (${(D.loc / 1000).toFixed(1)} KLOC)`],
-], { x: M, y: 3.55, w: 7.4, colW: [4.2, 1.0, 2.2], name: 'Lines of code table', boldLast: true, fontSize: 13, rowH: 0.32 });
-s.addText([
-  { text: `${D.total} defects ÷ ${(D.loc / 1000).toFixed(1)} KLOC = ${density.toFixed(1)}`, options: { bold: true, fontSize: 20, color: C.text2, breakLine: true } },
-  { text: 'Counted with cloc on main (commit 78d6819), the same command KJ used on Nov 13. Tests, config and generated files are not counted.', options: { breakLine: true } },
-  { text: 'Our count is defects found before release, so the comparison with delivered software is rough.' },
-], { x: 8.35, y: 3.55, w: W - M - 8.35, h: 2.6, fontSize: 14, color: C.text1, margin: 0, paraSpaceAfter: 8, valign: 'top', isTextBox: true, objectName: 'Density explanation' });
-caption(s, AS_OF + '. Lines counted Nov 16 with: npx cloc app lib supabase instrumentation.ts --exclude-dir=tests --exclude-ext=json,md,lock');
-s.addNotes(`27 defects over 12.3 thousand lines of code is ${density.toFixed(1)} per KLOC, near the low end of McConnell's 1 to 25 range. The code grew by 693 lines since KJ's Nov 13 count. If test code were counted the density would be lower still.`);
-
-// ---------- 8. Data checking ----------
+// ---------- 7. How we checked our data ----------
 pres.addSection({ title: 'Data checking' });
+const K = D.checks;
 s = pres.addSlide({ masterName: 'CONTENT', sectionTitle: 'Data checking' });
-s.addText('How we checked the data', { placeholder: 'title' });
-const checks = [
-  ['Every issue', '505'], ['Defects found', '27'], ['Closed as Completed', '11'], ['Still open', '16'], ['Closed as Not planned', '0'],
-  ['Not Implemented yet', '10'], ['Filed by MS', '18'], ['Filed on 11/14', '8'], ['Open, assigned to YA', '11'],
-];
-s.addText('1. Every total counted a second way, with GitHub search', { x: M, y: 1.25, w: 6.1, h: 0.4, fontSize: 17, bold: true, color: C.text2, margin: 0, isTextBox: true, objectName: 'Cross-check heading' });
-table(s, [['Total', 'GitHub search', 'Our tables', 'Match'], ...checks.map(([w, n]) => [w, n, n, { text: '✓', options: { color: HEX.aqua, bold: true } }])],
-  { x: M, y: 1.75, w: 6.1, colW: [2.5, 1.3, 1.3, 1.0], name: 'Cross-check table', rowH: 0.3, fontSize: 13 });
-s.addText([
-  { text: '2. Tables add up: ', options: { bold: true, color: C.text2 } },
-  { text: 'the timeline, severity, by-person and by-area tables each total 27.', options: { breakLine: true } },
-  { text: '3. Spot check: ', options: { bold: true, color: C.text2 } },
-  { text: '#498, #517, #521, #526 and #555 opened one by one; every field matched.' },
-], { x: M, y: 4.95, w: 6.1, h: 1.4, fontSize: 14, color: C.text1, margin: 0, paraSpaceAfter: 8, valign: 'top', isTextBox: true, objectName: 'Other checks' });
-const fixes = [
-  ['#499', 'Same bug as #497, filed twice', 'Closed as Duplicate'],
-  ['#506', 'A passed test ("Bug Found: None"), not a bug', 'Closed as Not planned'],
-  ['#521, #529', 'Name no SRS item (accounts)', 'Counted as "No SRS item"'],
-  ['#498', 'Two assignees', 'One assignee when it closes'],
-];
-s.addText('4. What we found and corrected', { x: 7.15, y: 1.25, w: W - M - 7.15, h: 0.4, fontSize: 17, bold: true, color: C.text2, margin: 0, isTextBox: true, objectName: 'Clean-up heading' });
-fixes.forEach(([n, problem, fix], i) => {
-  const y = 1.75 + i * 1.12;
-  s.addShape(pres.shapes.ROUNDED_RECTANGLE, { x: 7.15, y, w: W - M - 7.15, h: 0.98, rectRadius: 0.1, fill: { color: C.background2 }, line: { color: C.background2 }, objectName: `Clean-up card ${n}` });
-  s.addText([
-    { text: n + '  ', options: { bold: true, color: C.text2 } }, { text: problem, options: { breakLine: true } },
-    { text: fix, options: { color: C.accent6, italic: true } },
-  ], { x: 7.4, y: y + 0.12, w: W - M - 7.65, h: 0.76, fontSize: 14, color: C.text1, margin: 0, valign: 'middle', isTextBox: true, objectName: `Clean-up text ${n}` });
-});
-caption(s, 'GitHub search run Nov 16, 2026, 10:56 PM ET. Full tables: Defect Metrics/defect-metrics-tables-v2.md');
-s.addNotes('We counted every total twice: once from our pulled report and once with GitHub\'s own issue search. All nine matched. The tables also check each other. While checking, we found one duplicate and one passed test filed as a bug, and closed both with a comment; two defects with no SRS item and one with two assignees are flagged but not changed.');
+s.addText('How we checked our data', { placeholder: 'title' });
+s.addText('What we compared', { x: M, y: 1.2, w: 6.0, h: 0.4, fontSize: 18, bold: true, color: C.text2, margin: 0, isTextBox: true, objectName: 'Compared heading' });
+table(s, [['Total', 'GitHub search', 'Our tables', 'Match'], ...K.rows.map(([w, , g, o]) => [w, g, o, { text: g === o ? '✓' : '✗', options: { color: g === o ? HEX.aqua : HEX.orange, bold: true } }])],
+  { x: M, y: 1.7, w: 6.0, colW: [2.75, 1.15, 1.1, 1.0], name: 'Cross-check table', fontSize: 11, rowH: 0.27 });
+takeaways(s, [
+  `Six issues (${K.spot.map(n => '#' + n).join(', ')}) opened on GitHub; all 9 columns matched`,
+  'Per-person, per-SRS and per-area counts each add up to the team totals',
+  'MS\'s filed count and YA\'s and AO\'s fixed counts, checked with GitHub search',
+], { x: M, y: 4.6, w: 6.0, h: 1.9, fontSize: 14, name: 'Compared bullets' });
+s.addText('What we corrected', { x: 7.0, y: 1.2, w: W - M - 7.0, h: 0.4, fontSize: 18, bold: true, color: C.text2, margin: 0, isTextBox: true, objectName: 'Corrected heading' });
+takeaways(s, [
+  '#499 was the same bug as #497, filed twice. Closed as Duplicate',
+  '#506 was a passed test ("Bug Found: None"). Closed as Not planned',
+  `Against the SSU team we found 15 reports; 8 were form tests, duplicates or withdrawn. Counted the 7 real ones`,
+  `${D.niy} reports are features not built yet (Not Implemented yet). Shown separately, not counted as defects`,
+  '#521 and #529 name no SRS item. Flagged and counted as "No SRS item"; #498 has two assignees. Flagged',
+], { x: 7.0, y: 1.7, w: W - M - 7.0, h: 4.8, fontSize: 14, name: 'Corrected bullets' });
+caption(s, `GitHub search run ${K.searched}. Full tables and issue lists: Defect Metrics/defect-metrics-tables-v2.md`);
+s.addNotes('Every total was counted twice: from our report and with GitHub\'s own issue search, and all nine matched. Then the corrections: one duplicate, one passed test, the test and duplicate reports we filed against the SSU team, and the Not Implemented yet reports kept separate.');
 
-// ---------- 9. My contribution (MS) ----------
-pres.addSection({ title: 'My contribution' });
-s = pres.addSlide({ masterName: 'CONTENT', sectionTitle: 'My contribution' });
-s.addText('MS: two thirds of the team\'s defects found', { placeholder: 'title' });
-const cw3 = (W - 2 * M - 2 * 0.3) / 3;
-stat(s, M, 1.4, cw3, '18', 'of 27 defects filed (67%)', C.accent1, 'MS filed');
-stat(s, M + cw3 + 0.3, 1.4, cw3, '2 → 4', 'defects fixed (4 after PRs #650, #651)', C.accent2, 'MS fixed');
-stat(s, M + 2 * (cw3 + 0.3), 1.4, cw3, '5', 'Not Implemented yet issues closed', C.accent3, 'MS NIY closed');
-s.addText([
-  { text: 'Filed: ', options: { bold: true, color: C.text2 } },
-  { text: 'mostly by testing other members\' areas: extraction (#517, #527, #528), accounts (#521, #525, #529), matching (#526), and dashboard and search (#522, #523, #555 to #562).', options: { breakLine: true } },
-  { text: 'Fixed: ', options: { bold: true, color: C.text2 } },
-  { text: '#515 and #524 merged; #513 and #514 have PRs open. Sprint 5 PRs #599 to #608 also closed #497, #500, #501, #502 and #516.', options: { breakLine: true } },
-  { text: 'My area: ', options: { bold: true, color: C.text2 } },
-  { text: '4 defects in documents (SRS-2xx); none open once #650 and #651 merge.', options: { breakLine: true } },
-  { text: 'Data clean-up: ', options: { bold: true, color: C.text2 } },
-  { text: 'closed #499 as a duplicate and #506 as not a bug.' },
-], { x: M, y: 3.45, w: W - 2 * M, h: 3.0, fontSize: 16, color: C.text1, margin: 0, paraSpaceAfter: 10, valign: 'top', isTextBox: true, objectName: 'MS details' });
-caption(s, AS_OF + '.');
-s.addNotes('I filed 18 of the 27 defects, mostly while testing other members\' areas. In my own area, documents, 4 defects were found; 2 are fixed and 2 have PRs open. I also closed 5 Not Implemented yet issues with the Sprint 5 PRs and cleaned up a duplicate and a passed test.');
-
-// ---------- 10. Wrap-up ----------
-pres.addSection({ title: 'Wrap-up' });
-s = pres.addSlide({ masterName: 'CLOSING_DARK', sectionTitle: 'Wrap-up' });
-s.addText('What the numbers say', { placeholder: 'title' });
-s.addText([
-  { text: `${D.total} defects found in one week; ${D.closed} closed, ${D.open} open.`, options: { bullet: true, breakLine: true } },
-  { text: 'Dashboard and search has the most open defects (11). That is where to focus next.', options: { bullet: true, breakLine: true } },
-  { text: `${density.toFixed(1)} defects per KLOC: low in the industry range.`, options: { bullet: true, breakLine: true } },
-  { text: 'Numbers will be re-pulled after the team\'s last merges, with the same scripts.', options: { bullet: true } },
-], { placeholder: 'body', paraSpaceAfter: 8 });
-s.addNotes('Wrap-up. The scripts in Defect Metrics/scripts rebuild every table and chart from GitHub in about a minute, so the final numbers can be refreshed right before the demo.');
+// ---------- 8. Appendix: severity and time to fix ----------
+pres.addSection({ title: 'Appendix' });
+const SV = D.severity;
+s = pres.addSlide({ masterName: 'CONTENT', sectionTitle: 'Appendix' });
+s.addText('Severity and time to fix', { placeholder: 'title' });
+table(s, [
+  ['Severity', 'Found', 'Closed', 'Still open', 'Average days to fix'],
+  ...SV.map(x => [x.name, x.found, x.closed, x.open, x.avg == null ? '—' : x.avg.toFixed(1)]),
+  ['Total', D.total, D.closed, D.open, D.avg_all.toFixed(1)],
+], { y: 1.5, w: 7.6, colW: [2.0, 1.2, 1.2, 1.4, 1.8], name: 'Severity table', boldLast: true, fontSize: 15, rowH: 0.45 });
+takeaways(s, [
+  `The one Critical defect (#517) took ${SV[0].avg.toFixed(1)} days, the longest. Critical should be fastest, so this is worth a look`,
+  `${D.open} open: ${openSev}. None Critical`,
+  'Time to fix = closed time minus created time, for closed defects only',
+], { x: 8.6, y: 1.5, w: W - M - 8.6 });
+caption(s, `${D.as_of}.`);
+s.addNotes('Backup slide with the lecture\'s severity and time-to-fix table. The one Critical defect took the longest, which is the opposite of what we want.');
 
 (async () => {
   await pres.writeFile({ fileName: outPath });
