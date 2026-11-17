@@ -21,7 +21,7 @@ function respondWith(events: Record<string, unknown>[]) {
   );
 }
 
-async function sourceUrls(): Promise<Map<string, string>> {
+async function sourceUrls(): Promise<Map<string, string | null>> {
   const { meetings } = await fetchMeetings('salemma', 1);
   return new Map(meetings.map((meeting) => [meeting.sourceMeetingId, meeting.sourceUrl]));
 }
