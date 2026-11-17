@@ -1,23 +1,23 @@
 {
- "searched": "November 17, 2026, 10:40 AM ET",
+ "searched": "November 17, 2026, 11:32 AM ET",
  "rows": [
   [
    "Every issue",
    "is:issue",
-   524,
-   524
+   543,
+   543
   ],
   [
    "Defects found",
    "is:issue label:Defects",
-   27,
-   27
+   28,
+   28
   ],
   [
    "Defects closed as Completed",
    "is:issue label:Defects is:closed reason:completed",
-   23,
-   23
+   24,
+   24
   ],
   [
    "Defects still open",
@@ -34,8 +34,8 @@
   [
    "Labeled Not Implemented yet",
    "is:issue label:\"Not Implemented yet\"",
-   11,
-   11
+   10,
+   10
   ],
   [
    "Defects filed by MS",
@@ -52,8 +52,8 @@
   [
    "Defects fixed by AO",
    "is:issue label:Defects is:closed reason:completed assignee:antikvng",
-   3,
-   3
+   4,
+   4
   ]
  ],
  "spot": [
@@ -74,6 +74,11 @@
    "#506",
    "A passed test, not a bug (SRS-216.3, \"Bug Found: None\"), with no bug label",
    "Closed as Not planned (MS, 11/16), like #504 and #505"
+  ],
+  [
+   "#654",
+   "Yolanda's report (missing Retry control, SRS-307.5) was labeled Not Implemented yet, so it was not counted and she showed 0 filed",
+   "Relabeled Defects (MS, 11/17) so it counts: 28 found, 24 closed"
   ],
   [
    "SSU team repo",
