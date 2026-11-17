@@ -81,7 +81,7 @@ export default function DocumentsPage() {
 
           <div className="mt-6 flex flex-wrap items-center justify-between gap-2 text-sm text-fg-muted">
             <p>{documents.length} {documents.length === 1 ? 'document' : 'documents'}</p>
-            {/* GET /api/documents lists the newest retrieved first, and the page keeps that order. */}
+            {/* GET /api/documents lists the documents by meeting date, newest first (SRS-209.1), and the page keeps that order. */}
             <p className="flex items-center gap-2">
               <ListFilter className="h-4 w-4" aria-hidden="true" />
               Newest first

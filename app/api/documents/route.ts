@@ -1,3 +1,4 @@
+import { newestMeetingFirst } from '../../../lib/documentOrder';
 import { getAuthenticatedUser, getToken } from '../../../lib/residentAuth';
 
 // Always read the current rows; never serve a build-time snapshot.
@@ -5,8 +6,10 @@ export const dynamic = 'force-dynamic';
 
 const LOAD_ERROR = 'Documents could not be loaded. Please try again.';
 
-// Lists the documents from the signed-in resident's followed towns (SRS-201.1).
-// Placeholder order until SRS-209.1: newest retrieved_at, then newest document_id.
+// Lists the documents from the signed-in resident's followed towns (SRS-201.1),
+// sorted by meeting date, newest first (SRS-209.1). The database returns them
+// newest retrieved_at first, then newest document_id, and that order is kept
+// for documents whose meetings start at the same time.
 export async function GET(request: Request) {
   const token = getToken(request);
   if (!token) return Response.json({ error: 'Unauthorized' }, { status: 401 });
@@ -69,5 +72,5 @@ export async function GET(request: Request) {
     meeting_start_at: meetingStarts.get(row.meeting_id) ?? null,
   }));
 
-  return Response.json({ documents: entries }, { status: 200 });
+  return Response.json({ documents: newestMeetingFirst(entries) }, { status: 200 });
 }
