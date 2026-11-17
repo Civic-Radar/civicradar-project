@@ -132,7 +132,9 @@ export async function runExtraction(
     // 7. Done.
     const { error: doneError } = await supabase
       .from('extractions')
-      .update({ status: 'Completed', completed_at: deps.now() })
+      // failure_cause is cleared in case the run was slow enough to be ended as
+      // Failed while it was still working (bug #517): its real result is kept.
+      .update({ status: 'Completed', failure_cause: null, completed_at: deps.now() })
       .eq('extraction_id', extractionId);
     if (doneError) throw new Failure('Other');
 

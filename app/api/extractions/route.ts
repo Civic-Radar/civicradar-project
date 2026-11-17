@@ -19,6 +19,7 @@
 import { getSupabaseClient } from '../../../lib/supabase';
 import { ALREADY_IN_PROGRESS_MESSAGE, DAILY_LIMIT_MESSAGE, UNSUPPORTED_FORMAT_MESSAGE, readableDocumentName } from '../../../lib/extractions';
 import { dailyExtractionLimit, dailyLimitReached, extractionRequestsToday } from '../../../lib/extraction/dailyLimit';
+import { failStaleExtractions } from '../../../lib/extraction/staleExtractions';
 
 const EXTRACTION_COLUMNS = 'extraction_id, user_id, document_id, source_document_title, status, requested_at, completed_at';
 
@@ -96,6 +97,10 @@ export async function POST(request: Request) {
 
   if (accountError) return Response.json({ error: 'Could not prepare your account.' }, { status: 500 });
 
+  // Bug #517: an extraction left Processing by a stopped server is ended as Failed
+  // first, so it no longer blocks a new request for its document (SRS-306.3).
+  await failStaleExtractions(supabase!, user.id);
+
   // SRS-301.4: create exactly one extraction request, linked to the signed-in user.
   // user_id always comes from the verified token, never from the request body.
   const { data: extraction, error: insertError } = await supabase!
@@ -131,6 +136,9 @@ export async function GET(request: Request) {
   // SRS-304.1: ?saved=1 returns only saved extractions, the completed ones that
   // have results, newest extraction first (for the Saved Extractions page).
   const saved = new URL(request.url).searchParams.get('saved') === '1';
+
+  // Bug #517: an extraction left Processing by a stopped server is shown as Failed.
+  await failStaleExtractions(supabase!, user.id);
 
   // Only the signed-in user's own extractions are returned. Saved ones also count
   // the officials each found (Task 304.1-5), in the same query.
