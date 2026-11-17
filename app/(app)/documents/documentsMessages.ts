@@ -12,3 +12,6 @@ export const SETUP_LINK_HREF = '/preferences';
 // SRS-201.2: shown when the user follows at least one town and the Towns I follow
 // scope contains zero documents.
 export const EMPTY_LIST_MESSAGE = 'No documents have been retrieved for the towns you follow yet.';
+
+// SRS-216.3: shown when a submitted title search matches zero documents.
+export const NO_RESULTS_MESSAGE = 'No documents match your search.';
