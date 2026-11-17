@@ -77,7 +77,7 @@ import { getSupabaseClient } from '../../lib/supabase';
 const CONSOLE_METHODS = ['log', 'error', 'warn', 'info', 'debug'] as const;
 
 const SELECTED_COLUMNS =
-  'document_id, meeting_id, town_id, title, document_type, source_url, retrieved_at, summary_status, summary_text, summary_generated_at, storage_path, mime_type';
+  'document_id, meeting_id, town_id, title, document_type, source_url, retrieved_at, summary_status, summary_text, summary_generated_at, source_file_id, storage_path, mime_type';
 
 const RESPONSE_KEYS = [
   'document_id',
@@ -315,7 +315,7 @@ describe('GET /api/documents/[id] summary fields (SRS-204.2)', () => {
     expect(new Set(db.calls.map((call) => call.table))).toEqual(new Set(['documents']));
   });
 
-  it('never returns storage or hash fields, and reads only storage_path and mime_type for the PDF link', async () => {
+  it('never returns storage or hash fields, and reads only storage_path, mime_type and source_file_id for the PDF link (#514)', async () => {
     storedRow(COMPLETE_ROW);
 
     const response = await open();
@@ -326,7 +326,7 @@ describe('GET /api/documents/[id] summary fields (SRS-204.2)', () => {
       expect(body.document).not.toHaveProperty(column);
       expect(text).not.toContain(column);
     }
-    for (const column of ['file_sha256', 'file_size_bytes', 'source_file_id']) {
+    for (const column of ['file_sha256', 'file_size_bytes']) {
       expect(SELECTED_COLUMNS).not.toContain(column);
     }
     expect(text).not.toContain(STORED_FILE.file_sha256);
