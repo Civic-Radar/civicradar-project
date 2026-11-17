@@ -48,3 +48,15 @@ export async function retryExtraction(
     return { status: 'error', message: RETRY_ERROR };
   }
 }
+
+// SRS-307.5, AO, Retry control.
+// "The system shall display a Retry control when an extraction's status changes
+//  to Failed."
+// Only a Failed extraction shows Retry: a Queued or Processing one is still
+// running, and a Completed one has its results.
+export const RETRY_LABEL = 'Retry';
+export const RETRYING_LABEL = 'Retrying…';
+
+export function showsRetryControl(status: string | null | undefined): boolean {
+  return status === 'Failed';
+}
