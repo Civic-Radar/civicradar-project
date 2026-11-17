@@ -18,6 +18,11 @@ const API_BASE_URL = 'https://{code}.api.civicclerk.com/v1';
 // derived from the CivicClerk portal address.
 const PORTAL_EVENT_URL = 'https://{code}.portal.civicclerk.com/event/{id}/overview';
 
+// The town's portal home, which lists its meetings. Used for an event with no
+// agenda and no published files, whose event page never finishes loading
+// (SRS-502.9, #498).
+const PORTAL_HOME_URL = 'https://{code}.portal.civicclerk.com/';
+
 // File bytes are streamed by file id. The relative `url` on a published file
 // is not used.
 const FILE_STREAM_URL = `${API_BASE_URL}/Meetings/GetMeetingFileStream(fileId={id},plainText=false)`;
@@ -120,6 +125,23 @@ function portalEventUrl(sourceAccountId: string, sourceMeetingId: string): strin
   return PORTAL_EVENT_URL.replace('{code}', sourceAccountId).replace('{id}', encodeURIComponent(sourceMeetingId));
 }
 
+function agendaRefOf(event: CivicClerkEvent): string | null {
+  return event.hasAgenda === true && typeof event.agendaId === 'number' && event.agendaId > 0
+    ? String(event.agendaId)
+    : null;
+}
+
+// The meeting's official source page (SRS-502.9): its event page when
+// CivicClerk has published an agenda or a file for it, and otherwise the
+// town's portal home, because the event page of an event with nothing
+// published never loads (#498).
+function sourceUrlOf(event: CivicClerkEvent, sourceAccountId: string, sourceMeetingId: string): string {
+  const published = agendaRefOf(event) !== null || (Array.isArray(event.publishedFiles) && event.publishedFiles.length > 0);
+  return published
+    ? portalEventUrl(sourceAccountId, sourceMeetingId)
+    : PORTAL_HOME_URL.replace('{code}', sourceAccountId);
+}
+
 function toSourceMeeting(event: CivicClerkEvent, sourceAccountId: string): SourceMeeting {
   const sourceMeetingId = eventId(event);
 
@@ -131,11 +153,8 @@ function toSourceMeeting(event: CivicClerkEvent, sourceAccountId: string): Sourc
     sourceStartTime: text(event.startDateTime),
     location: joinLocation(event.eventLocation),
     onlineLink: null, // CivicClerk sends no online participation link (zoomMeetingId is not a link)
-    sourceUrl: portalEventUrl(sourceAccountId, sourceMeetingId),
-    agendaRef:
-      event.hasAgenda === true && typeof event.agendaId === 'number' && event.agendaId > 0
-        ? String(event.agendaId)
-        : null,
+    sourceUrl: sourceUrlOf(event, sourceAccountId, sourceMeetingId),
+    agendaRef: agendaRefOf(event),
   };
 }
 
