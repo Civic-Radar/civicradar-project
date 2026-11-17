@@ -1,0 +1,94 @@
+{
+ "searched": "November 17, 2026, 10:40 AM ET",
+ "rows": [
+  [
+   "Every issue",
+   "is:issue",
+   524,
+   524
+  ],
+  [
+   "Defects found",
+   "is:issue label:Defects",
+   27,
+   27
+  ],
+  [
+   "Defects closed as Completed",
+   "is:issue label:Defects is:closed reason:completed",
+   23,
+   23
+  ],
+  [
+   "Defects still open",
+   "is:issue label:Defects is:open",
+   4,
+   4
+  ],
+  [
+   "Defects closed as Not planned",
+   "is:issue label:Defects is:closed reason:\"not planned\"",
+   0,
+   0
+  ],
+  [
+   "Labeled Not Implemented yet",
+   "is:issue label:\"Not Implemented yet\"",
+   11,
+   11
+  ],
+  [
+   "Defects filed by MS",
+   "is:issue label:Defects author:marcos-j-salazar",
+   18,
+   18
+  ],
+  [
+   "Defects fixed by YA",
+   "is:issue label:Defects is:closed reason:completed assignee:yampomah",
+   7,
+   7
+  ],
+  [
+   "Defects fixed by AO",
+   "is:issue label:Defects is:closed reason:completed assignee:antikvng",
+   3,
+   3
+  ]
+ ],
+ "spot": [
+  498,
+  517,
+  523,
+  528,
+  555,
+  562
+ ],
+ "cleanup": [
+  [
+   "#499",
+   "Same bug as #497 (SRS-201.3 setup message), filed twice by the testing team",
+   "Closed as Duplicate of #497 (MS, 11/16)"
+  ],
+  [
+   "#506",
+   "A passed test, not a bug (SRS-216.3, \"Bug Found: None\"), with no bug label",
+   "Closed as Not planned (MS, 11/16), like #504 and #505"
+  ],
+  [
+   "SSU team repo",
+   "15 reports we filed against the team we tested; 8 were form tests, duplicates or withdrawn",
+   "Counted the 7 real ones in Filed; listed the 8 left out"
+  ],
+  [
+   "#521, #529",
+   "Bug reports that name no SRS item (accounts area, UR-1xx)",
+   "Not changed: counted under \"No SRS item (accounts)\"; KJ can add the closest SRS-1xx item"
+  ],
+  [
+   "#498",
+   "Two assignees (marcos-j-salazar, yampomah)",
+   "Not changed: still open, so no fix is counted twice"
+  ]
+ ]
+}

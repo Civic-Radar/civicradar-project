@@ -1,0 +1,21 @@
+{"repo": "SonjaSeferasi/ssu-starter-app-v2",
+ "team": "SSU starter app team",
+ "counted": [
+  [1173, "marcos-j-salazar", "No reaction control on photo messages (SRS-210.1)", "Open"],
+  [1169, "Eriein", "DormHall friend door shows a letter badge instead of the default profile picture", "Closed, not planned by their team"],
+  [1170, "Eriein", "Avatar can't walk across placed furniture in DormSpace (SRS-504.8)", "Closed, not planned by their team"],
+  [1171, "Eriein", "Decorate mode offers furniture rotation (SRS-500.7)", "Closed, not planned by their team"],
+  [1177, "antikvng", "No Back to Game Room control in World Explorer pause view (SRS-622.1)", "Closed, completed"],
+  [1178, "antikvng", "World Explorer level exit has no Leave Game / Stay confirmation (SRS-622.2)", "Closed, completed"],
+  [1179, "antikvng", "Game Room streak card does not show the participation-streak count (SRS-612.1)", "Closed, completed"]
+ ],
+ "left_out": [
+  [1145, "marcos-j-salazar", "Test report from the form walkthrough (\"hi\")"],
+  [1146, "Eriein", "Test report from the form walkthrough (\"you have an issue-TEST\")"],
+  [1148, "KailunJu", "Test report from the form walkthrough (\"Test\")"],
+  [1151, "KailunJu", "Closed by their team as a duplicate"],
+  [1172, "marcos-j-salazar", "Withdrawn by MS: SRS-403.4 is not on their current plan"],
+  [1174, "antikvng", "Duplicate of #1177 (filed twice, closed as duplicate)"],
+  [1175, "antikvng", "Duplicate of #1178 (filed twice, closed as duplicate)"],
+  [1176, "antikvng", "Duplicate of #1179 (filed twice, closed as duplicate)"]
+ ]}
