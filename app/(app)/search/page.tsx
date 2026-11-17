@@ -82,15 +82,24 @@ export default function SearchPage() {
     }
   }, []);
 
-  // Coming back to this page (for example with Back): restore the last search.
+  // Coming back to this page (for example with Back): restore the last search and
+  // run it right away, whatever its length, so a one-character search comes back
+  // too (bug #561).
+  const restoredRef = useRef<string | null>(null);
   useEffect(() => {
     const saved = new URLSearchParams(window.location.search).get(HIGHLIGHT_PARAM);
-    if (saved) setQuery(saved);
-  }, []);
+    if (saved && saved.trim() !== '') {
+      restoredRef.current = saved.trim();
+      setQuery(saved);
+      runSearch(saved);
+    }
+  }, [runSearch]);
 
   // Search as the user types, once they pause.
   useEffect(() => {
     const trimmed = query.trim();
+    // The first run, before the restored query is in the box: leave the restored search running.
+    if (trimmed === '' && restoredRef.current !== null) return;
     if (trimmed === '') {
       // Cleared box: stop any search and go back to the empty page.
       controllerRef.current?.abort();
@@ -100,7 +109,21 @@ export default function SearchPage() {
       rememberQuery('');
       return;
     }
-    if (trimmed.length < MIN_LIVE_LENGTH) return;
+    // The restored search already ran.
+    if (restoredRef.current === trimmed) {
+      restoredRef.current = null;
+      return;
+    }
+    restoredRef.current = null;
+    if (trimmed.length < MIN_LIVE_LENGTH) {
+      // Too short to search as you type: drop results for an older, longer query
+      // so the list never disagrees with the box (bug #561). Enter still searches.
+      controllerRef.current?.abort();
+      controllerRef.current = null;
+      setSearching(false);
+      setOutcome((current) => (current.status === 'done' && current.query !== trimmed ? { status: 'idle' } : current));
+      return;
+    }
 
     const timer = setTimeout(() => runSearch(trimmed), TYPING_DELAY_MS);
     return () => clearTimeout(timer);
@@ -159,7 +182,8 @@ export default function SearchPage() {
           <p role="status" className="sr-only">
             {outcome.results.length} results for {outcome.query}
           </p>
-          <SearchResults results={outcome.results} query={outcome.query} />
+          {/* A new search starts with "All" selected, so an old type filter never hides its results (bug #557). */}
+          <SearchResults key={outcome.query} results={outcome.results} query={outcome.query} />
         </div>
       ) : searching ? (
         <p role="status" className="mt-8 text-sm text-fg-muted">Searching…</p>

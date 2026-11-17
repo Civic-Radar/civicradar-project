@@ -74,29 +74,41 @@ export async function GET(request: Request) {
   // Only punctuation was typed: the search ran and found nothing.
   if (terms.length === 0) return Response.json({ results: [] }, { status: 200 });
 
-  // One query per kind, all at once.
+  // Each kind is read twice, at the same time: the rows that contain every word
+  // (the best matches, so they're never crowded out by the row limit, bug #523),
+  // and the rows that contain any word. The two are merged before ranking.
+  type Kind = { table: string; columns: string; searchIn: string[]; id: string; activeOnly?: boolean };
+  const KINDS: Kind[] = [
+    { table: 'meetings', columns: 'meeting_id, town_id, title, source_body_name, location, start_at', searchIn: ['title', 'source_body_name', 'location'], id: 'meeting_id' },
+    { table: 'documents', columns: 'document_id, title, document_type, summary_text', searchIn: ['title', 'summary_text'], id: 'document_id' },
+    { table: 'agenda_items', columns: 'agenda_item_id, meeting_id, title, item_text', searchIn: ['title', 'item_text'], id: 'agenda_item_id', activeOnly: true },
+    { table: 'officials', columns: 'official_id, full_name, title, role', searchIn: ['full_name', 'title', 'role'], id: 'official_id' },
+  ];
+
+  function read(kind: Kind, mode: 'all' | 'any') {
+    let query = supabase!.from(kind.table).select(kind.columns);
+    if (kind.activeOnly) query = query.is('removed_at', null);
+    // Every word: one "or" across the columns per word; PostgREST ANDs them together.
+    if (mode === 'all') for (const term of terms!) query = query.or(anyTermFilter(kind.searchIn, [term]));
+    else query = query.or(anyTermFilter(kind.searchIn, terms!));
+    return query.limit(PER_KIND);
+  }
+
+  async function readKind(kind: Kind): Promise<{ data: unknown[] | null; error: unknown }> {
+    const [all, any] = await Promise.all([
+      terms!.length > 1 ? read(kind, 'all') : Promise.resolve({ data: [], error: null }),
+      read(kind, 'any'),
+    ]);
+    if (all.error || any.error) return { data: null, error: all.error ?? any.error };
+    const rows = new Map<unknown, unknown>();
+    for (const row of [...(all.data ?? []), ...(any.data ?? [])] as unknown as Record<string, unknown>[]) {
+      if (!rows.has(row[kind.id])) rows.set(row[kind.id], row);
+    }
+    return { data: [...rows.values()], error: null };
+  }
+
   const [meetings, documents, agendaItems, officials, towns] = await Promise.all([
-    supabase
-      .from('meetings')
-      .select('meeting_id, town_id, title, source_body_name, location, start_at')
-      .or(anyTermFilter(['title', 'source_body_name', 'location'], terms))
-      .limit(PER_KIND),
-    supabase
-      .from('documents')
-      .select('document_id, title, document_type, summary_text')
-      .or(anyTermFilter(['title', 'summary_text'], terms))
-      .limit(PER_KIND),
-    supabase
-      .from('agenda_items')
-      .select('agenda_item_id, meeting_id, title, item_text')
-      .is('removed_at', null)
-      .or(anyTermFilter(['title', 'item_text'], terms))
-      .limit(PER_KIND),
-    supabase
-      .from('officials')
-      .select('official_id, full_name, title, role')
-      .or(anyTermFilter(['full_name', 'title', 'role'], terms))
-      .limit(PER_KIND),
+    ...KINDS.map(readKind),
     supabase.from('towns').select('town_id, name, meeting_time_zone'),
   ]);
 

@@ -27,7 +27,8 @@ const STOP_WORDS = new Set([
 /**
  * SRS-506.3: returns null for an empty or whitespace-only query, so no search runs.
  * Otherwise returns the lowercased words to search for (letters, digits, and
- * hyphens only, so they are safe inside a database filter). Common words are
+ * hyphens only, so they are safe inside a database filter; a possessive "'s" is
+ * left off). Common words are
  * dropped unless the query has nothing else.
  */
 export function searchTerms(query: unknown): string[] | null {
@@ -35,7 +36,14 @@ export function searchTerms(query: unknown): string[] | null {
 
   const words = query
     .toLowerCase()
+    // Curly apostrophes count as straight ones.
+    .replace(/[\u2018\u2019\u02bc]/g, "'")
     .split(/\s+/)
+    // A possessive searches for the word itself ("Mayor's" -> "mayor"), which also
+    // finds "Mayor's", "Mayor’s" and "Mayors" in the text (bug #558). Any other
+    // apostrophe splits the word ("o'brien" -> "o", "brien").
+    .map((word) => word.replace(/'s$/, ''))
+    .flatMap((word) => word.split("'"))
     .map((word) => word.replace(/[^\p{L}\p{N}-]/gu, '').replace(/^-+|-+$/g, ''))
     .filter((word) => word.length > 0);
 
