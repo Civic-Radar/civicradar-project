@@ -15,6 +15,11 @@
 // SRS-305.2, AO, Deletion confirmation: selecting Delete on an extraction asks
 // the user to confirm, naming its source document.
 //
+// SRS-305.3, AO, Deletion cancel: cancelling the confirmation (the Cancel button
+// or the Escape key) closes it and keeps the extraction unchanged. Nothing is sent
+// to the server. Cancel has the focus when the confirmation opens, so pressing
+// Enter keeps the extraction.
+//
 // SRS-305.4, AO, Permanent deletion: confirming deletes the extraction for good;
 // it leaves the list and its page can no longer be opened.
 
@@ -26,7 +31,7 @@ import { alertClasses } from '../../components/ui/Alert';
 import { buttonClasses } from '../../components/ui/Button';
 import { cardClasses } from '../../components/ui/Card';
 import SignedOutNotice from '../../components/ui/SignedOutNotice';
-import { deletionConfirmationMessage, extractionDate, filterSavedExtractions, formatDateTime, officialsFoundLabel } from '../../../lib/extractions';
+import { deletionConfirmationMessage, extractionDate, isDeletionCancelKey, filterSavedExtractions, formatDateTime, officialsFoundLabel } from '../../../lib/extractions';
 import type { SavedExtraction } from '../../../lib/extractions';
 
 export default function SavedExtractionsPage() {
@@ -40,6 +45,12 @@ export default function SavedExtractionsPage() {
   // SRS-305.2: the saved extraction whose Delete control was selected.
   const [confirmingId, setConfirmingId] = useState<number | null>(null);
   const [deleting, setDeleting] = useState(false);
+
+  // SRS-305.3: cancelling only closes the confirmation. The extraction stays in
+  // the list and nothing is sent to the server.
+  function cancelDeletion() {
+    setConfirmingId(null);
+  }
 
   // SRS-305.4: confirming deletes the extraction for good and removes it from the list.
   async function deleteExtraction(extractionId: number) {
@@ -169,7 +180,14 @@ export default function SavedExtractionsPage() {
 
                     {/* SRS-305.2: confirm the deletion, naming the source document */}
                     {confirmingId === e.extraction_id ? (
-                      <div role="alertdialog" aria-label="Confirm deletion" className={alertClasses('error', 'mt-3')}>
+                      <div
+                        role="alertdialog"
+                        aria-label="Confirm deletion"
+                        data-testid="delete-dialog"
+                        // SRS-305.3: Escape cancels, like the Cancel button.
+                        onKeyDown={(event) => { if (isDeletionCancelKey(event.key) && !deleting) cancelDeletion(); }}
+                        className={alertClasses('error', 'mt-3')}
+                      >
                         <p data-testid="delete-confirmation">{deletionConfirmationMessage(e.source_document_title)}</p>
                         <div className="mt-4 flex flex-wrap gap-3">
                           <button
@@ -182,8 +200,11 @@ export default function SavedExtractionsPage() {
                           </button>
                           <button
                             type="button"
-                            onClick={() => setConfirmingId(null)}
+                            data-testid="cancel-deletion"
+                            onClick={cancelDeletion}
                             disabled={deleting}
+                            // SRS-305.3: Cancel has the focus, so Enter keeps the extraction.
+                            autoFocus
                             className={buttonClasses({ variant: 'secondary' })}
                           >
                             Cancel

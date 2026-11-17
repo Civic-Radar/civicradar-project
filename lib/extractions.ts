@@ -70,6 +70,11 @@ export function deletionConfirmationMessage(sourceDocumentTitle: string): string
   return `Delete your extraction of "${sourceDocumentTitle}"?`;
 }
 
+// SRS-305.3 — the Escape key cancels the deletion confirmation, like Cancel.
+export function isDeletionCancelKey(key: string): boolean {
+  return key === 'Escape';
+}
+
 // SRS-304.1 — when an extraction was performed: when it finished, or when it was
 // requested if it hasn't finished.
 export function extractionDate(extraction: { requested_at: string; completed_at: string | null }): string {
