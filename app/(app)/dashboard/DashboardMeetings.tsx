@@ -8,7 +8,7 @@ import LeafLoader from "../../components/art/LeafLoader";
 import Badge from "../../components/ui/Badge";
 import { cardClasses } from "../../components/ui/Card";
 import SignedOutNotice from "../../components/ui/SignedOutNotice";
-import { upcomingMeetings } from "../../../lib/dashboardMeetings";
+import { DASHBOARD_MEETING_LIMIT, formatDashboardStart, upcomingMeetings } from "../../../lib/dashboardMeetings";
 
 // One meeting from GET /api/matching-meetings (only the fields shown here).
 export type Meeting = {
@@ -27,37 +27,14 @@ export type FailedTown = { town_id: number; name: string };
 
 type Status = "loading" | "signedOut" | "error" | "ready";
 
-function formatMeetingTime(
-  startAt: string,
-  timeZone: string
-) {
-  const date = new Date(startAt);
-
-  if (Number.isNaN(date.getTime())) {
-    return "Date not available";
-  }
-
-  try {
-    return new Intl.DateTimeFormat("en-US", {
-      year: "numeric",
-      month: "long",
-      day: "numeric",
-      hour: "numeric",
-      minute: "2-digit",
-      timeZone,
-      timeZoneName: "short",
-    }).format(date);
-  } catch {
-    return "Date not available";
-  }
-}
-
 // SRS-501.1: the resident's upcoming matching meetings (followed towns and
 // topics, plus meetings they follow directly), loaded with their token.
 export default function DashboardMeetings() {
   const [status, setStatus] = useState<Status>("loading");
   const [meetings, setMeetings] = useState<Meeting[]>([]);
   const [failedTowns, setFailedTowns] = useState<FailedTown[]>([]);
+  // How many meetings matched in all, past ones included (SRS-501.5).
+  const [matchedCount, setMatchedCount] = useState(0);
 
   useEffect(() => {
     const token = localStorage.getItem("access_token");
@@ -83,7 +60,9 @@ export default function DashboardMeetings() {
         setStatus("error");
         return;
       }
-      setMeetings(upcomingMeetings(data.meetings as Meeting[]));
+      // Every upcoming match; the cards show the first few and offer the rest (SRS-501.1).
+      setMeetings(upcomingMeetings(data.meetings as Meeting[], new Date(), Infinity));
+      setMatchedCount(data.meetings.length);
       // An Incomplete result lists the towns that could not be checked.
       setFailedTowns(data.status === "Incomplete" && Array.isArray(data.failed_towns) ? data.failed_towns : []);
       setStatus("ready");
@@ -108,7 +87,7 @@ export default function DashboardMeetings() {
     );
   }
 
-  return <MeetingResults meetings={meetings} failedTowns={failedTowns} />;
+  return <MeetingResults meetings={meetings} failedTowns={failedTowns} matchedCount={matchedCount} />;
 }
 
 /**
@@ -116,9 +95,16 @@ export default function DashboardMeetings() {
  * SRS-501.4: in an Incomplete result, "Could not check the source" appears next
  * to each town that could not be checked, above the meetings that were found.
  * SRS-501.5: a Complete result with no meetings shows "No matching meetings
- * found." and no incomplete label.
+ * found." and no incomplete label. When meetings matched but none is coming up,
+ * it says so instead, and points to the Meetings page for past ones.
+ * matchedCount is every matching meeting, past ones included; it defaults to
+ * the upcoming ones passed in.
  */
-export function MeetingResults({ meetings, failedTowns }: { meetings: Meeting[]; failedTowns: FailedTown[] }) {
+export function MeetingResults({ meetings, failedTowns, matchedCount = meetings.length }: {
+  meetings: Meeting[];
+  failedTowns: FailedTown[];
+  matchedCount?: number;
+}) {
   const incomplete = failedTowns.length > 0;
 
   return (
@@ -139,7 +125,21 @@ export function MeetingResults({ meetings, failedTowns }: { meetings: Meeting[];
 
       {meetings.length > 0 ? (
         <MeetingCards meetings={meetings} />
-      ) : incomplete ? null : (
+      ) : incomplete ? null : matchedCount > 0 ? (
+        <div className="flex min-h-[260px] flex-col items-center justify-center gap-3 px-6 py-12 text-center text-fg-muted">
+          <EmptyArt scene="tree" />
+          <p className="text-base font-semibold text-fg">
+            No upcoming meetings.
+          </p>
+          <p className="max-w-sm text-sm">
+            {matchedCount === 1 ? "Your 1 matching meeting has" : `All ${matchedCount} of your matching meetings have`} already
+            taken place. New ones will show up here when they're scheduled.
+          </p>
+          <Link href="/meetings" className="mt-1 text-sm font-semibold text-accent hover:underline">
+            See past meetings
+          </Link>
+        </div>
+      ) : (
         <div className="flex min-h-[260px] flex-col items-center justify-center gap-3 px-6 py-12 text-center text-fg-muted">
           <EmptyArt scene="tree" />
           <p className="text-base font-semibold text-fg">
@@ -157,10 +157,17 @@ export function MeetingResults({ meetings, failedTowns }: { meetings: Meeting[];
   );
 }
 
+// SRS-501.1: the soonest meetings first; "Show all" reveals the rest, so no
+// relevant or directly followed meeting is left off the dashboard.
 function MeetingCards({ meetings }: { meetings: Meeting[] }) {
+  const [showAll, setShowAll] = useState(false);
+  const shown = showAll ? meetings : meetings.slice(0, DASHBOARD_MEETING_LIMIT);
+  const hidden = meetings.length - DASHBOARD_MEETING_LIMIT;
+
   return (
+    <>
     <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
-      {meetings.map((meeting) => (
+      {shown.map((meeting) => (
         // SRS-501.3: selecting a meeting opens its details page.
         <Link
           key={meeting.meeting_id}
@@ -214,11 +221,9 @@ function MeetingCards({ meetings }: { meetings: Meeting[] }) {
               <Clock3 aria-hidden="true" className="mt-px h-3.5 w-3.5 shrink-0" />
               Date &amp; Time:{" "}
               <span className={meeting.is_canceled ? "line-through" : undefined}>
+                {/* SRS-501.2: "09/24/2026 7:00 PM ET" in the town's time zone. */}
                 {meeting.start_at
-                  ? formatMeetingTime(
-                      meeting.start_at,
-                      meeting.meeting_time_zone || "America/New_York"
-                    )
+                  ? formatDashboardStart(meeting.start_at, meeting.meeting_time_zone || "America/New_York") ?? "Date not available"
                   : "Not available"}
               </span>
             </p>
@@ -226,5 +231,16 @@ function MeetingCards({ meetings }: { meetings: Meeting[] }) {
         </Link>
       ))}
     </div>
+    {hidden > 0 ? (
+      <button
+        type="button"
+        onClick={() => setShowAll((value) => !value)}
+        aria-expanded={showAll}
+        className="mt-4 inline-flex min-h-11 items-center rounded-md px-1 text-sm font-semibold text-accent hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+      >
+        {showAll ? "Show fewer meetings" : `Show all ${meetings.length} upcoming meetings`}
+      </button>
+    ) : null}
+    </>
   );
 }
