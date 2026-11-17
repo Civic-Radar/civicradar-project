@@ -46,3 +46,16 @@ export async function extractionRequestsToday(supabase: SupabaseClient, userId: 
   if (error) return null;
   return count ?? 0;
 }
+
+// Bug #527: whether the user has already used today's requests, so the extraction
+// page can show the limit message as soon as it loads (not only after a refused
+// request). False when the count can't be read: the request itself is still
+// checked by POST /api/extractions.
+export async function dailyLimitReached(supabase: SupabaseClient, userId: string, now = new Date()): Promise<boolean> {
+  try {
+    const requestsToday = await extractionRequestsToday(supabase, userId, now);
+    return requestsToday !== null && requestsToday >= dailyExtractionLimit();
+  } catch {
+    return false;
+  }
+}

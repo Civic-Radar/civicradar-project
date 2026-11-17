@@ -18,6 +18,8 @@ export type ExtractionPageData =
       followsAnyTown: boolean;
       towns: { town_id: number; name: string }[];
       extractions: Extraction[];
+      // SRS-301.7 (bug #527): the user has already used today's extraction requests.
+      limitReached: boolean;
     };
 
 type Fetch = (url: string, init: { headers: Record<string, string> }) => Promise<Response>;
@@ -53,5 +55,6 @@ export async function loadExtractionPage(accessToken: string, fetchFn: Fetch = f
     followsAnyTown: docs.data.followsAnyTown !== false,
     towns: docs.data.towns ?? [],
     extractions: ext.data.extractions ?? [],
+    limitReached: ext.data.limitReached === true,
   };
 }

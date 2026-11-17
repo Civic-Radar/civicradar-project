@@ -13,10 +13,12 @@
 //
 // SRS-301.7, AO, Daily extraction limit: once a user has requested the daily
 // limit of extractions (10 by default, EXTRACTION_DAILY_LIMIT), another request
-// answers 429 with the SRS message and nothing is created.
+// answers 429 with the SRS message and nothing is created. The list also says
+// whether today's limit is already reached (limitReached), so the page can keep
+// the message and the disabled request control after a reload (bug #527).
 import { getSupabaseClient } from '../../../lib/supabase';
 import { ALREADY_IN_PROGRESS_MESSAGE, DAILY_LIMIT_MESSAGE, UNSUPPORTED_FORMAT_MESSAGE, readableDocumentName } from '../../../lib/extractions';
-import { dailyExtractionLimit, extractionRequestsToday } from '../../../lib/extraction/dailyLimit';
+import { dailyExtractionLimit, dailyLimitReached, extractionRequestsToday } from '../../../lib/extraction/dailyLimit';
 
 const EXTRACTION_COLUMNS = 'extraction_id, user_id, document_id, source_document_title, status, requested_at, completed_at';
 
@@ -139,7 +141,11 @@ export async function GET(request: Request) {
 
   if (error) return Response.json({ error: 'Could not load your extractions.' }, { status: 500 });
 
-  if (!saved) return Response.json({ extractions: data ?? [] }, { status: 200 });
+  if (!saved) {
+    // Bug #527: the page shows the limit message from this, without a refused request.
+    const limitReached = await dailyLimitReached(supabase!, user.id);
+    return Response.json({ extractions: data ?? [], limitReached }, { status: 200 });
+  }
 
   const extractions = ((data ?? []) as unknown as (Record<string, unknown> & { officials?: { count: number }[] })[]).map(
     ({ officials, ...extraction }) => ({ ...extraction, officials_found: officials?.[0]?.count ?? 0 }),

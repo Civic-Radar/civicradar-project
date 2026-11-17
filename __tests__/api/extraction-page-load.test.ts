@@ -29,6 +29,7 @@ describe('Bug #528: the extraction page load always finishes', () => {
       followsAnyTown: true,
       towns: DOCUMENTS.towns,
       extractions: EXTRACTIONS.extractions,
+      limitReached: false,
     });
   });
 
@@ -58,6 +59,11 @@ describe('Bug #528: the extraction page load always finishes', () => {
     const expired = async () => new Response('Unauthorized', { status: 401 });
     const data = await loadExtractionPage('token', fetchWith({ documents: expired, extractions: async () => { throw new TypeError('Failed to fetch'); } }));
     expect(data).toEqual({ status: 'signedOut' });
+  });
+
+  it("reports that today's limit is reached when the server says so (bug #527)", async () => {
+    const data = await loadExtractionPage('token', fetchWith({ ...ok, extractions: async () => json({ ...EXTRACTIONS, limitReached: true }) }));
+    expect(data).toMatchObject({ status: 'loaded', limitReached: true });
   });
 
   it('sends the access token with both requests', async () => {

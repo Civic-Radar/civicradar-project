@@ -78,7 +78,8 @@ export default function ExtractPage() {
 
   const [confirming, setConfirming] = useState(false);
   const [submitting, setSubmitting] = useState(false);
-  // SRS-301.7: the server refused a request because today's limit was reached.
+  // SRS-301.7: today's limit is reached. Loaded with the page (bug #527), and set
+  // when the server refuses a request.
   const [limitReached, setLimitReached] = useState(false);
   const [error, setError] = useState('');
   // The page's first load failed, so the empty list isn't "no documents yet".
@@ -110,12 +111,18 @@ export default function ExtractPage() {
     setFollowsAnyTown(data.followsAnyTown);
     setTowns(data.towns);
     setExtractions(data.extractions);
+    // SRS-301.7 (bug #527): the limit holds after a reload.
+    setLimitReached(data.limitReached);
   }
 
   async function refreshExtractions() {
     if (!token) return;
     const res = await fetch('/api/extractions', { headers: { Authorization: `Bearer ${token}` } });
-    if (res.ok) setExtractions((await res.json()).extractions);
+    if (!res.ok) return;
+    const data = await res.json();
+    setExtractions(data.extractions);
+    // SRS-301.7 (bug #527): the request just made may have been the day's last.
+    setLimitReached(data.limitReached === true);
   }
 
   const selected = documents.find((d) => d.document_id === selectedId) ?? null;

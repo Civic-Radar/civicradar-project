@@ -184,7 +184,8 @@ describe('GET /api/extractions', () => {
     }));
 
     expect(response.status).toBe(200);
-    expect(await response.json()).toEqual({ extractions: [createdExtraction] });
+    // limitReached: today's limit is not reached (SRS-301.7, bug #527).
+    expect(await response.json()).toEqual({ extractions: [createdExtraction], limitReached: false });
     expect(builders.extractions.eq).toHaveBeenCalledWith('user_id', USER.id);
   });
 
