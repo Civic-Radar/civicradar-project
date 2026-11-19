@@ -6,7 +6,8 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "test": "vitest run"
+    "test": "vitest run",
+    "test:security": "vitest run --config vitest.security.config.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "0.131.0",
