@@ -1513,6 +1513,16 @@ alter table meeting_baselines ENABLE row LEVEL SECURITY;
 
 alter table documents ENABLE row LEVEL SECURITY;
 
+-- documents (MS): any signed-in user may read every document (SRS-213.2).
+-- No insert, update or delete policy: retrieval and the summary job write
+-- with the service role key. No anon policy: visitors see nothing.
+-- Same policy as supabase/rls_documents.sql.
+drop policy if exists "Signed-in users can read documents" on documents;
+
+create policy "Signed-in users can read documents" on documents for
+select
+  to authenticated using (true);
+
 alter table summary_attempts ENABLE row LEVEL SECURITY;
 
 alter table agenda_items ENABLE row LEVEL SECURITY;
