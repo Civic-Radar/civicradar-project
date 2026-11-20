@@ -313,6 +313,7 @@ Copy-Item .env.example .env.local
 | Supabase | `SUPABASE_URL` or `NEXT_PUBLIC_SUPABASE_URL` | Required (one of them) | Project URL, `https://<project-id>.supabase.co`. Either name works. |
 | Supabase | `SUPABASE_SERVICE_ROLE_KEY` | Required | Server key. Registration, retrieval, tagging, summaries and most routes need it, because RLS blocks the anon key. |
 | Supabase | `SUPABASE_ANON_KEY` | Optional | Used only when the service role key is missing |
+| Documents | `PDF_LINK_SECRET` | Required to show stored PDFs | Signs the `/api/documents/<id>/pdf` links on the document page, so the browser never gets a Supabase Storage URL. Any long random string. Unset means "The PDF is not available." |
 | Summaries | `ANTHROPIC_API_KEY` | Required for summaries and extraction | Claude API key |
 | Summaries | `SUMMARY_MODEL` | Required for summaries | Claude model ID for summaries. No default. |
 | Summaries | `SUMMARY_PROCESS_SECRET` | Required to use `/api/summaries/process` | Shared secret for the `x-summary-process-secret` header |
