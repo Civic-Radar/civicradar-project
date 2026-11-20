@@ -43,3 +43,12 @@ export async function getMembers(supabase: SupabaseClient, organizationId: numbe
       : a.permission_level === 'Administrator' ? -1 : 1,
   );
 }
+
+// SRS-103.2 and SRS-103.3: changing who is an Administrator, or removing one,
+// must leave the organization with at least one Administrator.
+export const LAST_ADMINISTRATOR_ERROR = 'An organization needs at least one Administrator.';
+export const PERMISSION_ASSIGNMENT_ERROR = 'Only an organization administrator can change permission levels.';
+
+export function administratorCount(members: { permission_level: PermissionLevel }[]): number {
+  return members.filter((member) => member.permission_level === 'Administrator').length;
+}
