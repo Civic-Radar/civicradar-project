@@ -1499,6 +1499,26 @@ alter table user_followed_towns ENABLE row LEVEL SECURITY;
 
 alter table user_followed_topics ENABLE row LEVEL SECURITY;
 
+-- user_followed_topics (KJ): a signed-in resident may read, add and remove only
+-- their own follows (SRS-101.4, SRS-101.5). No update policy: a follow is never
+-- edited. No anon policy: visitors see nothing. The API routes use the service
+-- role key. Same policies as supabase/rls-user-followed-topics.sql.
+drop policy if exists "Residents can read their own followed topics" on user_followed_topics;
+
+drop policy if exists "Residents can follow topics for themselves" on user_followed_topics;
+
+drop policy if exists "Residents can unfollow their own topics" on user_followed_topics;
+
+create policy "Residents can read their own followed topics" on user_followed_topics for
+select
+  to authenticated using (auth.uid () = user_id);
+
+create policy "Residents can follow topics for themselves" on user_followed_topics for insert to authenticated
+with
+  check (auth.uid () = user_id);
+
+create policy "Residents can unfollow their own topics" on user_followed_topics for delete to authenticated using (auth.uid () = user_id);
+
 alter table organization_followed_towns ENABLE row LEVEL SECURITY;
 
 alter table organization_followed_topics ENABLE row LEVEL SECURITY;
