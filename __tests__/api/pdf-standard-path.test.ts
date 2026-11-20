@@ -86,6 +86,9 @@ async function openDocument(id = '15') {
   return (await response.json()) as { document: { pdf_url: string | null } };
 }
 
+// The detail route's link to the stored PDF, on our own domain (#726).
+const OWN_LINK = /^\/api\/documents\/15\/pdf\?ticket=\d+\.[A-Za-z0-9_-]{43}$/;
+
 beforeEach(() => {
   db.row = null;
   storage.files.clear();
@@ -94,6 +97,7 @@ beforeEach(() => {
   vi.stubEnv('SUPABASE_URL', 'https://example.supabase.co');
   vi.stubEnv('SUPABASE_ANON_KEY', 'anon');
   vi.stubEnv('SUPABASE_SERVICE_ROLE_KEY', 'service-role');
+  vi.stubEnv('PDF_LINK_SECRET', 'test-pdf-link-secret');
   for (const method of CONSOLE_METHODS) {
     vi.spyOn(console, method).mockImplementation(() => {});
   }
@@ -119,7 +123,9 @@ describe('GET /api/documents/[id] PDF link at the standard path (SRS-211.1, #514
     const body = await openDocument();
 
     expect(storage.signCalls).toEqual(['civicclerk/salemma/1168.pdf', '1/1168.pdf']);
-    expect(body.document.pdf_url).toBe('https://example.supabase.co/sign/documents/1/1168.pdf?token=t');
+    // The link is on our own domain; the path stays on the server (#726).
+    expect(body.document.pdf_url).toMatch(OWN_LINK);
+    expect(body.document.pdf_url).not.toContain('1168.pdf');
     expect(console.error).not.toHaveBeenCalled();
   });
 
@@ -130,7 +136,7 @@ describe('GET /api/documents/[id] PDF link at the standard path (SRS-211.1, #514
     const body = await openDocument();
 
     expect(storage.signCalls).toEqual(['1/1168.pdf']);
-    expect(body.document.pdf_url).toContain('1/1168.pdf');
+    expect(body.document.pdf_url).toMatch(OWN_LINK);
   });
 
   it('returns pdf_url null and logs once when neither path has the file', async () => {
@@ -153,7 +159,7 @@ describe('GET /api/documents/[id] PDF link at the standard path (SRS-211.1, #514
     };
     storage.files.set('1/1168.pdf', '%PDF-1.4 minutes');
 
-    expect((await openDocument()).document.pdf_url).toContain('1/1168.pdf');
+    expect((await openDocument()).document.pdf_url).toMatch(OWN_LINK);
   });
 
   it('still gives a non-PDF document no link and makes no Storage call', async () => {

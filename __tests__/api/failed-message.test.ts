@@ -29,6 +29,10 @@ const hook = vi.hoisted(() => ({ state: { status: 'loading' } as DocumentState }
 const SIGNED_URL = vi.hoisted(
   () => 'https://example.supabase.co/storage/v1/object/sign/documents/1/1168.pdf?token=signed-token',
 );
+// The route returns a link on our own domain instead of the Storage link (#726).
+const OWN_LINK = expect.stringMatching(/^\/api\/documents\/60\/pdf\?ticket=\d+\.[A-Za-z0-9_-]{43}$/);
+// A link of that shape, for the page renders.
+const PDF_LINK = '/api/documents/60/pdf?ticket=1795000000.AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA';
 
 vi.mock('../../lib/supabase', () => {
   function chain(table: string) {
@@ -112,14 +116,14 @@ const COMPLETE_DOCUMENT: DocumentIdentification = {
   summary_status: 'Complete',
   summary_text: SUMMARY_TEXT,
   summary_generated_at: GENERATED_AT,
-  pdf_url: SIGNED_URL,
+  pdf_url: PDF_LINK,
 };
 const PENDING_DOCUMENT: DocumentIdentification = {
   ...IDENTIFICATION,
   summary_status: 'Pending',
   summary_text: null,
   summary_generated_at: null,
-  pdf_url: SIGNED_URL,
+  pdf_url: PDF_LINK,
 };
 const FAILED_DOCUMENT: DocumentIdentification = { ...PENDING_DOCUMENT, summary_status: 'Failed' };
 
@@ -155,6 +159,7 @@ function escapeRegExp(text: string): string {
 
 beforeEach(() => {
   vi.stubEnv('SUPABASE_SERVICE_ROLE_KEY', 'test-service-role-key');
+  vi.stubEnv('PDF_LINK_SECRET', 'test-pdf-link-secret');
   vi.stubGlobal(
     'fetch',
     vi.fn(async () => {
@@ -192,7 +197,7 @@ describe('GET /api/documents/[id] summary status (SRS-210.2)', () => {
 
     expect(response.status).toBe(200);
     expect(body).toEqual({
-      document: { ...IDENTIFICATION, summary_status: status, summary_text: null, summary_generated_at: null, pdf_url: SIGNED_URL },
+      document: { ...IDENTIFICATION, summary_status: status, summary_text: null, summary_generated_at: null, pdf_url: OWN_LINK },
     });
   });
 
@@ -209,7 +214,7 @@ describe('GET /api/documents/[id] summary status (SRS-210.2)', () => {
         summary_status: 'Complete',
         summary_text: SUMMARY_TEXT,
         summary_generated_at: GENERATED_AT,
-        pdf_url: SIGNED_URL,
+        pdf_url: OWN_LINK,
       },
     });
   });

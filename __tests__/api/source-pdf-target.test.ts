@@ -81,6 +81,10 @@ import DocumentDetailPage from '../../app/(app)/documents/[id]/page';
 const CONSOLE_METHODS = ['log', 'error', 'warn', 'info', 'debug'] as const;
 
 const SIGNED_URL = 'https://example.supabase.co/storage/v1/object/sign/documents/1/1168.pdf?token=signed-token';
+// The route returns a link on our own domain instead of the Storage link (#726).
+const OWN_LINK = /^\/api\/documents\/60\/pdf\?ticket=\d+\.[A-Za-z0-9_-]{43}$/;
+// A link of that shape, for the page renders.
+const PDF_LINK = '/api/documents/60/pdf?ticket=1795000000.AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA';
 // A recognizable fake CivicClerk portal page, the shape retrieval stores in source_url.
 const CIVICCLERK_URL = 'https://faketown.portal.civicclerk.com/event/1192/overview';
 const LINK_TEXT = 'View source PDF';
@@ -111,7 +115,7 @@ const COMPLETE_DOCUMENT: DocumentIdentification = {
   summary_status: 'Complete',
   summary_text: SUMMARY_TEXT,
   summary_generated_at: '2026-10-02T08:30:00+00:00',
-  pdf_url: SIGNED_URL,
+  pdf_url: PDF_LINK,
 };
 
 function open(id = '60') {
@@ -163,6 +167,7 @@ function linkTargets(markup: string): string[] {
 
 beforeEach(() => {
   vi.stubEnv('SUPABASE_SERVICE_ROLE_KEY', 'test-service-role-key');
+  vi.stubEnv('PDF_LINK_SECRET', 'test-pdf-link-secret');
   vi.stubGlobal(
     'fetch',
     vi.fn(async () => {
@@ -233,7 +238,7 @@ describe('View source PDF link target on the detail page (SRS-207.2)', () => {
 
     expect(iframes).toHaveLength(1);
     expect(iframes[0].src).toBe(`${href}#page=1`);
-    expect(href).toBe(SIGNED_URL);
+    expect(href).toBe(PDF_LINK);
   });
 });
 
@@ -246,7 +251,8 @@ describe('GET /api/documents/[id] stored copy link for View source PDF (SRS-207.
 
     expect(response.status).toBe(200);
     expect(storage.calls).toEqual([{ bucket: 'documents', path: STORED_ROW.storage_path, expiresIn: 3600 }]);
-    expect(body.document.pdf_url).toBe(SIGNED_URL);
+    // The page gets our own link for that stored copy, never the Storage link (#726).
+    expect(body.document.pdf_url).toMatch(OWN_LINK);
     expect(body.document.pdf_url).not.toBe(body.document.source_url);
   });
 

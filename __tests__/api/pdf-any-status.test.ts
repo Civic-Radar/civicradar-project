@@ -87,7 +87,10 @@ function signedUrlFor(path: string): string {
   return `https://example.supabase.co/storage/v1/object/sign/documents/${path}?token=signed-token`;
 }
 
-const SIGNED_URL = signedUrlFor(STORAGE_PATH);
+// The route returns a link on our own domain instead of the Storage link (#726).
+const OWN_LINK = /^\/api\/documents\/\d+\/pdf\?ticket=\d+\.[A-Za-z0-9_-]{43}$/;
+// A link of that shape, for the page renders.
+const PDF_LINK = '/api/documents/60/pdf?ticket=1795000000.AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA';
 
 const IDENTIFICATION = {
   document_id: 60,
@@ -178,6 +181,7 @@ function escapeRegExp(text: string): string {
 
 beforeEach(() => {
   vi.stubEnv('SUPABASE_SERVICE_ROLE_KEY', 'test-service-role-key');
+  vi.stubEnv('PDF_LINK_SECRET', 'test-pdf-link-secret');
   vi.stubGlobal(
     'fetch',
     vi.fn(async () => {
@@ -210,17 +214,26 @@ describe('GET /api/documents/[id] PDF link for any summary status (SRS-211.1)', 
     expect(code).toBe(200);
     expect(body.document.summary_status).toBe(status);
     expect(body.document.pdf_url).not.toBeNull();
-    expect(body.document.pdf_url).toBe(SIGNED_URL);
+    expect(body.document.pdf_url).toMatch(OWN_LINK);
+    expect(body.document.pdf_url).not.toContain('supabase');
     expect(storage.calls).toEqual([{ bucket: 'documents', path: STORAGE_PATH, expiresIn: 3600 }]);
   });
 
   it('returns the same link for the same stored file whatever the status', async () => {
+    // One fixed clock, so the three tickets share an expiry.
+    vi.useFakeTimers({ toFake: ['Date'] });
+    vi.setSystemTime(new Date('2026-11-20T12:00:00Z'));
     const links: string[] = [];
-    for (const status of STATUSES) {
-      links.push((await open(storedRow(status))).body.document.pdf_url);
+    try {
+      for (const status of STATUSES) {
+        links.push((await open(storedRow(status))).body.document.pdf_url);
+      }
+    } finally {
+      vi.useRealTimers();
     }
 
-    expect(links).toEqual([SIGNED_URL, SIGNED_URL, SIGNED_URL]);
+    expect(links[0]).toMatch(OWN_LINK);
+    expect(links).toEqual([links[0], links[0], links[0]]);
     expect(storage.calls.map((call) => call.path)).toEqual([STORAGE_PATH, STORAGE_PATH, STORAGE_PATH]);
   });
 
@@ -240,17 +253,17 @@ describe('Document detail page PDF for any summary status (SRS-211.1)', () => {
   });
 
   it.each(STATUSES)('shows page 1 of the PDF in one iframe titled "Document PDF" for a %s document', (status) => {
-    const markup = renderLoaded(loadedDocument(status, SIGNED_URL));
+    const markup = renderLoaded(loadedDocument(status, PDF_LINK));
 
     const iframes = iframesIn(markup);
     expect(iframes).toHaveLength(1);
     expect(iframes[0].title).toBe('Document PDF');
-    expect(iframes[0].src).toBe(`${SIGNED_URL}#page=1`);
+    expect(iframes[0].src).toBe(`${PDF_LINK}#page=1`);
     expect(markup).not.toContain(NOT_AVAILABLE);
   });
 
   it.each(STATUSES)('places the viewer directly after the summary section of a %s document', (status) => {
-    const markup = renderLoaded(loadedDocument(status, SIGNED_URL));
+    const markup = renderLoaded(loadedDocument(status, PDF_LINK));
     const section = summarySection(markup) ?? '';
 
     expect(section).toMatch(/<h2\b[^>]*>Summary<\/h2>/);
@@ -264,8 +277,9 @@ describe('Document detail page PDF for any summary status (SRS-211.1)', () => {
     const markup = renderLoaded(body.document);
 
     expect(iframesIn(markup).map((iframe) => [iframe.title, iframe.src])).toEqual([
-      ['Document PDF', `${SIGNED_URL}#page=1`],
+      ['Document PDF', `${body.document.pdf_url}#page=1`],
     ]);
+    expect(body.document.pdf_url).toMatch(OWN_LINK);
     expect(markup).not.toContain(NOT_AVAILABLE);
   });
 

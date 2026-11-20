@@ -1,63 +1,24 @@
 import { getAuthenticatedUser, getToken, type SupabaseClient } from '../../../../lib/residentAuth';
-import { DOCUMENTS_BUCKET, standardStoragePath } from '../../../../lib/retrieval/storeDocumentFile';
+import { getPdfLinkSecret, PDF_LINK_SECONDS, storedPdfLink } from '../../../../lib/pdfLinkTicket';
+import { parseDocumentId, signedStoredPdfUrl, type StoredFileRow } from '../../../../lib/storedPdf';
 
 // Always read the current row; never serve a build-time snapshot.
 export const dynamic = 'force-dynamic';
 
 const LOAD_ERROR = 'This document could not be loaded. Please try again.';
 
-// Lifetime of the signed link to the stored PDF, in seconds: one hour, so the
-// View source PDF link still opens after the page has been open a while (SRS-207.2).
-const PDF_LINK_SECONDS = 3600;
-
-// Digits only and a safe integer. "0" and "007" are valid ids (no document, and 7).
-function parseDocumentId(value: string): number | null {
-  const id = Number(value);
-  return /^\d+$/.test(value) && Number.isSafeInteger(id) ? id : null;
-}
-
-interface StoredFileRow {
-  town_id: number;
-  source_file_id?: string | null;
-  storage_path: string | null;
-  mime_type: string | null;
-}
-
-// The paths to try, in order: the row's storage_path, then the standard path
-// retrieval uses, for rows whose recorded path has no file (SRS-211.1, #514).
-function storedPdfPaths(row: StoredFileRow): string[] {
-  const paths = row.storage_path ? [row.storage_path] : [];
-  if (row.source_file_id) {
-    const standard = standardStoragePath(row.town_id, row.source_file_id, 'application/pdf');
-    if (!paths.includes(standard)) paths.push(standard);
-  }
-  return paths;
-}
-
-async function signedUrl(supabase: SupabaseClient, path: string): Promise<string | null> {
-  try {
-    const { data, error } = await supabase.storage.from(DOCUMENTS_BUCKET).createSignedUrl(path, PDF_LINK_SECONDS);
-    if (!error && data?.signedUrl) return data.signedUrl;
-  } catch {
-    // Same outcome as an error result.
-  }
-  return null;
-}
-
-// Short-lived Storage link to the stored PDF for the in-page viewer (SRS-203.2).
-// Null when the file is not a PDF, has no stored path, or cannot be signed at
-// any of its paths. A failure is logged once, by document id only, never with
-// the Storage message.
+// Link to the stored PDF for the in-page viewer (SRS-203.2) and View source PDF
+// (SRS-207.2), on our own domain: /api/documents/<id>/pdf?ticket=... (card #726).
+// The Storage link is signed here only to confirm the file exists at one of its
+// paths; it never leaves the server. Null when there is no stored PDF, or when
+// PDF_LINK_SECRET is not set (logged by name only).
 async function storedPdfUrl(supabase: SupabaseClient, documentId: number, row: StoredFileRow): Promise<string | null> {
-  if (row.mime_type !== 'application/pdf') return null;
-  const paths = storedPdfPaths(row);
-  if (paths.length === 0) return null;
-  for (const path of paths) {
-    const url = await signedUrl(supabase, path);
-    if (url) return url;
+  if (!getPdfLinkSecret()) {
+    console.error('PDF_LINK_SECRET is not set, so no stored PDF link is shown.');
+    return null;
   }
-  console.error(`Stored PDF link could not be created for document ${documentId}.`);
-  return null;
+  const storageUrl = await signedStoredPdfUrl(supabase, documentId, row, PDF_LINK_SECONDS);
+  return storageUrl ? storedPdfLink(documentId) : null;
 }
 
 // Returns one document's identification for its detail page (SRS-203.1),

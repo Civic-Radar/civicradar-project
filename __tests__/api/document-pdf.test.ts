@@ -83,6 +83,10 @@ import DocumentDetailPage from '../../app/(app)/documents/[id]/page';
 const CONSOLE_METHODS = ['log', 'error', 'warn', 'info', 'debug'] as const;
 
 const SIGNED_URL = 'https://example.supabase.co/storage/v1/object/sign/documents/1/1168.pdf?token=signed-token';
+// A link of the shape the route now returns, for the page renders.
+const PDF_LINK = '/api/documents/60/pdf?ticket=1795000000.AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA';
+// The route returns a link on our own domain instead of the Storage link (#726).
+const OWN_LINK = expect.stringMatching(/^\/api\/documents\/60\/pdf\?ticket=\d+\.[A-Za-z0-9_-]{43}$/);
 const STORAGE_ERROR = { message: 'Object not found (storage 404)' };
 const SIGN_FAILED_LOG = 'Stored PDF link could not be created for document 60.';
 const NOT_AVAILABLE = 'The PDF is not available.';
@@ -158,6 +162,7 @@ function iframesIn(markup: string): Record<string, string>[] {
 
 beforeEach(() => {
   vi.stubEnv('SUPABASE_SERVICE_ROLE_KEY', 'test-service-role-key');
+  vi.stubEnv('PDF_LINK_SECRET', 'test-pdf-link-secret');
   vi.stubGlobal(
     'fetch',
     vi.fn(async () => {
@@ -189,19 +194,40 @@ afterEach(() => {
 });
 
 describe('GET /api/documents/[id] PDF link (SRS-203.2)', () => {
-  it('returns the signed Storage link for a stored PDF, valid for 3600 seconds', async () => {
+  it('returns a link on our own domain for a stored PDF, never the Storage link (#726)', async () => {
     storedRow(STORED_PDF_ROW);
+
+    const response = await open();
+    const text = await response.text();
+    const body = JSON.parse(text);
+
+    expect(response.status).toBe(200);
+    expect(body).toEqual({
+      document: { ...IDENTIFICATION, summary_status: 'Pending', summary_text: null, summary_generated_at: null, pdf_url: OWN_LINK },
+    });
+    // Storage is still asked, to confirm the file exists, with the one-hour lifetime.
+    expect(storage.calls).toEqual([{ bucket: 'documents', path: '1/1168.pdf', expiresIn: 3600 }]);
+    // Nothing in the response names Supabase, the bucket, the path or the Storage token.
+    expect(text).not.toContain(SIGNED_URL);
+    for (const secret of ['supabase', 'storage/v1', '1/1168.pdf', 'signed-token']) {
+      expect(text).not.toContain(secret);
+    }
+    // The link is the stored copy, never the source's own address.
+    expect(body.document.pdf_url).not.toBe(IDENTIFICATION.source_url);
+  });
+
+  it('returns pdf_url null, asks Storage nothing and logs the missing name when PDF_LINK_SECRET is not set', async () => {
+    vi.stubEnv('PDF_LINK_SECRET', '');
+    storedRow(STORED_PDF_ROW);
+    expectedErrorLogs = 1;
 
     const response = await open();
     const body = await response.json();
 
     expect(response.status).toBe(200);
-    expect(body).toEqual({
-      document: { ...IDENTIFICATION, summary_status: 'Pending', summary_text: null, summary_generated_at: null, pdf_url: SIGNED_URL },
-    });
-    expect(storage.calls).toEqual([{ bucket: 'documents', path: '1/1168.pdf', expiresIn: 3600 }]);
-    // The link is the Storage copy, never the source's own address.
-    expect(body.document.pdf_url).not.toBe(IDENTIFICATION.source_url);
+    expect(body.document).toHaveProperty('pdf_url', null);
+    expect(storage.calls).toEqual([]);
+    expect(console.error).toHaveBeenCalledWith('PDF_LINK_SECRET is not set, so no stored PDF link is shown.');
   });
 
   it.each([
@@ -272,36 +298,36 @@ describe('Document detail page in-page PDF (SRS-203.2)', () => {
   });
 
   it('shows page 1 of the PDF in an iframe titled "Document PDF"', () => {
-    const markup = renderLoaded(loadedDocument(SIGNED_URL));
+    const markup = renderLoaded(loadedDocument(PDF_LINK));
 
     const iframes = iframesIn(markup);
     expect(iframes).toHaveLength(1);
     expect(iframes[0].title).toBe('Document PDF');
-    expect(iframes[0].src).toBe(`${SIGNED_URL}#page=1`);
+    expect(iframes[0].src).toBe(`${PDF_LINK}#page=1`);
     expect(iframes[0].src.endsWith('#page=1')).toBe(true);
     expect(markup).not.toContain(NOT_AVAILABLE);
   });
 
   it('opens no new tab from the viewer: only the two links have a target', () => {
-    const markup = renderLoaded(loadedDocument(SIGNED_URL, 'First paragraph.'));
+    const markup = renderLoaded(loadedDocument(PDF_LINK, 'First paragraph.'));
 
     expect(iframesIn(markup)[0]).not.toHaveProperty('target');
     // Open on CivicClerk (SRS-207.4) and View source PDF (SRS-207.2) are the only elements with a target.
     expect(markup.match(/<[^>]*\btarget=[^>]*>/g)).toEqual([
       `<a href="${IDENTIFICATION.source_url}" target="_blank" rel="noopener noreferrer" class="text-accent hover:underline">`,
-      `<a href="${SIGNED_URL}" target="_blank" rel="noopener noreferrer" class="text-accent hover:underline">`,
+      `<a href="${PDF_LINK}" target="_blank" rel="noopener noreferrer" class="text-accent hover:underline">`,
     ]);
     expect(markup.split('_blank')).toHaveLength(3);
     // The only links are Open on CivicClerk before the summary section and its View source PDF link (SRS-207.1).
     expect(markup.match(/<a\b[^>]*>[\s\S]*?<\/a>/g)).toEqual([
       `<a href="${IDENTIFICATION.source_url}" target="_blank" rel="noopener noreferrer" class="text-accent hover:underline">Open on CivicClerk</a>`,
-      `<a href="${SIGNED_URL}" target="_blank" rel="noopener noreferrer" class="text-accent hover:underline">View source PDF</a>`,
+      `<a href="${PDF_LINK}" target="_blank" rel="noopener noreferrer" class="text-accent hover:underline">View source PDF</a>`,
     ]);
     expect(markup.indexOf('Open on CivicClerk')).toBeLessThan(markup.indexOf('<section'));
   });
 
   it('places the viewer after the title and directly after the summary section', () => {
-    const markup = renderLoaded(loadedDocument(SIGNED_URL, 'First paragraph.'));
+    const markup = renderLoaded(loadedDocument(PDF_LINK, 'First paragraph.'));
 
     expect(markup.indexOf('</h1>')).toBeGreaterThan(-1);
     expect(markup.indexOf('</h1>')).toBeLessThan(markup.indexOf('<iframe'));
@@ -316,7 +342,7 @@ describe('Document detail page in-page PDF (SRS-203.2)', () => {
   });
 
   it('keeps the rest of the page unchanged when pdf_url is null', () => {
-    const withPdf = renderLoaded(loadedDocument(SIGNED_URL, 'First paragraph.'));
+    const withPdf = renderLoaded(loadedDocument(PDF_LINK, 'First paragraph.'));
     const withoutPdf = renderLoaded(loadedDocument(null, 'First paragraph.'));
 
     const viewer = withPdf.match(/<iframe\b[^>]*><\/iframe>/)?.[0];

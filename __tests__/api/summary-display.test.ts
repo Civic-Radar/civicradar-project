@@ -29,6 +29,10 @@ const hook = vi.hoisted(() => ({ state: { status: 'loading' } as DocumentState }
 const SIGNED_URL = vi.hoisted(
   () => 'https://example.supabase.co/storage/v1/object/sign/documents/1/1168.pdf?token=signed-token',
 );
+// The route returns a link on our own domain instead of the Storage link (#726).
+const OWN_LINK = /^\/api\/documents\/60\/pdf\?ticket=\d+\.[A-Za-z0-9_-]{43}$/;
+// A link of that shape, for the page renders.
+const PDF_LINK = '/api/documents/60/pdf?ticket=1795000000.AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA';
 
 vi.mock('../../lib/supabase', () => {
   function chain(table: string) {
@@ -159,7 +163,7 @@ function loadedDocument(
     summary_status,
     summary_text,
     summary_generated_at: summary_text === null ? null : GENERATED_AT,
-    pdf_url: SIGNED_URL,
+    pdf_url: PDF_LINK,
   };
 }
 
@@ -219,6 +223,7 @@ afterEach(() => {
 describe('GET /api/documents/[id] summary fields (SRS-204.2)', () => {
   beforeEach(() => {
     vi.stubEnv('SUPABASE_SERVICE_ROLE_KEY', 'test-service-role-key');
+    vi.stubEnv('PDF_LINK_SECRET', 'test-pdf-link-secret');
     vi.mocked(getSupabaseClient).mockClear();
     db.calls.length = 0;
     db.results = {};
@@ -236,7 +241,7 @@ describe('GET /api/documents/[id] summary fields (SRS-204.2)', () => {
 
     expect(response.status).toBe(200);
     expect(body).toEqual({
-      document: { ...IDENTIFICATION, summary_status: 'Complete', summary_text: STORED_TEXT, summary_generated_at: GENERATED_AT, pdf_url: SIGNED_URL },
+      document: { ...IDENTIFICATION, summary_status: 'Complete', summary_text: STORED_TEXT, summary_generated_at: GENERATED_AT, pdf_url: expect.stringMatching(OWN_LINK) },
     });
     // No trimming and no escaping.
     expect(body.document.summary_text).toBe(STORED_TEXT);
@@ -255,7 +260,7 @@ describe('GET /api/documents/[id] summary fields (SRS-204.2)', () => {
 
     expect(response.status).toBe(200);
     expect(body).toEqual({
-      document: { ...IDENTIFICATION, summary_status: status, summary_text: null, summary_generated_at: null, pdf_url: SIGNED_URL },
+      document: { ...IDENTIFICATION, summary_status: status, summary_text: null, summary_generated_at: null, pdf_url: expect.stringMatching(OWN_LINK) },
     });
     expect(body.document).toHaveProperty('summary_text', null);
     expect(body.document).toHaveProperty('summary_generated_at', null);
@@ -276,7 +281,7 @@ describe('GET /api/documents/[id] summary fields (SRS-204.2)', () => {
 
     expect(response.status).toBe(200);
     expect(JSON.parse(text)).toEqual({
-      document: { ...IDENTIFICATION, summary_status: status, summary_text: null, summary_generated_at: null, pdf_url: SIGNED_URL },
+      document: { ...IDENTIFICATION, summary_status: status, summary_text: null, summary_generated_at: null, pdf_url: expect.stringMatching(OWN_LINK) },
     });
     expect(text).not.toContain('First paragraph.');
     expect(text).not.toContain(GENERATED_AT);
@@ -330,8 +335,9 @@ describe('GET /api/documents/[id] summary fields (SRS-204.2)', () => {
       expect(SELECTED_COLUMNS).not.toContain(column);
     }
     expect(text).not.toContain(STORED_FILE.file_sha256);
-    // The stored path appears only inside the signed link that Storage builds.
-    expect(text.replace(SIGNED_URL, '')).not.toContain(STORED_FILE.storage_path);
+    // The stored path and the Storage link stay on the server (#726).
+    expect(text).not.toContain(STORED_FILE.storage_path);
+    expect(text).not.toContain(SIGNED_URL);
   });
 });
 
