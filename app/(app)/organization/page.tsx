@@ -2,13 +2,16 @@
 
 // SRS-103.1, KJ, Member permission display
 // SRS-103.2, KJ, Permission assignment
+// SRS-103.3, KJ, Membership change restriction
 
 import { useCallback, useEffect, useState } from 'react';
 import { alertClasses } from '../../components/ui/Alert';
 import Badge from '../../components/ui/Badge';
+import { buttonClasses } from '../../components/ui/Button';
 import { cardClasses } from '../../components/ui/Card';
 import PageShell from '../../components/ui/PageShell';
 import SignedOutNotice from '../../components/ui/SignedOutNotice';
+import { inputClasses } from '../../components/ui/TextField';
 
 type PermissionLevel = 'Member' | 'Administrator';
 type Member = { user_id: string; email: string; permission_level: PermissionLevel };
@@ -25,6 +28,7 @@ export default function OrganizationPage() {
   const [myUserId, setMyUserId] = useState<string | null>(null);
   const [myLevel, setMyLevel] = useState<PermissionLevel | null>(null);
   const [members, setMembers] = useState<Member[]>([]);
+  const [newEmail, setNewEmail] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
@@ -91,6 +95,20 @@ export default function OrganizationPage() {
       { permission_level: level },
       `${member.email} is now ${level === 'Administrator' ? 'an Administrator' : 'a Member'}.`,
     );
+  }
+
+  // SRS-103.3
+  async function addMember(event: React.FormEvent) {
+    event.preventDefault();
+    const email = newEmail.trim();
+    if (!email) { setError('Enter the email of the account to add.'); return; }
+    const added = await send('/api/organization/members', 'POST', { email }, `Added ${email} as a Member.`);
+    if (added) setNewEmail('');
+  }
+
+  async function removeMember(member: Member) {
+    if (!window.confirm(`Remove ${member.email} from ${organization?.name ?? 'the organization'}?`)) return;
+    await send(`/api/organization/members/${member.user_id}`, 'DELETE', undefined, `Removed ${member.email}.`);
   }
 
   if (loading) {
@@ -161,10 +179,39 @@ export default function OrganizationPage() {
                     {PERMISSION_LEVELS.map((level) => <option key={level} value={level}>{level}</option>)}
                   </select>
                 ) : null}
+
+                <button
+                  type="button"
+                  disabled={busy}
+                  onClick={() => removeMember(member)}
+                  className={buttonClasses({ variant: 'secondary' })}
+                >
+                  Remove
+                </button>
               </span>
             </li>
           ))}
         </ul>
+      </section>
+
+      <section className={cardClasses('mt-4 min-w-0')} aria-labelledby="add-member-heading">
+        <h2 id="add-member-heading" className="mb-2 text-lg font-semibold tracking-tight text-fg">Add a member</h2>
+        <p className="mb-4 text-sm text-fg-muted">
+          Only an organization administrator can add or remove members. The new member starts as a Member.
+        </p>
+        <form onSubmit={addMember} className="flex flex-col gap-3 sm:flex-row">
+          <input
+            type="email"
+            aria-label="Email of the account to add"
+            placeholder="name@example.com"
+            value={newEmail}
+            onChange={(event) => setNewEmail(event.target.value)}
+            className={inputClasses('sm:flex-1')}
+          />
+          <button type="submit" disabled={busy} className={buttonClasses()}>
+            Add member
+          </button>
+        </form>
       </section>
     </PageShell>
   );

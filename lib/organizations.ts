@@ -52,3 +52,11 @@ export const PERMISSION_ASSIGNMENT_ERROR = 'Only an organization administrator c
 export function administratorCount(members: { permission_level: PermissionLevel }[]): number {
   return members.filter((member) => member.permission_level === 'Administrator').length;
 }
+
+// SRS-103.3: only a member with the member-management permission (an Administrator)
+// may add or remove members.
+export const MEMBER_MANAGEMENT_ERROR = 'Only an organization administrator can add or remove members.';
+
+export function hasMemberManagementPermission(membership: Membership | null): membership is Membership {
+  return membership?.permission_level === 'Administrator';
+}
