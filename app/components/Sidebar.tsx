@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import {
+  Building2,
   Landmark,
   LayoutDashboard,
   CalendarDays,
@@ -32,6 +33,7 @@ const navigation: { name: string; href: string; icon: typeof Users; also?: strin
   { name: "Search", href: "/search", icon: Search },
   { name: "Preferences", href: "/preferences", icon: Settings },
   { name: "Profile", href: "/profile", icon: CircleUserRound },
+  { name: "Organization", href: "/organization", icon: Building2 },
   { name: "Retrieval", href: "/admin/retrieval", icon: RefreshCw, adminOnly: true },
   { name: "Catalog", href: "/admin/towns", icon: Library, adminOnly: true },
 ];
