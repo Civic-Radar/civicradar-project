@@ -80,18 +80,25 @@ describe('Avatar upload route', () => {
   });
 
   it('returns 400 when storage upload fails', async () => {
+    vi.spyOn(console, 'error').mockImplementation(() => {});
     mockStorage.upload.mockResolvedValue({ error: { message: 'Bucket not found' } });
     const file = new Blob(['fake-image'], { type: 'image/jpeg' });
     const response = await POST(makeRequest(file));
     expect(response.status).toBe(400);
-    expect(await response.json()).toEqual({ error: 'Bucket not found' });
+    // The Storage message is logged, never sent (#757).
+    expect(await response.json()).toEqual({ error: 'The picture could not be uploaded. Please try again.' });
+    expect(console.error).toHaveBeenCalledWith('Avatar upload failed: Bucket not found');
   });
 
   it('returns 400 when profile update fails', async () => {
+    vi.spyOn(console, 'error').mockImplementation(() => {});
     mockBuilder.single.mockResolvedValue({ data: null, error: { message: 'Profile not found' } });
     const file = new Blob(['fake-image'], { type: 'image/jpeg' });
     const response = await POST(makeRequest(file));
     expect(response.status).toBe(400);
-    expect(await response.json()).toEqual({ error: 'Profile not found' });
+    expect(await response.json()).toEqual({
+      error: 'The picture was uploaded but your profile could not be updated. Please try again.',
+    });
+    expect(console.error).toHaveBeenCalledWith('Avatar profile update failed: Profile not found');
   });
 });

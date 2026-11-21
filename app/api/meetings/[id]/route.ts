@@ -3,6 +3,9 @@ import { getSupabaseClient } from '../../../../lib/supabase';
 // Always read the current row; never serve a build-time snapshot.
 export const dynamic = 'force-dynamic';
 
+// Fixed message (#757): the database error is logged, never sent.
+const LOAD_ERROR = 'This meeting could not be loaded. Please try again.';
+
 // Returns one stored meeting with its town and governing body names
 // (SRS-502.2, SRS-502.3, SRS-502.9), its linked documents (SRS-220.7, SRS-502.4),
 // whether the town's source provides agenda items and recordings (SRS-502.8),
@@ -34,7 +37,8 @@ export async function GET(_request: Request, { params }: { params: { id: string 
     .maybeSingle();
 
   if (meetingError) {
-    return Response.json({ error: `Could not read the meeting: ${meetingError.message}` }, { status: 500 });
+    console.error(`Meeting ${meetingId}: could not read the meeting: ${meetingError.message}`);
+    return Response.json({ error: LOAD_ERROR }, { status: 500 });
   }
   if (!meeting) {
     return Response.json({ error: 'Meeting not found.' }, { status: 404 });
@@ -47,7 +51,8 @@ export async function GET(_request: Request, { params }: { params: { id: string 
     .maybeSingle();
 
   if (townError) {
-    return Response.json({ error: `Could not read the town: ${townError.message}` }, { status: 500 });
+    console.error(`Meeting ${meetingId}: could not read the town: ${townError.message}`);
+    return Response.json({ error: LOAD_ERROR }, { status: 500 });
   }
 
   // body_id is NULL when the source body name matched no catalog body.
@@ -60,7 +65,8 @@ export async function GET(_request: Request, { params }: { params: { id: string 
       .maybeSingle();
 
     if (bodyError) {
-      return Response.json({ error: `Could not read the governing body: ${bodyError.message}` }, { status: 500 });
+      console.error(`Meeting ${meetingId}: could not read the governing body: ${bodyError.message}`);
+      return Response.json({ error: LOAD_ERROR }, { status: 500 });
     }
     bodyName = body?.name ?? null;
   }
@@ -73,10 +79,8 @@ export async function GET(_request: Request, { params }: { params: { id: string 
     .order('document_id', { ascending: true });
 
   if (documentsError) {
-    return Response.json(
-      { error: `Could not read the meeting's documents: ${documentsError.message}` },
-      { status: 500 },
-    );
+    console.error(`Meeting ${meetingId}: could not read the documents: ${documentsError.message}`);
+    return Response.json({ error: LOAD_ERROR }, { status: 500 });
   }
 
   // SRS-502.6: the meeting's agenda items, in the source's order. Items the
@@ -93,10 +97,8 @@ export async function GET(_request: Request, { params }: { params: { id: string 
       .order('sort_order', { ascending: true });
 
     if (itemsError) {
-      return Response.json(
-        { error: `Could not read the meeting's agenda items: ${itemsError.message}` },
-        { status: 500 },
-      );
+      console.error(`Meeting ${meetingId}: could not read the agenda items: ${itemsError.message}`);
+      return Response.json({ error: LOAD_ERROR }, { status: 500 });
     }
     agendaItems = (items ?? []) as AgendaItem[];
   }

@@ -5,14 +5,14 @@ vi.mock('../../lib/supabase', () => ({
     auth: {
       signInWithPassword: vi.fn(async ({ email }: { email: string }) => {
         if (email === 'bad@example.com') {
-          return { data: null, error: { message: 'Invalid credentials' } };
+          return { data: null, error: { message: 'Invalid login credentials', code: 'invalid_credentials' } };
         }
         return { data: { user: { email } }, error: null };
       }),
       admin: {
         createUser: vi.fn(async ({ email }: { email: string }) => {
           if (email === 'exists@example.com') {
-            return { data: null, error: { message: 'User exists' } };
+            return { data: null, error: { message: 'A user with this email address has already been registered', code: 'email_exists' } };
           }
           return { data: { user: { email } }, error: null };
         }),
@@ -48,7 +48,7 @@ describe('Auth API routes', () => {
     }));
 
     expect(response.status).toBe(400);
-    expect(await response.json()).toEqual({ error: 'User exists' });
+    expect(await response.json()).toEqual({ error: 'An account with this email already exists.' });
   });
 
   it('logs in successfully', async () => {
@@ -70,6 +70,6 @@ describe('Auth API routes', () => {
     }));
 
     expect(response.status).toBe(401);
-    expect(await response.json()).toEqual({ error: 'Invalid credentials' });
+    expect(await response.json()).toEqual({ error: 'Invalid email or password.' });
   });
 });

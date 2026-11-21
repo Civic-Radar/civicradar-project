@@ -1,5 +1,9 @@
 import { getSupabaseClient } from '../../../../lib/supabase';
 
+// Fixed messages (#757): the Storage or database error is logged, never sent.
+const UPLOAD_ERROR = 'The picture could not be uploaded. Please try again.';
+const SAVE_ERROR = 'The picture was uploaded but your profile could not be updated. Please try again.';
+
 function getToken(request: Request): string | null {
   const auth = request.headers.get('Authorization');
   return auth?.startsWith('Bearer ') ? auth.slice(7) : null;
@@ -34,7 +38,10 @@ export async function POST(request: Request) {
     .from('avatars')
     .upload(path, file, { upsert: true });
 
-  if (uploadError) return Response.json({ error: uploadError.message }, { status: 400 });
+  if (uploadError) {
+    console.error(`Avatar upload failed: ${uploadError.message}`);
+    return Response.json({ error: UPLOAD_ERROR }, { status: 400 });
+  }
 
   const { data: { publicUrl } } = supabase.storage.from('avatars').getPublicUrl(path);
 
@@ -45,7 +52,10 @@ export async function POST(request: Request) {
     .select('id, username, biography, avatar_url')
     .single();
 
-  if (updateError) return Response.json({ error: updateError.message }, { status: 400 });
+  if (updateError) {
+    console.error(`Avatar profile update failed: ${updateError.message}`);
+    return Response.json({ error: SAVE_ERROR }, { status: 400 });
+  }
 
   return Response.json({ profile: data }, { status: 200 });
 }
