@@ -1,4 +1,5 @@
 import { getSupabaseClient } from '../../../lib/supabase';
+import { withAvatarLink } from '../../../lib/avatarLink';
 
 // Fixed messages (#757): the database error is logged, never sent.
 const LOAD_ERROR = 'Your profile could not be loaded. Please try again.';
@@ -37,7 +38,7 @@ export async function GET(request: Request) {
     return Response.json({ error: LOAD_ERROR }, { status: 500 });
   }
 
-  return Response.json({ profile: data }, { status: 200 });
+  return Response.json({ profile: data ? withAvatarLink(data) : null }, { status: 200 });
 }
 
 export async function POST(request: Request) {
@@ -64,7 +65,7 @@ export async function POST(request: Request) {
     return Response.json({ error: CREATE_ERROR }, { status: 400 });
   }
 
-  return Response.json({ profile: data }, { status: 201 });
+  return Response.json({ profile: withAvatarLink(data) }, { status: 201 });
 }
 
 export async function PATCH(request: Request) {
@@ -92,5 +93,5 @@ export async function PATCH(request: Request) {
     return Response.json({ error: SAVE_ERROR }, { status: 400 });
   }
 
-  return Response.json({ profile: data }, { status: 200 });
+  return Response.json({ profile: withAvatarLink(data) }, { status: 200 });
 }

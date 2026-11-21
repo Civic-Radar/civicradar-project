@@ -5,7 +5,7 @@
 --   Part 2  Civic Radar schema - the 31 tables from the system requirements,
 --                                plus a seed row for Salem, the pilot town
 --   Part 3  Row Level Security - deny-by-default on every Civic Radar table
---   Part 4  avatars bucket     - public storage bucket for profile pictures
+--   Part 4  avatars bucket     - private storage bucket for profile pictures
 --
 -- Part 2 is generated from database/schema.sql (the portable PostgreSQL script,
 -- which is the source of truth). Only twelve things differ, and each is marked
@@ -1575,11 +1575,16 @@ alter table official_votes ENABLE row LEVEL SECURITY;
 
 -- =============================================================================
 -- PART 4. Avatar storage bucket
--- Public bucket used by app/api/profile/avatar. Equivalent to
--- Storage -> New bucket -> name "avatars" -> check "Public bucket".
+-- Private bucket used by app/api/profile/avatar (card #756). Only the server
+-- reads it, with the service role key, and the browser gets a link on our own
+-- domain. Equivalent to Storage -> New bucket -> name "avatars", with "Public
+-- bucket" left unchecked. supabase/avatars_private.sql switches an existing
+-- public bucket to private.
 -- =============================================================================
 insert into
   storage.buckets (id, name, public)
 values
-  ('avatars', 'avatars', true)
-on conflict (id) do nothing;
+  ('avatars', 'avatars', false)
+on conflict (id) do update
+set
+  public = false;

@@ -52,7 +52,8 @@ describe('Profile API routes', () => {
   it('GET returns profile for authenticated user', async () => {
     const response = await GET(req('GET'));
     expect(response.status).toBe(200);
-    expect(await response.json()).toEqual({ profile: mockProfile });
+    // No picture yet, so no picture link (#756).
+    expect(await response.json()).toEqual({ profile: { ...mockProfile, avatar_url: null } });
   });
 
   it('GET returns 401 without token', async () => {
@@ -75,7 +76,8 @@ describe('Profile API routes', () => {
   it('POST creates a new profile', async () => {
     const response = await POST(req('POST', { username: 'testuser', biography: 'Hello!' }));
     expect(response.status).toBe(201);
-    expect(await response.json()).toEqual({ profile: mockProfile });
+    // No picture yet, so no picture link (#756).
+    expect(await response.json()).toEqual({ profile: { ...mockProfile, avatar_url: null } });
   });
 
   it('POST returns 400 when username is missing', async () => {
@@ -86,7 +88,8 @@ describe('Profile API routes', () => {
   it('PATCH updates biography', async () => {
     const response = await PATCH(req('PATCH', { biography: 'Updated bio' }));
     expect(response.status).toBe(200);
-    expect(await response.json()).toEqual({ profile: mockProfile });
+    // No picture yet, so no picture link (#756).
+    expect(await response.json()).toEqual({ profile: { ...mockProfile, avatar_url: null } });
   });
 
   it('PATCH returns 400 when biography field is absent', async () => {

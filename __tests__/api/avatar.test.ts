@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-const mockProfile = { id: 'user-123', username: 'testuser', biography: 'Hello!', avatar_url: 'https://example.com/avatars/user-123.jpg' };
+const mockProfile = { id: 'user-123', username: 'testuser', biography: 'Hello!', avatar_url: 'user-123.jpg' };
 
 const mockBuilder = {
   update: vi.fn().mockReturnThis(),
@@ -56,9 +56,16 @@ describe('Avatar upload route', () => {
 
   it('uploads an image and returns updated profile', async () => {
     const file = new Blob(['fake-image'], { type: 'image/jpeg' });
+    vi.stubEnv('PDF_LINK_SECRET', 'test-link-secret');
     const response = await POST(makeRequest(file));
     expect(response.status).toBe(200);
-    expect(await response.json()).toEqual({ profile: mockProfile });
+    // The storage path is saved, and the browser gets an own-domain link (#756).
+    expect(mockStorage.upload).toHaveBeenCalledWith('user-123.jpg', expect.any(Blob), { upsert: true, contentType: 'image/jpeg' });
+    expect(mockBuilder.update).toHaveBeenCalledWith({ avatar_url: 'user-123.jpg' });
+    expect(await response.json()).toEqual({
+      profile: { ...mockProfile, avatar_url: expect.stringMatching(/^\/api\/profile\/avatar\/user-123\?ticket=\d+\.[A-Za-z0-9_-]{43}$/) },
+    });
+    vi.unstubAllEnvs();
   });
 
   it('returns 401 without a token', async () => {
