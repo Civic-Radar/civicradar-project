@@ -3,6 +3,9 @@ import { getSupabaseClient } from '../../../lib/supabase';
 // Always read the current rows; never serve a build-time snapshot.
 export const dynamic = 'force-dynamic';
 
+// Fixed message (#757): the database error is logged, never sent.
+const LOAD_ERROR = 'The meetings could not be loaded. Please try again.';
+
 // Returns supported towns and stored meeting details (SRS-220.3).
 // No access control yet: any caller can read stored meetings.
 export async function GET() {
@@ -24,7 +27,8 @@ export async function GET() {
     .order('town_id', { ascending: true });
 
   if (townsError) {
-    return Response.json({ error: `Could not read towns: ${townsError.message}` }, { status: 500 });
+    console.error(`Meetings list: could not read towns: ${townsError.message}`);
+    return Response.json({ error: LOAD_ERROR }, { status: 500 });
   }
 
   const { data: meetings, error: meetingsError } = await supabase
@@ -35,7 +39,8 @@ export async function GET() {
     .order('start_at', { ascending: false, nullsFirst: false });
 
   if (meetingsError) {
-    return Response.json({ error: `Could not read meetings: ${meetingsError.message}` }, { status: 500 });
+    console.error(`Meetings list: could not read meetings: ${meetingsError.message}`);
+    return Response.json({ error: LOAD_ERROR }, { status: 500 });
   }
 
   // Each meeting's linked document count for the Materials column, from one read for all listed meetings.
@@ -48,7 +53,8 @@ export async function GET() {
       .in('meeting_id', meetingRows.map((meeting) => meeting.meeting_id));
 
     if (documentsError) {
-      return Response.json({ error: `Could not read documents: ${documentsError.message}` }, { status: 500 });
+      console.error(`Meetings list: could not read documents: ${documentsError.message}`);
+      return Response.json({ error: LOAD_ERROR }, { status: 500 });
     }
 
     for (const { meeting_id } of (documents ?? []) as { meeting_id: number }[]) {

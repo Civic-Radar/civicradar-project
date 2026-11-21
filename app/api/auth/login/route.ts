@@ -1,4 +1,5 @@
 import { getSupabaseClient } from '../../../../lib/supabase';
+import { loginErrorMessage, unexpectedErrorMessage } from '../../../../lib/authErrors';
 
 export async function POST(request: Request) {
   try {
@@ -18,12 +19,11 @@ export async function POST(request: Request) {
     const { data, error } = await supabase.auth.signInWithPassword({ email, password });
 
     if (error) {
-      return Response.json({ error: error.message }, { status: 401 });
+      return Response.json({ error: loginErrorMessage(error) }, { status: 401 });
     }
 
     return Response.json({ session: data }, { status: 200 });
   } catch (error: unknown) {
-    const message = error instanceof Error ? error.message : 'Unexpected error';
-    return Response.json({ error: message }, { status: 500 });
+    return Response.json({ error: unexpectedErrorMessage('Sign-in', error) }, { status: 500 });
   }
 }

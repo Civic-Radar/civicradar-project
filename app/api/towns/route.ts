@@ -38,7 +38,11 @@ export async function GET(request: Request) {
     .is('removed_at', null)
     .order('name');
 
-  if (error) return Response.json({ error: error.message }, { status: 500 });
+  if (error) {
+    // Logged, never sent (#757).
+    console.error(`Town list read failed: ${error.message}`);
+    return Response.json({ error: 'The towns could not be loaded. Please try again.' }, { status: 500 });
+  }
 
   return Response.json({ towns: data ?? [] }, { status: 200 });
 }

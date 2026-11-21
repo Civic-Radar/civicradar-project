@@ -56,7 +56,9 @@ export async function POST(request: Request) {
     .maybeSingle();
 
   if (townError) {
-    return Response.json({ error: `Could not read town: ${townError.message}` }, { status: 500 });
+    // Logged, never sent (#757).
+    console.error(`Retrieval: could not read town ${townId}: ${townError.message}`);
+    return Response.json({ error: 'The town could not be read. Please try again.' }, { status: 500 });
   }
 
   if (!town) {

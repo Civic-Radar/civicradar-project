@@ -1,5 +1,10 @@
 import { getSupabaseClient } from '../../../lib/supabase';
 
+// Fixed messages (#757): the database error is logged, never sent.
+const LOAD_ERROR = 'Your profile could not be loaded. Please try again.';
+const CREATE_ERROR = 'Your profile could not be created. Please try again.';
+const SAVE_ERROR = 'Your profile could not be saved. Please try again.';
+
 function getToken(request: Request): string | null {
   const auth = request.headers.get('Authorization');
   return auth?.startsWith('Bearer ') ? auth.slice(7) : null;
@@ -27,7 +32,10 @@ export async function GET(request: Request) {
     .eq('id', user.id)
     .maybeSingle();
 
-  if (error) return Response.json({ error: error.message }, { status: 500 });
+  if (error) {
+    console.error(`Profile read failed: ${error.message}`);
+    return Response.json({ error: LOAD_ERROR }, { status: 500 });
+  }
 
   return Response.json({ profile: data }, { status: 200 });
 }
@@ -51,7 +59,10 @@ export async function POST(request: Request) {
     .select('id, username, biography, avatar_url')
     .single();
 
-  if (error) return Response.json({ error: error.message }, { status: 400 });
+  if (error) {
+    console.error(`Profile create failed: ${error.message}`);
+    return Response.json({ error: CREATE_ERROR }, { status: 400 });
+  }
 
   return Response.json({ profile: data }, { status: 201 });
 }
@@ -76,7 +87,10 @@ export async function PATCH(request: Request) {
     .select('id, username, biography, avatar_url')
     .single();
 
-  if (error) return Response.json({ error: error.message }, { status: 400 });
+  if (error) {
+    console.error(`Profile biography save failed: ${error.message}`);
+    return Response.json({ error: SAVE_ERROR }, { status: 400 });
+  }
 
   return Response.json({ profile: data }, { status: 200 });
 }

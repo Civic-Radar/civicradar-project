@@ -1,4 +1,5 @@
 import { getSupabaseClient } from '../../../../lib/supabase';
+import { registerErrorMessage, unexpectedErrorMessage } from '../../../../lib/authErrors';
 
 export async function POST(request: Request) {
   try {
@@ -18,12 +19,11 @@ export async function POST(request: Request) {
     const { data, error } = await supabase.auth.admin.createUser({ email, password, email_confirm: true });
 
     if (error) {
-      return Response.json({ error: error.message }, { status: 400 });
+      return Response.json({ error: registerErrorMessage(error) }, { status: 400 });
     }
 
     return Response.json({ user: data?.user ?? null }, { status: 201 });
   } catch (error: unknown) {
-    const message = error instanceof Error ? error.message : 'Unexpected error';
-    return Response.json({ error: message }, { status: 500 });
+    return Response.json({ error: unexpectedErrorMessage('Sign-up', error) }, { status: 500 });
   }
 }
