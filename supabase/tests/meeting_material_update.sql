@@ -1,5 +1,6 @@
 -- =============================================================================
--- Test: meeting material update (SRS-404.3, Task 404.3-5)
+-- Test: meeting material update (SRS-404.3, Task 404.3-5) and no alerts for
+--       first retrieval (SRS-404.10: checks 1, 5, and 7)
 -- Reviewed by: EG (Erick Gonzalez)
 --
 -- How to run: in the Supabase SQL editor, run the whole file. No account is
@@ -53,14 +54,17 @@ BEGIN
     (carol, 'test-material-carol@example.invalid'), (dave, 'test-material-dave@example.invalid'),
     (erin, 'test-material-erin@example.invalid');
 
-  -- Check 1 first retrieves the meeting with an agenda and an agenda item.
+  -- Check 1 first retrieves the meeting with an existing agenda, minutes, and an
+  -- agenda item (the SRS-404.10 acceptance criterion).
   INSERT INTO meetings (town_id, source_meeting_id, title, first_retrieved_at)
     VALUES (test_town, 'test-material-1', 'Test Material Council', '2026-11-01 10:00+00') RETURNING meeting_id INTO m;
   INSERT INTO meeting_topics (meeting_id, topic_id, evidence_text) VALUES (m, housing, 'Housing plan');
   INSERT INTO documents (meeting_id, town_id, source_file_id, title, document_type, source_url, storage_path,
                          mime_type, file_size_bytes, file_sha256)
     VALUES (m, test_town, 'test-material-first', 'First Agenda', 'Agenda', 'https://example.org/test-material-first',
-            'test-material/first.pdf', 'application/pdf', 1, repeat('a', 64));
+            'test-material/first.pdf', 'application/pdf', 1, repeat('a', 64)),
+           (m, test_town, 'test-material-first-minutes', 'First Minutes', 'Minutes', 'https://example.org/test-material-first-minutes',
+            'test-material/first-minutes.pdf', 'application/pdf', 1, repeat('e', 64));
   INSERT INTO agenda_items (meeting_id, source_item_id, sort_order, title)
     VALUES (m, 'test-material-first-item', 0, 'Item at first retrieval');
 
@@ -72,10 +76,14 @@ BEGIN
     VALUES (test_town, '2026-11-01 09:59+00', '2026-11-01 10:05+00', true) RETURNING check_id INTO c;
   PERFORM process_successful_check(c);
 
-  -- 1. The first retrieval is quiet: no updates, no alerts (SRS-404.10).
+  -- 1. The first retrieval is quiet: no updates and no alerts for the existing
+  -- agenda and minutes, which just join the baseline (SRS-404.10).
   IF EXISTS (SELECT 1 FROM meeting_updates WHERE meeting_id = m) OR EXISTS (SELECT 1 FROM user_alerts WHERE meeting_id = m) THEN
-    RAISE EXCEPTION 'CHECK FAILED: A meeting''s first retrieval records no update and no alert (got % updates)',
-      (SELECT count(*) FROM meeting_updates WHERE meeting_id = m);
+    RAISE EXCEPTION 'CHECK FAILED: A meeting''s first retrieval with an agenda and minutes records no update and no alert (got % updates, % alerts)',
+      (SELECT count(*) FROM meeting_updates WHERE meeting_id = m), (SELECT count(*) FROM user_alerts WHERE meeting_id = m);
+  END IF;
+  IF (SELECT count(*) FROM documents WHERE meeting_id = m AND document_type IN ('Agenda', 'Minutes') AND baselined_at IS NOT NULL) <> 2 THEN
+    RAISE EXCEPTION 'CHECK FAILED: The first retrieval''s agenda and minutes join the baseline';
   END IF;
 
   -- Check 2 finds a new attachment, a new agenda item, and a recording on the
