@@ -40,9 +40,12 @@
 --   9. public.process_successful_check() runs at the end of a successful
 --      check of a town: it records one update per changed schedule detail
 --      against each meeting's baseline (SRS-404.6), then saves the town's
---      latest meeting and document values as the baseline (SRS-404.5). A check
---      that is not successful changes nothing (SRS-404.9). Only the service
---      role may run it.
+--      latest meeting and document values as the baseline (SRS-404.5). It also
+--      records each new document, agenda item, and recording on a meeting an
+--      earlier successful check already covered, with one in-app alert for each
+--      resident the meeting is relevant to (SRS-404.3); a meeting's first
+--      retrieval records nothing (SRS-404.10). A check that is not successful
+--      changes nothing (SRS-404.9). Only the service role may run it.
 --  10. public.mark_meeting_unavailable() marks a meeting with no agenda text
 --      Unavailable and removes its topic tags in one transaction, unless the
 --      meeting's agenda changed after it was read (SRS-401.10). Only the
@@ -56,6 +59,9 @@
 --      agenda_items_mark_for_tagging trigger, sets a meeting back to Pending
 --      when the agenda text topic tagging reads changes, so the next scheduled
 --      check tags it again (SRS-401.4, Task 401.4-7).
+--  13. public.list_user_alerts() returns a resident's in-app alerts, newest
+--      first, with the meeting and what changed (SRS-404.3). Only the service
+--      role may run it.
 -- =============================================================================
 -- =============================================================================
 -- PART 1. Profile table (used by app/api/profile)
@@ -171,6 +177,8 @@ drop function IF exists public.record_meeting_changes () CASCADE;
 drop function IF exists public.process_successful_check (BIGINT) CASCADE;
 
 drop function IF exists public.mark_meeting_for_tagging () CASCADE;
+
+drop function IF exists public.list_user_alerts (UUID) CASCADE;
 
 -- -----------------------------------------------------------------------------
 -- Helper function
@@ -1100,7 +1108,7 @@ create table meeting_updates (
 
 -- Function: process_successful_check
 -- Reviewed by: EG (Erick Gonzalez)
--- Supports: SRS-404.5, SRS-404.6, SRS-404.9
+-- Supports: SRS-404.3, SRS-404.5, SRS-404.6, SRS-404.9, SRS-404.10
 -- Purpose: Runs once at the end of a successful check of a town. For each of
 --          the town's meetings it records one meeting_updates row for each
 --          schedule detail (start time, location, online link, cancellation)
@@ -1115,8 +1123,18 @@ create table meeting_updates (
 --          kept (SRS-404.9). A meeting with no baseline gets one and records
 --          nothing, because there is no previous value to compare against.
 --          Start times are stored as UTC ISO 8601 text and cancellation as
---          true/false. Agenda item, document, and recording updates are not
---          recorded yet.
+--          true/false.
+--          New material (SRS-404.3): each document, agenda item, and recording
+--          not yet in a baseline gets one update ('Document published',
+--          'Agenda item added', 'Recording published', with its title or link
+--          as new_value), and each update gets one user_alerts row for every
+--          resident the meeting is relevant to (Definition 6: a followed,
+--          non-removed town plus a followed, non-removed topic tag, or a
+--          meeting followed directly). This only happens for a meeting an
+--          earlier successful check of the town already covered, meaning one
+--          that ended after the meeting was first retrieved. Material found in
+--          a meeting's first retrieval just joins the baseline (SRS-404.10).
+--          Agenda items already removed at the source are not announced.
 -- Supabase: not in database/schema.sql; runTownRetrieval calls it after a fully
 --           successful run. Only the service role may run it.
 create function public.process_successful_check (p_check_id BIGINT) RETURNS void LANGUAGE plpgsql SECURITY INVOKER
@@ -1194,6 +1212,67 @@ BEGIN
     WHERE meeting_id = m.meeting_id;
   END LOOP;
 
+  -- New material (SRS-404.3), only on meetings an earlier successful check
+  -- covered, so a meeting's first retrieval stays quiet (SRS-404.10). The
+  -- unique indexes on meeting_updates keep a document or recording from being
+  -- announced twice, and user_alerts' unique (user_id, update_id) keeps each
+  -- resident to one alert per update.
+  WITH checked_before AS (
+    SELECT mt.meeting_id
+    FROM meetings mt
+    WHERE mt.town_id = v_town_id
+      AND EXISTS (
+        SELECT 1
+        FROM source_checks c
+        WHERE c.town_id = v_town_id
+          AND c.check_id <> p_check_id
+          AND c.ended_at IS NOT NULL
+          AND c.ended_at >= mt.first_retrieved_at
+          AND NOT EXISTS (
+            SELECT 1 FROM source_check_collections cc
+            WHERE cc.check_id = c.check_id AND cc.result = 'Failed'
+          )
+      )
+  ),
+  new_updates AS (
+    INSERT INTO meeting_updates (meeting_id, update_type, new_value, document_id, agenda_item_id, recording_id)
+    SELECT d.meeting_id, 'Document published', d.title, d.document_id, NULL::BIGINT, NULL::BIGINT
+    FROM documents d
+    JOIN checked_before cb ON cb.meeting_id = d.meeting_id
+    WHERE d.town_id = v_town_id AND d.baselined_at IS NULL
+    UNION ALL
+    SELECT a.meeting_id, 'Agenda item added', a.title, NULL, a.agenda_item_id, NULL
+    FROM agenda_items a
+    JOIN checked_before cb ON cb.meeting_id = a.meeting_id
+    WHERE a.baselined_at IS NULL AND a.removed_at IS NULL
+    UNION ALL
+    SELECT r.meeting_id, 'Recording published', r.recording_url, NULL, NULL, r.recording_id
+    FROM meeting_recordings r
+    JOIN checked_before cb ON cb.meeting_id = r.meeting_id
+    WHERE r.baselined_at IS NULL
+    ON CONFLICT DO NOTHING
+    RETURNING update_id, meeting_id
+  )
+  INSERT INTO user_alerts (user_id, meeting_id, update_id)
+  SELECT ufm.user_id, nu.meeting_id, nu.update_id
+  FROM new_updates nu
+  JOIN user_followed_meetings ufm ON ufm.meeting_id = nu.meeting_id
+  UNION
+  SELECT uft.user_id, nu.meeting_id, nu.update_id
+  FROM new_updates nu
+  JOIN meetings m2 ON m2.meeting_id = nu.meeting_id
+  JOIN user_followed_towns uft ON uft.town_id = m2.town_id
+  JOIN towns t ON t.town_id = uft.town_id AND t.removed_at IS NULL
+  WHERE EXISTS (
+    SELECT 1
+    FROM meeting_topics mtp
+    JOIN user_followed_topics uftp
+      ON uftp.topic_id = mtp.topic_id AND uftp.user_id = uft.user_id
+    JOIN topics tp ON tp.topic_id = mtp.topic_id AND tp.removed_at IS NULL
+    WHERE mtp.meeting_id = nu.meeting_id
+  )
+  ON CONFLICT DO NOTHING;
+
   -- Material saved during an unsuccessful check stays NULL until a later
   -- successful check includes it.
   UPDATE documents
@@ -1230,6 +1309,49 @@ create table user_alerts (
   foreign KEY (update_id, meeting_id) references meeting_updates (update_id, meeting_id),
   unique (user_id, update_id) -- one in-app alert per resident per update (SRS-405.1)
 );
+
+-- Function: list_user_alerts
+-- Reviewed by: EG (Erick Gonzalez)
+-- Supports: SRS-404.3
+-- Purpose: Returns a resident's in-app alerts for meeting updates, newest
+--          first: what changed (update_type and new_value, e.g. the new
+--          document's title), when it was found, and the meeting with its town
+--          and town time zone so the page can show local times. Upcoming-meeting
+--          alerts (update_id NULL, SRS-402.1) are not built yet, so only alerts
+--          with an update are returned.
+-- Supabase: not in database/schema.sql; called by GET /api/alerts. Only the
+--           service role may run it.
+create function public.list_user_alerts (p_user_id UUID) RETURNS table (
+  alert_id BIGINT,
+  created_at TIMESTAMPTZ,
+  update_type VARCHAR(30),
+  new_value TEXT,
+  detected_at TIMESTAMPTZ,
+  meeting_id BIGINT,
+  meeting_title VARCHAR(500),
+  start_at TIMESTAMPTZ,
+  town VARCHAR,
+  meeting_time_zone VARCHAR
+) LANGUAGE sql STABLE SECURITY INVOKER
+set
+  search_path = pg_catalog,
+  public -- Supabase: pin the search path (linter 0011)
+  as $$
+  SELECT ua.alert_id, ua.created_at, mu.update_type, mu.new_value, mu.detected_at,
+         m.meeting_id, m.title, m.start_at, t.name, t.meeting_time_zone
+  FROM user_alerts ua
+  JOIN meeting_updates mu ON mu.update_id = ua.update_id AND mu.meeting_id = ua.meeting_id
+  JOIN meetings m ON m.meeting_id = ua.meeting_id
+  JOIN towns t ON t.town_id = m.town_id
+  WHERE ua.user_id = p_user_id
+  ORDER BY ua.created_at DESC, ua.alert_id DESC
+  LIMIT 100;
+$$;
+
+-- Supabase: only the API routes (service role) may run it, never the anon key.
+revoke all on function public.list_user_alerts (UUID) from public, anon, authenticated;
+
+grant execute on function public.list_user_alerts (UUID) to service_role;
 
 -- Table: email_preferences
 -- Reviewed by: EG (Erick Gonzalez)
