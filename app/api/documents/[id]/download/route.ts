@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto';
 import { getAuthenticatedUser, getToken } from '../../../../../lib/residentAuth';
 import { parseDocumentId, signedStoredPdfUrl } from '../../../../../lib/storedPdf';
 
@@ -5,6 +6,7 @@ import { parseDocumentId, signedStoredPdfUrl } from '../../../../../lib/storedPd
 export const dynamic = 'force-dynamic';
 
 const NOT_AVAILABLE = 'The PDF is not available.';
+const NOT_IDENTICAL = 'The PDF could not be downloaded. Please try again.';
 
 // The Storage link signed here is used once, right away, by this server.
 const SERVER_LINK_SECONDS = 60;
@@ -22,7 +24,9 @@ function downloadHeaders(documentId: number, byteLength: number): Headers {
 // Sends a document's stored PDF as a download for the Download PDF button
 // (SRS-214.1). Signed-in residents only; the page sends its token, so no
 // ticket is needed in the address. The server reads the file from Storage, so
-// no response names Supabase, the bucket or a storage path.
+// no response names Supabase, the bucket or a storage path. The file is sent
+// only when its SHA-256 matches the checksum stored when it was retrieved, so
+// the download is a byte-identical copy of the retrieved PDF (SRS-214.2).
 export async function GET(request: Request, { params }: { params: { id: string } }) {
   const token = getToken(request);
   if (!token) return Response.json({ error: 'Unauthorized' }, { status: 401 });
@@ -36,7 +40,7 @@ export async function GET(request: Request, { params }: { params: { id: string }
 
   const { data: row, error } = await supabase!
     .from('documents')
-    .select('town_id, source_file_id, storage_path, mime_type')
+    .select('town_id, source_file_id, storage_path, mime_type, file_sha256')
     .eq('document_id', documentId)
     .maybeSingle();
   if (error) {
@@ -58,6 +62,13 @@ export async function GET(request: Request, { params }: { params: { id: string }
       `PDF download: document ${documentId} could not be read from Storage: ${thrown instanceof Error ? thrown.message : 'unknown error'}`,
     );
     return Response.json({ error: NOT_AVAILABLE }, { status: 502 });
+  }
+
+  // SRS-214.2: never send a copy that differs from the retrieved file.
+  const sha256 = createHash('sha256').update(new Uint8Array(bytes)).digest('hex');
+  if (sha256 !== row.file_sha256) {
+    console.error(`PDF download: document ${documentId} stored file does not match its retrieved checksum.`);
+    return Response.json({ error: NOT_IDENTICAL }, { status: 502 });
   }
 
   return new Response(bytes, { status: 200, headers: downloadHeaders(documentId, bytes.byteLength) });

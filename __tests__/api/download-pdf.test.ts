@@ -59,7 +59,7 @@ vi.mock('../../app/(app)/documents/[id]/useDocument', () => ({ useDocument: () =
 
 import { GET as download } from '../../app/api/documents/[id]/download/route';
 import DocumentDetailPage from '../../app/(app)/documents/[id]/page';
-import { attachmentFileName } from '../../app/(app)/documents/[id]/DownloadPdfButton';
+import { attachmentFileName, DOWNLOAD_FAILED } from '../../app/(app)/documents/[id]/DownloadPdfButton';
 
 function request(id = '60', token: string | null = 'valid-token') {
   return download(
@@ -235,5 +235,62 @@ describe('Download PDF button on the document detail page (SRS-214.1)', () => {
   it('saves the file under the name the route sends', () => {
     expect(attachmentFileName('attachment; filename="document-60.pdf"', 'x.pdf')).toBe('document-60.pdf');
     expect(attachmentFileName(null, 'document-60.pdf')).toBe('document-60.pdf');
+  });
+});
+
+describe('byte-identical download (SRS-214.2)', () => {
+  it("sends a file whose checksum matches the retrieved file's checksum", async () => {
+    const response = await request();
+    const downloaded = new Uint8Array(await response.arrayBuffer());
+
+    expect(response.status).toBe(200);
+    expect(createHash('sha256').update(downloaded).digest('hex')).toBe(SHA256);
+    expect(downloaded).toEqual(PDF_BYTES);
+  });
+
+  it('refuses a stored file that no longer matches the retrieved checksum, and logs it', async () => {
+    vi.mocked(fetch).mockImplementation((async () =>
+      new Response(new Uint8Array([...PDF_BYTES, 0x00]), { status: 200 })) as never);
+
+    const response = await request();
+
+    expect(response.status).toBe(502);
+    expect(await response.clone().json()).toEqual({ error: DOWNLOAD_FAILED });
+    await expectNothingStorageRelated(response);
+    expect(console.error).toHaveBeenCalledWith(
+      'PDF download: document 60 stored file does not match its retrieved checksum.',
+    );
+  });
+
+  it('refuses a file whose stored checksum is missing', async () => {
+    db.rows.documents = { ...db.rows.documents!, file_sha256: null };
+
+    expect((await request()).status).toBe(502);
+  });
+
+  it('shows the exact failure message text on the page', () => {
+    expect(DOWNLOAD_FAILED).toBe('The PDF could not be downloaded. Please try again.');
+  });
+
+  it('shows no failure message before the user selects Download PDF', () => {
+    vi.stubGlobal('React', React);
+    hook.state = {
+      status: 'loaded',
+      document: {
+        document_id: 60,
+        meeting_id: 42,
+        town_id: 1,
+        title: 'Agenda',
+        document_type: 'Agenda',
+        source_url: 'https://example.org/files/60.pdf',
+        retrieved_at: '2026-10-01T12:00:00+00:00',
+        summary_status: 'Pending',
+        summary_text: null,
+        summary_generated_at: null,
+        pdf_url: '/api/documents/60/pdf?ticket=1.AAAA',
+      },
+    };
+
+    expect(renderToStaticMarkup(React.createElement(DocumentDetailPage, { params: { id: '60' } }))).not.toContain(DOWNLOAD_FAILED);
   });
 });
