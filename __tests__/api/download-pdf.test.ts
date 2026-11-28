@@ -60,6 +60,7 @@ vi.mock('../../app/(app)/documents/[id]/useDocument', () => ({ useDocument: () =
 import { GET as download } from '../../app/api/documents/[id]/download/route';
 import DocumentDetailPage from '../../app/(app)/documents/[id]/page';
 import { attachmentFileName, DOWNLOAD_FAILED } from '../../app/(app)/documents/[id]/DownloadPdfButton';
+import { downloadFileName, localMeetingDate, namePart } from '../../lib/downloadFileName';
 
 function request(id = '60', token: string | null = 'valid-token') {
   return download(
@@ -292,5 +293,81 @@ describe('byte-identical download (SRS-214.2)', () => {
     };
 
     expect(renderToStaticMarkup(React.createElement(DocumentDetailPage, { params: { id: '60' } }))).not.toContain(DOWNLOAD_FAILED);
+  });
+});
+
+describe('download file name (SRS-214.3)', () => {
+  const SALEM_AGENDA = {
+    town: 'Salem',
+    body: 'City Council',
+    // 7:00 PM in Salem on 09/14/2026 (EDT, UTC-4).
+    startAt: '2026-09-14T23:00:00+00:00',
+    timeZone: 'America/New_York',
+    type: 'Agenda',
+  };
+
+  it('names the SRS example Salem_CityCouncil_2026-09-14_Agenda.pdf', () => {
+    expect(downloadFileName(SALEM_AGENDA)).toBe('Salem_CityCouncil_2026-09-14_Agenda.pdf');
+  });
+
+  it('uses the local meeting date, not the UTC date', () => {
+    // 10:00 PM on 09/14 in Salem is already 09/15 in UTC.
+    expect(localMeetingDate('2026-09-15T02:00:00Z', 'America/New_York')).toBe('2026-09-14');
+    expect(downloadFileName({ ...SALEM_AGENDA, startAt: '2026-09-15T02:00:00Z' })).toBe('Salem_CityCouncil_2026-09-14_Agenda.pdf');
+    // Winter time (EST, UTC-5).
+    expect(localMeetingDate('2026-12-11T00:00:00+00:00', 'America/New_York')).toBe('2026-12-10');
+  });
+
+  it('keeps only letters and digits in each part', () => {
+    expect(namePart('Zoning Board of Appeals')).toBe('ZoningBoardofAppeals');
+    expect(namePart('Planning & Development / "Sub"')).toBe('PlanningDevelopmentSub');
+    expect(namePart('Café_Committee')).toBe('CafeCommittee');
+    expect(downloadFileName({ ...SALEM_AGENDA, body: '../"x"_y' })).toBe('Salem_xy_2026-09-14_Agenda.pdf');
+  });
+
+  it('writes a missing part in words, so the name keeps its four parts', () => {
+    expect(downloadFileName({ town: null, body: null, startAt: null, timeZone: null, type: null })).toBe(
+      'UnknownTown_UnknownBody_Undated_Other.pdf',
+    );
+    expect(downloadFileName({ ...SALEM_AGENDA, timeZone: 'Not/AZone' })).toBe('Salem_CityCouncil_Undated_Agenda.pdf');
+    expect(downloadFileName({ ...SALEM_AGENDA, startAt: 'not a date' })).toBe('Salem_CityCouncil_Undated_Agenda.pdf');
+  });
+
+  describe('the route sends the name', () => {
+    beforeEach(() => {
+      db.rows = {
+        documents: { ...db.rows.documents!, meeting_id: 42, document_type: 'Agenda' },
+        towns: { name: 'Salem', meeting_time_zone: 'America/New_York' },
+        meetings: { start_at: '2026-09-14T23:00:00+00:00', body_id: 7, source_body_name: 'General' },
+        governing_bodies: { name: 'City Council' },
+      };
+    });
+
+    it('names the attachment with the pattern, and the page saves it under that name', async () => {
+      const response = await request();
+      const header = response.headers.get('content-disposition');
+
+      expect(response.status).toBe(200);
+      expect(header).toBe('attachment; filename="Salem_CityCouncil_2026-09-14_Agenda.pdf"');
+      expect(attachmentFileName(header, 'document-60.pdf')).toBe('Salem_CityCouncil_2026-09-14_Agenda.pdf');
+    });
+
+    it("uses the body name the source sent when the meeting has no catalog body", async () => {
+      db.rows.meetings = { start_at: '2026-09-14T23:00:00+00:00', body_id: null, source_body_name: 'Licensing Board' };
+
+      expect((await request()).headers.get('content-disposition')).toBe(
+        'attachment; filename="Salem_LicensingBoard_2026-09-14_Agenda.pdf"',
+      );
+    });
+
+    it('still downloads, with that part in words, when a name read fails, and logs it', async () => {
+      db.failing.add('meetings');
+
+      const response = await request();
+
+      expect(response.status).toBe(200);
+      expect(response.headers.get('content-disposition')).toBe('attachment; filename="Salem_UnknownBody_Undated_Agenda.pdf"');
+      expect(console.error).toHaveBeenCalledWith(expect.stringContaining('could not read meetings for the file name'));
+    });
   });
 });
