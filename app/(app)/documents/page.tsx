@@ -8,6 +8,7 @@ import Alert from '../../components/ui/Alert';
 import Badge from '../../components/ui/Badge';
 import SignedOutNotice from '../../components/ui/SignedOutNotice';
 import { meetingDateLabel } from '../../../lib/documentDates';
+import { retrievedAgo } from '../../../lib/retrievalTime';
 import { EMPTY_LIST_MESSAGE, NO_RESULTS_MESSAGE, SETUP_LINK_HREF, SETUP_LINK_TEXT, SETUP_MESSAGE } from './documentsMessages';
 import { documentsMatchingTitle } from './documentsMatchingTitle';
 import { documentsOfType } from './documentsOfType';
@@ -157,6 +158,8 @@ export default function DocumentsPage() {
                       {/* SRS-202.2: MM/DD/YYYY in the town's time zone, so every viewer sees the same date. */}
                       {[doc.document_type, doc.town_name, meetingDateLabel(doc.meeting_start_at, doc.meeting_time_zone)].filter(Boolean).join(' · ')}
                     </p>
+                    {/* SRS-215.1: time since retrieval, in minutes, hours or days. */}
+                    <p className="mt-0.5 text-xs text-fg-subtle">{retrievedAgo(doc.retrieved_at)}</p>
                   </div>
                   <StatusPill status={doc.summary_status} />
                 </div>
