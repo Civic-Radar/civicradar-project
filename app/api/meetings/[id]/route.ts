@@ -31,7 +31,7 @@ export async function GET(_request: Request, { params }: { params: { id: string 
   const { data: meeting, error: meetingError } = await supabase
     .from('meetings')
     .select(
-      'meeting_id, town_id, body_id, title, source_body_name, source_start_time, start_at, location, online_link, source_url',
+      'meeting_id, town_id, body_id, title, source_body_name, source_start_time, start_at, location, online_link, source_url, unlisted_at',
     )
     .eq('meeting_id', meetingId)
     .maybeSingle();
@@ -103,10 +103,17 @@ export async function GET(_request: Request, { params }: { params: { id: string 
     agendaItems = (items ?? []) as AgendaItem[];
   }
 
+  // Defect #498: a meeting the source no longer lists has no working CivicClerk
+  // page, so no link is sent for it. The page says it is no longer listed.
+  const { unlisted_at: unlistedAt, ...stored } = meeting as typeof meeting & { unlisted_at?: string | null };
+  const noLongerListed = Boolean(unlistedAt);
+
   return Response.json(
     {
       meeting: {
-        ...meeting,
+        ...stored,
+        source_url: noLongerListed ? null : stored.source_url,
+        no_longer_listed: noLongerListed,
         town_name: town?.name ?? null,
         meeting_time_zone: town?.meeting_time_zone ?? null,
         body_name: bodyName,

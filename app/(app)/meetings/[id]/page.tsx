@@ -29,6 +29,8 @@ const NOT_PROVIDED = 'Not provided by the source';
 
 // SRS-502.9: label for the official source link.
 const OPEN_ON_CIVICCLERK = 'Open on CivicClerk';
+// Defect #498: shown in place of the link when the source no longer lists the meeting.
+const NO_LONGER_LISTED = 'No longer listed on CivicClerk';
 
 // SRS-502.5: shown when the meeting has zero linked documents.
 const NO_DOCUMENTS = 'No documents have been published for this meeting yet.';
@@ -415,7 +417,13 @@ function MeetingOverview({ meeting, documents, agendaItems, followedTownIds, mat
               <div className="space-y-1 border-t border-line px-5 py-3">
                 {!bodyName ? <SmallDetail label="Governing body"><TextOrNotProvided value={null} /></SmallDetail> : null}
                 {!meeting.source_url ? (
-                  <SmallDetail label="Official source link"><TextOrNotProvided value={null} /></SmallDetail>
+                  <SmallDetail label="Official source link">
+                    {meeting.no_longer_listed ? (
+                      <span className={styles.missing}>{NO_LONGER_LISTED}</span>
+                    ) : (
+                      <TextOrNotProvided value={null} />
+                    )}
+                  </SmallDetail>
                 ) : null}
                 {/* Agenda items for towns that provide them are listed below (SRS-502.6); recordings are SRS-502.7. */}
                 {!meeting.provides_agenda_items ? (

@@ -421,6 +421,7 @@ create table meetings (
   online_link VARCHAR(2048) check (online_link ~* '^https?://'),
   source_url VARCHAR(2048) check (source_url ~* '^https?://'), -- "Open on CivicClerk"
   is_canceled BOOLEAN not null default false, -- only set when the source says so (SRS-221.2)
+  unlisted_at TIMESTAMPTZ, -- set when a successful check no longer lists the meeting; cleared when listed again (defect #498)
   topic_classification VARCHAR(20) not null default 'Pending' check (
     topic_classification in ('Pending', 'Classified', 'Unavailable')
   ),

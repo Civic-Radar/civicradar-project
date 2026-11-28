@@ -11,6 +11,8 @@ export type MeetingDetails = {
   location: string | null;
   online_link: string | null;
   source_url: string | null;
+  // True when a successful check no longer lists the meeting (defect #498).
+  no_longer_listed?: boolean;
   town_id: number;
   town_name: string | null;
   meeting_time_zone: string | null;
