@@ -6,6 +6,7 @@ import type {
   SourceAgendaItem,
   SourceMeeting,
 } from '../sources/types';
+import { markUnlistedMeetings } from './markUnlistedMeetings';
 import { loadMeetings, retrieveDocuments, type DownloadFile, type RetrieveDocumentsResult } from './retrieveDocuments';
 import { retrievalWindow } from './retrievalWindow';
 import { saveAgendaItems } from './saveAgendaItems';
@@ -224,6 +225,9 @@ export async function runTownRetrieval(
   // Set only when every read succeeded, so any earlier exit keeps the
   // previous baselines (SRS-404.9).
   let successful = false;
+  // The source meeting ids the listing returned, for marking the meetings it
+  // left out after a successful check (defect #498).
+  let listedIds = new Set<string>();
 
   try {
     // A failed fetch is never "no meetings": any client error stops the run.
@@ -238,10 +242,11 @@ export async function runTownRetrieval(
     // listed ids the town had no row for before the save.
     let saved: number;
     try {
-      const listedIds = [...new Set(meetingListing.meetings.map((meeting) => meeting.sourceMeetingId))];
-      const existing = await loadMeetings(supabase, town.town_id, listedIds);
+      listedIds = new Set(meetingListing.meetings.map((meeting) => meeting.sourceMeetingId));
+      const ids = [...listedIds];
+      const existing = await loadMeetings(supabase, town.town_id, ids);
       saved = await saveMeetings(supabase, town, meetingListing.meetings);
-      newMeetings = listedIds.filter((id) => !existing.has(id)).length;
+      newMeetings = ids.filter((id) => !existing.has(id)).length;
     } catch (error: unknown) {
       return { ok: false, status: 500, error: errorMessage(error) };
     }
@@ -279,6 +284,8 @@ export async function runTownRetrieval(
     const changesFound = documents !== null && newMeetings + documents.stored > 0 && documents.failed === 0;
     await endCheck(supabase, town.town_id, check, changesFound, now);
     if (successful) {
+      // Only a successful check may mark a meeting as no longer listed (SRS-221.3).
+      await markUnlistedMeetings(supabase, town.town_id, listedIds, listingWindow, now());
       await processSuccessfulCheck(supabase, town.town_id, check);
     }
   }

@@ -111,6 +111,8 @@ export async function saveMeetings(
     location: meeting.location,
     online_link: meeting.onlineLink,
     source_url: meeting.sourceUrl,
+    // Listed again, so it is no longer "no longer listed" (defect #498).
+    unlisted_at: null,
   }));
 
   const { data, error } = await supabase
