@@ -5,6 +5,7 @@ import Alert from '../../../components/ui/Alert';
 import SignedOutNotice from '../../../components/ui/SignedOutNotice';
 import BackControl from './BackControl';
 import DocumentSummary from './DocumentSummary';
+import DownloadPdfButton from './DownloadPdfButton';
 import { useDocument } from './useDocument';
 
 // Document detail page. Identification, the stored PDF shown in the page, and
@@ -16,8 +17,12 @@ export default function DocumentDetailPage({ params }: { params: { id: string } 
   return (
     <main className="min-w-0 flex-1 p-4 text-fg sm:p-8">
       <div className="mx-auto max-w-[960px]">
-        <div className="mb-6">
+        <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
           <BackControl />
+          {/* SRS-214.1: Download PDF on every document's page, enabled when there is a stored PDF. */}
+          {state.status === 'loaded' ? (
+            <DownloadPdfButton documentId={state.document.document_id} available={Boolean(state.document.pdf_url)} />
+          ) : null}
         </div>
         {state.status === 'loading' ? (
           <LeafLoader />

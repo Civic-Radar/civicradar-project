@@ -350,8 +350,15 @@ describe('Document detail page in-page PDF (SRS-203.2)', () => {
     const sourceLink = withPdf.match(/<p class="mt-5"><a\b[^>]*>View source PDF<\/a><\/p>/)?.[0];
     expect(viewer).toBeDefined();
     expect(sourceLink).toBeDefined();
-    expect(withoutPdf).toBe(
-      withPdf.replace(sourceLink!, '').replace(viewer!, `<p class="text-fg-muted">${NOT_AVAILABLE}</p>`),
+    // The Download PDF button (SRS-214.1) is checked on its own: it is disabled with no stored PDF.
+    const downloadButton = /<button\b([^>]*)>(?:(?!<\/button>)[\s\S])*Download PDF<\/button>/;
+    expect(withPdf.match(downloadButton)?.[1]).not.toContain('disabled=""');
+    expect(withoutPdf.match(downloadButton)?.[1]).toContain('disabled=""');
+    expect(withoutPdf.replace(downloadButton, '')).toBe(
+      withPdf
+        .replace(downloadButton, '')
+        .replace(sourceLink!, '')
+        .replace(viewer!, `<p class="text-fg-muted">${NOT_AVAILABLE}</p>`),
     );
   });
 });
