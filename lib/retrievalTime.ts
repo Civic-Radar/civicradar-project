@@ -20,3 +20,25 @@ export function retrievedAgo(retrievedAt: string | null, now: number = Date.now(
   if (elapsed < DAY_MS) return `Retrieved ${count(Math.floor(elapsed / HOUR_MS), 'hour')} ago`;
   return `Retrieved ${count(Math.floor(elapsed / DAY_MS), 'day')} ago`;
 }
+
+// SRS-215.2: "Retrieved MM/DD/YYYY at h:mm AM/PM ET", in Eastern time
+// (America/New_York, so daylight saving time is handled). Null when
+// retrieved_at is not a time.
+export function retrievedAtEastern(retrievedAt: string | null): string | null {
+  const time = retrievedAt ? Date.parse(retrievedAt) : NaN;
+  if (Number.isNaN(time)) return null;
+  const parts = Object.fromEntries(
+    new Intl.DateTimeFormat('en-US', {
+      timeZone: 'America/New_York',
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: 'numeric',
+      minute: '2-digit',
+      hour12: true,
+    })
+      .formatToParts(time)
+      .map((part) => [part.type, part.value]),
+  );
+  return `Retrieved ${parts.month}/${parts.day}/${parts.year} at ${parts.hour}:${parts.minute} ${parts.dayPeriod.toUpperCase()} ET`;
+}
