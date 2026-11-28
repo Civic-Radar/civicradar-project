@@ -7,6 +7,7 @@ import BackControl from './BackControl';
 import DocumentSummary from './DocumentSummary';
 import DownloadPdfButton from './DownloadPdfButton';
 import { useDocument } from './useDocument';
+import { retrievedAtEastern } from '../../../../lib/retrievalTime';
 
 // Document detail page. Identification, the stored PDF shown in the page, and
 // the summary or the Failed message (SRS-203.1, SRS-203.2, SRS-204.2, SRS-210.2).
@@ -37,6 +38,8 @@ export default function DocumentDetailPage({ params }: { params: { id: string } 
           <Alert tone="error" role="alert">This document could not be loaded. Please try again.</Alert>
         ) : (
           <div className="space-y-6">
+            {/* SRS-215.2: the exact retrieval time, in Eastern time, just above the title. */}
+            <p className="-mb-4 text-sm text-fg-muted">{retrievedAtEastern(state.document.retrieved_at)}</p>
             <h1 className="break-words font-display text-2xl font-normal leading-tight tracking-tight sm:text-3xl">
               {state.document.title}
             </h1>

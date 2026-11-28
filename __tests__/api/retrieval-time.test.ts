@@ -2,8 +2,10 @@ import { createRequire } from 'node:module';
 import * as React from 'react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { DocumentListEntry, DocumentsState } from '../../app/(app)/documents/useDocuments';
+import type { DocumentState } from '../../app/(app)/documents/[id]/useDocument';
 
-// UR-215: SRS-215.1 (time since retrieval on each Documents list entry).
+// UR-215: SRS-215.1 (time since retrieval on each Documents list entry) and
+// SRS-215.2 (exact retrieval time on the document detail page).
 
 const { renderToStaticMarkup } = createRequire(import.meta.url)('react-dom/server') as {
   renderToStaticMarkup: (element: React.ReactElement) => string;
@@ -11,9 +13,12 @@ const { renderToStaticMarkup } = createRequire(import.meta.url)('react-dom/serve
 
 const hook = vi.hoisted(() => ({ state: { status: 'loading' } as DocumentsState }));
 vi.mock('../../app/(app)/documents/useDocuments', () => ({ useDocuments: () => hook.state }));
+const detail = vi.hoisted(() => ({ state: { status: 'loading' } as DocumentState }));
+vi.mock('../../app/(app)/documents/[id]/useDocument', () => ({ useDocument: () => detail.state }));
 
 import DocumentsPage from '../../app/(app)/documents/page';
-import { retrievedAgo } from '../../lib/retrievalTime';
+import DocumentDetailPage from '../../app/(app)/documents/[id]/page';
+import { retrievedAgo, retrievedAtEastern } from '../../lib/retrievalTime';
 
 const NOW = Date.UTC(2026, 10, 27, 15, 0, 0); // 11/27/2026 3:00 PM UTC
 const MINUTE = 60 * 1000;
@@ -119,5 +124,53 @@ describe('Documents list entry (SRS-215.1)', () => {
     const markup = render([entry(1, ago(HOUR)), entry(2, ago(HOUR)), entry(3, ago(HOUR))]);
 
     expect(markup.match(/Retrieved 1 hour ago/g)).toHaveLength(3);
+  });
+});
+
+describe('retrievedAtEastern (SRS-215.2)', () => {
+  it('shows "Retrieved 09/20/2026 at 2:05 PM ET" for 2:05 PM Eastern on 09/20/2026 (the SRS example)', () => {
+    // 2:05 PM EDT is 18:05 UTC.
+    expect(retrievedAtEastern('2026-09-20T18:05:00+00:00')).toBe('Retrieved 09/20/2026 at 2:05 PM ET');
+  });
+
+  it.each([
+    ['winter time (EST, UTC-5)', '2026-01-15T14:30:00Z', 'Retrieved 01/15/2026 at 9:30 AM ET'],
+    ['just after midnight', '2026-03-02T05:07:00Z', 'Retrieved 03/02/2026 at 12:07 AM ET'],
+    ['noon', '2026-07-04T16:00:00Z', 'Retrieved 07/04/2026 at 12:00 PM ET'],
+    ['an evening that is already the next day in UTC', '2026-11-27T02:45:00Z', 'Retrieved 11/26/2026 at 9:45 PM ET'],
+    ['the database format with microseconds', '2026-10-01T12:00:00.123456+00:00', 'Retrieved 10/01/2026 at 8:00 AM ET'],
+  ])('handles %s', (_label, input, text) => {
+    expect(retrievedAtEastern(input)).toBe(text);
+  });
+
+  it('is null for a missing or unreadable time', () => {
+    expect(retrievedAtEastern(null)).toBeNull();
+    expect(retrievedAtEastern('not a time')).toBeNull();
+  });
+
+  it('shows the exact retrieval time on the document detail page, above the title', () => {
+    vi.stubGlobal('React', React);
+    detail.state = {
+      status: 'loaded',
+      document: {
+        document_id: 60,
+        meeting_id: 42,
+        town_id: 1,
+        title: 'City Council Agenda',
+        document_type: 'Agenda',
+        source_url: 'https://example.org/files/60.pdf',
+        retrieved_at: '2026-09-20T18:05:00+00:00',
+        summary_status: 'Pending',
+        summary_text: null,
+        summary_generated_at: null,
+        pdf_url: null,
+      },
+    };
+
+    const markup = renderToStaticMarkup(React.createElement(DocumentDetailPage, { params: { id: '60' } }));
+
+    expect(markup).toContain('>Retrieved 09/20/2026 at 2:05 PM ET</p><h1');
+    expect(markup.match(/Retrieved \d\d\/\d\d\/\d{4}/g)).toHaveLength(1);
+    detail.state = { status: 'loading' };
   });
 });
